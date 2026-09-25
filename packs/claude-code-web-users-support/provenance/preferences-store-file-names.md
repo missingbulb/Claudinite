@@ -26,10 +26,11 @@
   because a misnamed directory holding a whole pack is one mistake with one fix.
 - **Landed:** #2188
 
-## 2026-09-25 · scope-changed · a directory is a lower-case GitHub login now, an email the legacy form (#2321)
-- **Reason:** the reader addresses a person by GitHub login, lower-cased, so a mixed-case login is
-  unaddressable and an email-named directory is read only through the fallback #2320 removes.
+## 2026-09-25 · scope-changed · a directory is a lower-case GitHub login now (#2321)
+- **Reason:** the reader addresses a person by GitHub login, lower-cased, so an email-named or
+  mixed-case directory is unaddressable.
 - **Actor:** @missingbulb (owner).
-- **Mechanism:** unchanged carrier and severity; the email branch is the advisory the fallback's
-  `@legacy-tolerance` marker names.
+- **Mechanism:** unchanged.
+- **Rejected:** an email-directory fallback during the rename - one store and one person, so the
+  store renames in the same step instead.
 - **Landed:** #2321

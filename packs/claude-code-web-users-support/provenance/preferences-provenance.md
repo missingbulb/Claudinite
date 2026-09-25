@@ -19,7 +19,7 @@
   a rule index would report its every bullet.
 - **Landed:** #2188
 
-## 2026-09-25 · scope-changed · judges login-named packs as well as email-named ones (#2321)
+## 2026-09-25 · scope-changed · judges login-named packs (#2321)
 - **Reason:** the store now names directories by GitHub login.
 - **Actor:** @missingbulb (owner).
 - **Mechanism:** unchanged.

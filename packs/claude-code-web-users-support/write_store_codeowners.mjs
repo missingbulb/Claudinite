@@ -1,10 +1,5 @@
-// Regenerate the store's CODEOWNERS block in place (store_codeowners.mjs), from the tracked
-// person directories and this pack's own store config. Run it in the store repo, in the change
-// that adds or renames a person's directory:
-//
-//   node .claudinite/shared/packs/claude-code-web-users-support/write_store_codeowners.mjs
-//
-// It writes the file and stages nothing; the change that runs it commits it.
+// Regenerate the store's CODEOWNERS block (store_codeowners.mjs) from the tracked person
+// directories. Run it in the store repo, in the change that adds or renames a directory.
 
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -22,10 +17,9 @@ function main() {
   const target = join(root, CODEOWNERS_FILE);
   const before = existsSync(target) ? readFileSync(target, 'utf8') : '';
   const after = withBlock(before, codeownersBlock(store, listed.stdout.split('\n').filter(Boolean)));
-  if (after === before) { process.stdout.write(`${CODEOWNERS_FILE} is current\n`); return; }
+  if (after === before) return;
   mkdirSync(dirname(target), { recursive: true });
   writeFileSync(target, after);
-  process.stdout.write(`wrote ${CODEOWNERS_FILE}\n`);
 }
 
 Promise.resolve().then(main).catch((e) => {

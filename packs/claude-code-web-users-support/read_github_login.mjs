@@ -1,27 +1,15 @@
-// WHO THIS SESSION IS ON GITHUB: the login its token belongs to, which is what a person's pack
-// is addressed by (user_pack_address.mjs). The harness names the person only by email and
-// account UUID, so the login is read back from the API with the token the session already
-// carries - `GH_TOKEN`, then `GITHUB_TOKEN` - and a token the API refuses hands over to the next.
+// Who this session is on GitHub: the login `GET /user` returns for the session's token,
+// `GH_TOKEN` then `GITHUB_TOKEN`. The harness names the person only by email, and the store is
+// keyed by login (user_pack_address.mjs). Never throws: `{ login, via }` or `{ error }`.
 //
-// The token names whoever it was minted for. In a web session that is the GitHub account linked
-// to the person's claude.ai account; an environment that sets a shared or bot token of its own
-// in either variable makes every person in it that account. The README says so, because no
-// read here can tell the two apart.
-//
-// FAIL-SOFT. Never throws: `{ login, via }` or `{ error }`, and the error is the sentence the
-// session-start note quotes. `CLAUDINITE_GITHUB_USER_URL` replaces the endpoint, so a test can
-// answer from a `data:` URL or a local server rather than the network.
-//
-// THROUGH THE PROXY. In a web session the tokens are placeholders the agent proxy swaps for the
-// real credential, so a request that bypasses the proxy is refused with a 401. Node's built-in
-// fetch ignores HTTPS_PROXY unless NODE_USE_ENV_PROXY=1 was set when the process started, which
-// the engine does not do for a pack step, so `readGithubLoginThroughProxy` runs the read in a
-// child started with it. The child's stderr is not read: it carries undici's notice that its
-// proxy agent is experimental, and nothing a caller needs.
+// In a web session the tokens are placeholders the agent proxy swaps for the real credential,
+// and Node's fetch bypasses the proxy unless NODE_USE_ENV_PROXY=1 was set at startup, so
+// `readGithubLoginThroughProxy` runs the read in a child started with it.
+// `CLAUDINITE_GITHUB_USER_URL` replaces the endpoint for tests.
 
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { isUsableLogin } from './user_pack_address.mjs';
+import { isUsableIdentity } from './user_pack_address.mjs';
 
 const TIMEOUT_MS = 10_000;
 const TOKENS = ['GH_TOKEN', 'GITHUB_TOKEN'];
@@ -39,7 +27,9 @@ export async function readGithubLogin(env) {
       });
       if (!res.ok) { misses.push(`${name}: HTTP ${res.status}`); continue; }
       const { login } = await res.json();
-      if (!isUsableLogin(login)) return { error: `${name} read back ${JSON.stringify(String(login)).replace(/\\/g, '')}, which is not a usable GitHub login` };
+      if (typeof login !== 'string' || !isUsableIdentity(login.toLowerCase())) {
+        return { error: `${name} read back ${JSON.stringify(String(login)).replace(/\\/g, '')}, which is not a usable GitHub login` };
+      }
       return { login, via: name };
     } catch (e) {
       misses.push(`${name}: ${e.cause?.code || e.name || e.message}`);
@@ -60,7 +50,7 @@ export async function readGithubLoginThroughProxy(env) {
   }
 }
 
-// Run directly, it is the child above: one read, its answer as JSON on stdout.
+// Run directly, it is that child: one read, its answer as JSON on stdout.
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   readGithubLogin(process.env).then((r) => process.stdout.write(JSON.stringify(r)));
 }

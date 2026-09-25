@@ -1,5 +1,5 @@
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
-import { resolveStore, storeDirForm } from '../user_pack_address.mjs';
+import { resolveStore, isUsableIdentity } from '../user_pack_address.mjs';
 // A namespace import, guarded in `run`: the pack and engine lanes deliver on separate
 // cadences, and a member whose engine predates the helper must load this pack rather
 // than fault on a missing named export.
@@ -47,9 +47,9 @@ const rule = {
     if (!held.length) return [];
     const out = [];
     for (const file of held) {
-      const name = file.slice(prefix.length, -'/RULES.md'.length);
-      if (!['login', 'email'].includes(storeDirForm(name))) continue; // store-file-names reports the name
-      const dir = `${prefix}${name}/provenance`;
+      const email = file.slice(prefix.length, -'/RULES.md'.length);
+      if (!isUsableIdentity(email)) continue; // store-file-names reports the name
+      const dir = `${prefix}${email}/provenance`;
       for (const b of ruleBlocks(ctx.read(file) ?? '')) {
         if (!b.slug) {
           out.push(finding(rule, {

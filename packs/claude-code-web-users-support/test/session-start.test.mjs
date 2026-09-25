@@ -14,30 +14,27 @@ const START = join(here, '..', 'session-start.mjs');
 const COPIED = join('.claudinite', 'temp', 'packs', 'current_user');
 
 // The pack's two steps, run exactly as the engine runs them: subprocesses, handed the pack's
-// own entry config in CLAUDINITE_PACK_CONFIG and the session's identity: the GitHub login its
-// token reads back, and CLAUDE_CODE_USER_EMAIL for the legacy directory. Most of what follows
-// is one of the ways the copy can miss, because every one of them must be fail-soft: the pack
-// contributes a nicety, and a nicety that can stop a session from starting is a defect, not a
-// feature.
+// own entry config in CLAUDINITE_PACK_CONFIG and the session's GitHub login. Most of what follows is one of the ways the copy can miss, because
+// every one of them must be fail-soft: the pack contributes a nicety, and a nicety that can
+// stop a session from starting is a defect, not a feature.
 //
-// Attendedness and the tokens are among those inputs, so every case states the ones it means
-// and none inherits the ambient value: the harness exports CLAUDE_CODE_SESSION_ATTENDED=0 in
-// exactly the sessions the task queue runs in, and a real GH_TOKEN in every web session, so a
-// case that let them through would assert about the session the suite happens to run in rather
-// than the one it describes. `attended: null` is the older harness that sets nothing at all.
-// The login is served from a `data:` URL, so no case goes to the network; `login: null` is a
-// lookup that fails, against a port nothing listens on.
+// Attendedness is one of those inputs, so every case states the one it means and none inherits
+// the ambient value: the harness exports CLAUDE_CODE_SESSION_ATTENDED=0 in exactly the sessions
+// the task queue runs in, so a case that let it through would assert about the session the
+// suite happens to run in rather than the one it describes, green at a terminal and in CI and
+// red for every unattended run. `attended: null` is the older harness that sets nothing at all.
+// The GitHub login is an input the same way: served from a `data:` URL so no case reaches the
+// network, and `login: null` is a read that fails, against a port nothing listens on.
 const { CLAUDE_CODE_SESSION_ATTENDED: _ambientAttended, GH_TOKEN: _gh, GITHUB_TOKEN: _github, ...BASE_ENV } = process.env;
 const userUrl = (login) => (login === null
   ? 'http://127.0.0.1:9/user'
   : `data:application/json,${encodeURIComponent(JSON.stringify({ login }))}`);
 
-const run = (step, project, { email = 'me@example.com', login = 'acme-user', config = {}, attended = '1', ...extra } = {}) => spawnSync('node', [step], {
+const run = (step, project, { login = 'acme-user', config = {}, attended = '1', ...extra } = {}) => spawnSync('node', [step], {
   encoding: 'utf8',
   env: {
     ...BASE_ENV,
     CLAUDE_PROJECT_DIR: project,
-    CLAUDE_CODE_USER_EMAIL: email,
     GH_TOKEN: 'acme-token',
     CLAUDINITE_GITHUB_USER_URL: userUrl(login),
     CLAUDINITE_PACK_CONFIG: JSON.stringify(config),
@@ -54,9 +51,9 @@ const copied = (root, rel) => readFileSync(join(root, COPIED, rel), 'utf8');
 const STORE = { repo: 'owner/store' };
 
 // A store this tree holds, so the copy takes its local-first branch.
-function storeHere(root, files, { path = 'preferences', dir = 'acme-user' } = {}) {
+function storeHere(root, files, { path = 'preferences', login = 'acme-user' } = {}) {
   for (const [rel, body] of Object.entries(files)) {
-    const target = join(root, path, dir, rel);
+    const target = join(root, path, login, rel);
     mkdirSync(dirname(target), { recursive: true });
     writeFileSync(target, body);
   }
@@ -95,6 +92,19 @@ test('a pack that carries its own manifest keeps it', () => {
   } finally { removeTree(root); }
 });
 
+test('the pack is found by the lower-cased login, and the note names both', () => {
+  // GitHub compares logins case-insensitively and a directory name does not, so the store keeps
+  // the lower-case form and the reader folds what the API returns into it.
+  const root = project();
+  try {
+    storeHere(root, { 'RULES.md': 'MINE\n' });
+    run(PREPARE, root, { login: 'Acme-User', config: STORE });
+    assert.match(copied(root, 'RULES.md'), /MINE/);
+    assert.match(run(START, root, { login: 'Acme-User', config: STORE }).stdout,
+      /copied preferences\/acme-user\/ from owner\/store for GitHub user Acme-User/);
+  } finally { removeTree(root); }
+});
+
 test('the store is read locally when this tree IS the store', () => {
   // The working copy wins: in the store repo itself, a clone would serve the default branch and
   // quietly hide the edit the owner is making right now.
@@ -126,62 +136,6 @@ test('nothing copied still leaves a pack the engine can load', () => {
   } finally { removeTree(root); }
 });
 
-test('the pack is addressed by the GitHub login, lower-cased, and the note says which', () => {
-  // GitHub compares logins case-insensitively and a directory name does not, so the store keeps
-  // the lower-case form and the reader folds what the API returns into it.
-  const root = project();
-  try {
-    storeHere(root, { 'RULES.md': 'BY LOGIN\n' });
-    storeHere(root, { 'RULES.md': 'BY EMAIL\n' }, { dir: 'me@example.com' });
-    run(PREPARE, root, { login: 'Acme-User', config: STORE });
-    assert.match(copied(root, 'RULES.md'), /BY LOGIN/, 'the login wins over the legacy email directory');
-    const r = run(START, root, { login: 'Acme-User', config: STORE });
-    assert.equal(r.status, 0);
-    assert.match(r.stdout, /GitHub user Acme-User/);
-    assert.match(r.stdout, /preferences\/acme-user\//);
-    assert.doesNotMatch(r.stdout, /fallback/);
-  } finally { removeTree(root); }
-});
-
-test('with no login directory yet, the legacy email directory is read, and the note says to move it', () => {
-  const root = project();
-  try {
-    storeHere(root, { 'RULES.md': 'BY EMAIL\n' }, { dir: 'me@example.com' });
-    run(PREPARE, root, { config: STORE });
-    assert.match(copied(root, 'RULES.md'), /BY EMAIL/);
-    const out = run(START, root, { config: STORE }).stdout;
-    assert.match(out, /preferences\/me@example\.com\//);
-    assert.match(out, /fallback/);
-    assert.match(out, /preferences\/acme-user\//, 'names the directory to move it to');
-  } finally { removeTree(root); }
-});
-
-test('a login that cannot be read falls back to the email, and the note says why', () => {
-  const root = project();
-  try {
-    storeHere(root, { 'RULES.md': 'BY EMAIL\n' }, { dir: 'me@example.com' });
-    for (const opts of [{ login: null }, { login: '../escape' }, { GH_TOKEN: '' }]) {
-      const r = run(PREPARE, root, { ...opts, config: STORE });
-      assert.equal(r.status, 0);
-      assert.match(copied(root, 'RULES.md'), /BY EMAIL/, JSON.stringify(opts));
-      const out = run(START, root, { ...opts, config: STORE }).stdout;
-      assert.match(out, /no GitHub login/, JSON.stringify(opts));
-      assert.match(out, /me@example\.com/);
-    }
-  } finally { removeTree(root); }
-});
-
-test('no usable identity of either kind is a soft note naming both', () => {
-  const root = project();
-  try {
-    run(PREPARE, root, { login: null, email: '', config: STORE });
-    assert.match(copied(root, 'RULES.md'), /No personal pack/);
-    const out = run(START, root, { login: null, email: '../../../etc/passwd', config: STORE }).stdout;
-    assert.match(out, /no GitHub login/);
-    assert.match(out, /CLAUDE_CODE_USER_EMAIL/);
-  } finally { removeTree(root); }
-});
-
 test('what a session copies in never shows up as a change to commit', () => {
   // The member's own .gitignore may say nothing about the session root, so the root has to
   // ignore itself, on the copy path and on the placeholder path alike.
@@ -203,19 +157,23 @@ test('every miss is a soft note from the start step, never a halt', () => {
     run(PREPARE, root, { login: 'nobody', config: STORE });
     const r = run(START, root, { login: 'nobody', config: STORE });
     assert.equal(r.status, 0);
-    assert.match(r.stdout, /owner\/store holds no pack at preferences\/nobody\/ or preferences\/me@example\.com\//);
+    assert.match(r.stdout, /owner\/store holds no pack at preferences\/nobody\/ for GitHub user nobody/);
     assert.match(r.stdout, /default interaction behavior/);
     assert.doesNotMatch(r.stdout, /STOP|AskUserQuestion/);              // fail-soft, no halt-gate
     assert.doesNotMatch(r.stdout, /hookSpecificOutput|additionalContext/); // plain text, no JSON envelope
   } finally { removeTree(root); }
 });
 
-test('a session declined whoever it is says why, from the config and the environment alone', () => {
+test('the start step names the reason without a status file to read it from', () => {
+  // The reasons are a pure function of the config and the environment, so the step that says
+  // them needs nothing the step that acted on them left behind.
   const root = project();
   try {
     for (const [opts, expected] of [
       [{ config: {} }, /declares no store/],
       [{ config: STORE, attended: '0' }, /unattended/],
+      [{ config: STORE, login: null }, /no GitHub login was read/],
+      [{ config: STORE, login: '../../../etc/passwd' }, /not a usable GitHub login/],
     ]) {
       run(PREPARE, root, opts);
       assert.match(copied(root, 'RULES.md'), /No personal pack/, JSON.stringify(opts));

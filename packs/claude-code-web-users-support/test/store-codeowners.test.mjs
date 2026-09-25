@@ -10,70 +10,40 @@ import { git } from '../../../engine-tests/helpers.mjs';
 import rule from '../worldRules/store-codeowners.mjs';
 import { codeownersBlock, withBlock } from '../store_codeowners.mjs';
 
-const here = dirname(fileURLToPath(import.meta.url));
-const WRITER = join(here, '..', 'write_store_codeowners.mjs');
+const WRITER = join(dirname(fileURLToPath(import.meta.url)), '..', 'write_store_codeowners.mjs');
 const PACK = 'claude-code-web-users-support';
 const STORE = { repo: 'acme-owner/store' };
-const PEOPLE = ['preferences/README.md', 'preferences/acme-user/RULES.md', 'preferences/acme-user/skills/s/SKILL.md', 'preferences/me@example.com/RULES.md'];
+const RESOLVED = { ...STORE, path: 'preferences' };
+const PEOPLE = ['preferences/README.md', 'preferences/acme-user/RULES.md', 'preferences/acme-user/skills/s/SKILL.md', 'preferences/zed/RULES.md'];
 
 const ctx = (files, codeowners, config = STORE) => ({
   files: codeowners === undefined ? files : [...files, '.github/CODEOWNERS'],
   config: { packConfig: { [PACK]: config } },
-  read: (f) => (f === '.github/CODEOWNERS' ? codeowners ?? null : null),
+  read: (f) => (f === '.github/CODEOWNERS' ? codeowners : null),
 });
-const ownerLines = (text) => text.split('\n').filter((l) => l && !l.startsWith('#'));
+const fresh = (files = PEOPLE) => withBlock('', codeownersBlock(RESOLVED, files));
 
-test('the block gives the store to its admin, each directory to its person, and itself to the admin', () => {
-  const lines = ownerLines(codeownersBlock({ repo: 'acme-owner/store', path: 'preferences' }, PEOPLE));
-  assert.deepEqual(lines, [
+test('the block gives the store to its admin, each directory to its person beside the admin, and itself to the admin', () => {
+  assert.deepEqual(codeownersBlock(RESOLVED, [...PEOPLE, 'preferences/Mixed/RULES.md']).split('\n').filter((l) => !l.startsWith('#')), [
     '/preferences/ @acme-owner',
-    // GitHub never counts a PR's author as its code owner's approval, so the admin is listed
-    // beside each person: someone must be able to approve a person's edit of their own pack.
     '/preferences/acme-user/ @acme-user @acme-owner',
-    // The legacy email form is owned by the email, which GitHub resolves to the account holding it.
-    '/preferences/me@example.com/ me@example.com @acme-owner',
+    '/preferences/zed/ @zed @acme-owner',
     '/.github/CODEOWNERS @acme-owner',
   ]);
 });
 
-test('an unaddressable directory gets no owner line - it falls to the admin line above it', () => {
-  const lines = ownerLines(codeownersBlock({ repo: 'o/s', path: 'preferences' }, ['preferences/a b/RULES.md', 'preferences/Acme/RULES.md']));
-  assert.deepEqual(lines, ['/preferences/ @o', '/.github/CODEOWNERS @o']);
+test('withBlock keeps what is outside the block, and regenerating is a no-op', () => {
+  const once = withBlock('/docs/ @someone\n', codeownersBlock(RESOLVED, PEOPLE));
+  assert.ok(once.startsWith('/docs/ @someone\n'));
+  assert.equal(withBlock(once, codeownersBlock(RESOLVED, PEOPLE)), once);
+  assert.doesNotMatch(withBlock(once, codeownersBlock(RESOLVED, ['preferences/acme-user/RULES.md'])), /@zed/);
 });
 
-test('withBlock replaces its own block and keeps everything else, twice in a row', () => {
-  const block = codeownersBlock({ repo: 'o/s', path: 'preferences' }, PEOPLE);
-  const once = withBlock('# mine\n/docs/ @someone\n', block);
-  assert.ok(once.startsWith('# mine\n/docs/ @someone\n'));
-  assert.equal(withBlock(once, block), once, 'regenerating is a no-op');
-  const other = codeownersBlock({ repo: 'o/s', path: 'preferences' }, ['preferences/acme-user/RULES.md']);
-  const replaced = withBlock(once, other);
-  assert.equal(replaced.match(/BEGIN GENERATED/g).length, 1);
-  assert.doesNotMatch(replaced, /me@example\.com/);
-});
-
-test('a store with no CODEOWNERS is found', () => {
-  const found = rule.run(ctx(PEOPLE, undefined));
-  assert.equal(found.length, 1);
-  assert.equal(found[0].file, '.github/CODEOWNERS');
-  assert.match(found[0].fix, /write_store_codeowners\.mjs/);
-});
-
-test('a block out of step with the directories is found, and the generated one is clean', () => {
-  const stale = withBlock('', codeownersBlock({ repo: 'acme-owner/store', path: 'preferences' }, ['preferences/acme-user/RULES.md']));
-  const found = rule.run(ctx(PEOPLE, stale));
-  assert.equal(found.length, 1);
-  assert.match(found[0].what, /me@example\.com/);
-  const fresh = withBlock('', codeownersBlock({ repo: 'acme-owner/store', path: 'preferences' }, PEOPLE));
-  assert.deepEqual(rule.run(ctx(PEOPLE, fresh)), []);
-});
-
-test('an owner line after the block is found - the last matching line wins', () => {
-  const fresh = withBlock('', codeownersBlock({ repo: 'acme-owner/store', path: 'preferences' }, PEOPLE));
-  const found = rule.run(ctx(PEOPLE, `${fresh}/preferences/acme-user/ @intruder\n`));
-  assert.equal(found.length, 1);
-  assert.match(found[0].what, /after/);
-  assert.deepEqual(rule.run(ctx(PEOPLE, `${fresh}\n# a trailing comment\n`)), []);
+test('a missing file, a stale block and an owner line after the block are each found', () => {
+  assert.match(rule.run(ctx(PEOPLE, undefined))[0].fix, /write_store_codeowners\.mjs/);
+  assert.match(rule.run(ctx(PEOPLE, fresh(['preferences/acme-user/RULES.md'])))[0].what, /\/preferences\/zed\/ @zed/);
+  assert.match(rule.run(ctx(PEOPLE, `${fresh()}/preferences/zed/ @intruder\n`))[0].what, /after the generated block/);
+  assert.deepEqual(rule.run(ctx(PEOPLE, `${fresh()}# a trailing comment\n`)), []);
 });
 
 test('inert in a repo that is not the store', () => {

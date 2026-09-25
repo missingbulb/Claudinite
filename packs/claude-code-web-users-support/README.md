@@ -26,11 +26,7 @@ directory names don't, so the store holds the login in lower case and the reader
 the API returns. The token names whoever it was minted for: an environment that puts a shared or
 bot token in either variable makes every person in it that account.
 
-While stores still hold directories named by email, a person whose `<login>/` directory is
-missing is read from `<path>/<email>/` instead, their `CLAUDE_CODE_USER_EMAIL`. This fallback is
-temporary: `preferences-store-file-names` advises each email-named directory in the store to move,
-and the session-start note says so to the person whose pack came through it. The note always
-names the identity used and the directory copied, or why nothing was.
+The session-start note names the login used and the directory copied, or why nothing was.
 
 ## The pack a person brings
 
@@ -54,7 +50,7 @@ edit in progress is what the session sees. Otherwise the store is reached by a s
 blob-filtered, sparse `git clone` of that person's directories.
 
 Being the store also constrains the tree: the directory name is the whole address, so each one is
-one person's GitHub login in lower case (or, while the fallback stands, their email), which [`worldRules/store-file-names.mjs`](worldRules/store-file-names.mjs)
+one person's GitHub login in lower case, which [`worldRules/store-file-names.mjs`](worldRules/store-file-names.mjs)
 explains and audits.
 
 **The store is as trusted as this repository.** A person's pack is executable code - checks and
@@ -76,8 +72,7 @@ the store's admin changed their pack:
 The admin is the store repository's owning account; an organization-owned store is not
 supported. The admin is listed beside each person because GitHub never counts a pull request's
 author as a code owner's approval, so a person's edit of their own pack needs the admin to
-approve it. An email-named directory is owned by the email, which GitHub resolves to the account
-it is added to. Regenerate the block in the change that adds or renames a directory:
+approve it. Regenerate the block in the change that adds or renames a directory:
 
 ```
 node .claudinite/shared/packs/claude-code-web-users-support/write_store_codeowners.mjs
