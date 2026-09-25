@@ -35,7 +35,7 @@
 import { fleetTokenHandoverStep } from './fleet-token.mjs';
 
 export default {
-  version: '60925.1',
+  version: '60925.2',
   minEngineVersion: '60925.1',
   ruleRoutingGuidance: {
     belongs: 'fleet-enforcer duties for the repo watching every other repo — coverage, freshness, standardized packs',

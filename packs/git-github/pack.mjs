@@ -6,7 +6,7 @@
 // naming it in `requires`, so the closure materializes it into every
 // declaration - never seeded directly, and the pack carries no fingerprint.
 export default {
-  version: '60925.1',
+  version: '60925.2',
   minEngineVersion: '60925.1',
   ruleRoutingGuidance: {
     belongs: 'git and GitHub procedure and platform: commit layering, branch and merge mechanics, workflow YAML, triggers, secrets, scheduling',
