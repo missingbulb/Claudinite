@@ -133,8 +133,10 @@ export function check(root, packs) {
     for (const d of a.carriers.declarations) name(d.id, `declared rule ${d.id}`);
     if (a.carriers.manifest) name(PACK_ELEMENT, 'the manifest');
     lines.push(`${pack}/${PROVENANCE_DIR}/`);
-    const state = (f) => (f.status === 'retired' ? ' (retired)' : f.empty ? ' (empty)' : f.convertedOnly ? ' (conversion only, history pending)' : '');
-    for (const [id, f] of [...a.files].sort()) lines.push(`  ${fileOfId(id)} ← ${(namedBy.get(id) ?? ['nothing']).join(', ')}${state(f)}`);
+    const births = conversionBirths(root, pack, io, a.files);
+    const converted = { dated: ' (conversion entry, dated at its birth)', unverified: ' (conversion only, its birth unverified)', pending: ' (conversion only, history pending)' };
+    const state = (id, f) => (f.status === 'retired' ? ' (retired)' : f.empty ? ' (empty)' : f.convertedOnly ? converted[births.get(id)] ?? '' : '');
+    for (const [id, f] of [...a.files].sort()) lines.push(`  ${fileOfId(id)} ← ${(namedBy.get(id) ?? ['nothing']).join(', ')}${state(id, f)}`);
     // The declined log is named by no carrier, so it is listed rather than matched: a pass
     // that turned candidates down cannot be read off a listing that leaves it out.
     if (a.declined) lines.push(`  ${DECLINED_FILE} ← ${a.declined.entries.length} candidate${a.declined.entries.length === 1 ? '' : 's'} turned down`);
@@ -147,6 +149,7 @@ export function check(root, packs) {
     for (const e of a.parseErrors) fault(e.file, e.line, e.what);
     for (const e of a.entryFaults) fault(e.file, e.line, e.what);
     if (a.referencesDoc) fault(a.referencesDoc, null, 'a references.md still exists - convert-references retires it');
+    for (const [id, birth] of births) if (birth === 'shallow') fault(a.files.get(id).file, null, 'filled by the conversion, and the clone is shallow - unshallow it before reading whether its date is the birth');
   }
   return { lines, faults };
 }
@@ -743,6 +746,24 @@ function withEarlierCarrier(index, position, el) {
   return el;
 }
 
+// Whether each conversion-filled file still owes history. Its one entry is dated by the
+// conversion write, which is the element's birth wherever the rule and its references
+// row landed in one commit: where git derives the birth on that same date the entry is
+// settled, where git shows the element earlier it is a placeholder, and where the
+// derived birth is itself an assumption a matching date proves nothing.
+function conversionBirths(root, pack, io, files) {
+  const ids = [...files].filter(([, f]) => f.convertedOnly).map(([id]) => id);
+  if (!ids.length) return new Map();
+  if (git(root, 'rev-parse', '--is-shallow-repository').trim() !== 'false') return new Map(ids.map((id) => [id, 'shallow']));
+  const cache = new Map();
+  const out = new Map();
+  for (const el of packElements(root, pack, io, ids, { paths: packPaths(root, pack, io) })) {
+    const born = el.events.filter((e) => e.kind === 'born').map((e) => commitInfo(root, e.sha, cache).date).sort()[0];
+    out.set(el.id, el.unfollowed ? 'unverified' : born && born === files.get(el.id).entries[0].date ? 'dated' : 'pending');
+  }
+  return out;
+}
+
 function packElements(root, pack, io, wanted, { paths = [pack], position = positionsOf(root) } = {}) {
   const c = packCarriers(pack, io);
   const files = provenanceFiles(pack, io);
@@ -860,7 +881,7 @@ export function brief(root, pack, wanted = []) {
   if (paths.length > 1) lines.push('', `this pack has moved: its history is read under ${paths.join(', ')}, and a row naming a file in full is from before the move`);
   const converted = [...provenanceFiles(pack, io)].filter(([, f]) => f.convertedOnly).map(([id]) => id);
   if (converted.length) {
-    lines.push('', '## files the references conversion filled', 'each holds one born entry dated by the CONVERSION rather than by the element, plus the Reason and Retire when the doc carried. these are drafted below like an empty file; where the real birth is earlier, `apply --backfill` merges the derived history in date order and drops the placeholder, and where the placeholder date IS the birth it stands - read each file\'s own evidence rather than truncating them as a class');
+    lines.push('', '## files the references conversion filled', 'each holds one born entry dated by the CONVERSION rather than by the element, plus the Reason and Retire when the doc carried. these are drafted below like an empty file; a born the batch dates on or before the placeholder replaces it as `apply --backfill` merges the history in date order, and a batch bringing no born leaves it standing - read each file\'s own evidence rather than truncating them as a class');
     for (const id of converted) lines.push(`- ${fileOfId(id)}`);
   }
   lines.push('');
@@ -972,7 +993,7 @@ const orderedFields = (fields) => Object.fromEntries(Object.entries(fields).sort
 // backfill is deriving history that already happened: its entries are dated before
 // whatever the file holds, which the ordinary append lane refuses and should. Under it a
 // file is re-rendered in date order rather than appended to, a placeholder born the
-// references conversion left is dropped where the derived born is earlier, and a file
+// references conversion left is dropped where the batch's born is dated on or before it, and a file
 // missing entirely is created where the batch opens with born. Every other caller -
 // every change being made now - goes through the append lane, where a file only ever
 // grows at its end.
@@ -1127,7 +1148,7 @@ export async function main(argv = process.argv.slice(2), { root = process.env.CL
       if (problems.length) { console.error(problems.join('\n')); return 1; }
       console.log(written.length ? written.map((f) => `${f}: ${backfill ? 'written in date order' : 'appended'}`).join('\n') : 'nothing to append');
       if (created.length) console.log(`created: ${created.join(', ')}`);
-      if (superseded.length) console.log(`the conversion's placeholder replaced by an earlier born: ${superseded.join('; ')}`);
+      if (superseded.length) console.log(`the conversion's placeholder replaced by the batch's born: ${superseded.join('; ')}`);
       if (skipped.length) console.log(`already in its file, skipped: ${[...new Set(skipped)].join(', ')}`);
       return 0;
     }

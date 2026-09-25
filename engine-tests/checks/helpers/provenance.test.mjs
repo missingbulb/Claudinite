@@ -532,6 +532,19 @@ test('backfilledText keeps a conversion placeholder whose date IS the birth, so 
   assert.deepEqual(entries.map((e) => e.date), ['2026-09-14', '2026-09-20']);
 });
 
+// A birth verified by hand on the conversion's own date carries what the placeholder
+// cannot - the commit, the actor, Landed - and two borns are refused, so the verified
+// one has to replace it or the file can never say the birth was checked.
+test('backfilledText replaces a conversion placeholder with a born the batch dates on the same day', () => {
+  const r = backfilledText(CONVERTED, [entry('2026-09-14', 'born', 'the check arrives (#2164)')]);
+  assert.deepEqual(r.problems, []);
+  assert.deepEqual(r.superseded, ['2026-09-14 · born · converted from references.md (RULES-3)']);
+  const { entries } = parseEntries(r.text);
+  assert.deepEqual(entries.map((e) => [e.date, e.kind, e.title]), [['2026-09-14', 'born', 'the check arrives (#2164)']]);
+  const later = backfilledText(CONVERTED, [entry('2026-09-15', 'born', 'a birth after the placeholder (#5)')]);
+  assert.match(later.problems.join('\n'), /two born entries/, 'a born dated after the conversion wrote its placeholder is no birth of this element');
+});
+
 test('backfilledText refuses to leave a retired entry above another, or a file with two borns', () => {
   const retired = `${CONVERTED}\n## 2026-09-15 · retired · gone (#2)\n- **Reason:** folded in.\n`;
   const late = backfilledText(retired, [entry('2026-09-20', 'reworded', 'after the grave (#3)')]);
