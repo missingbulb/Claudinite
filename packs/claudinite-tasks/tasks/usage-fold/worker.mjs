@@ -338,7 +338,7 @@ export async function worker({ root, repo, token, defaultBranch, automerge, deli
       '`foldedThrough` watermark. The run, queue and merged-PR rows are appended once',
       'past their own watermarks — all are rate-limited REST reads, not a local branch.',
       'A recompute that differs only in its `generated` stamp opens no PR at all.',
-      'Machine-written — never hand-edit it; each fold starts from the last, so a lost copy is lost history.',
+      'Machine-written - never hand-edit it; each fold starts from the last, so a lost copy is lost history.',
     ].join('\n'),
   });
   log(`${files.length} capture file(s), ${runs.runs.length} run(s), ${queue.records.length} closed item(s) `

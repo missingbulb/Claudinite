@@ -13,8 +13,8 @@
 export const FLAT_TASKS_PATH = '.claudinite/flat/tasks.GENERATED.json';
 export const FLAT_DASHBOARD_PATH = '.claudinite/flat/dashboard.GENERATED.json';
 
-// One flat file's entry map — `{ '<pack>/<task>': { path, declaration | text } }` for
-// the tasks, `{ '<pack>': … }` for the descriptors — or null where this member carries
+// One flat file's entry map - `{ '<pack>/<task>': { path, declaration | text } }` for
+// the tasks, `{ '<pack>': … }` for the descriptors - or null where this member carries
 // no such file, or it could not be read or parsed. A read the budget declined throws,
 // as every content read here does, and the caller decides what that means.
 export async function readFlat({ repo, sha, token, paths, gh }, path, key) {
@@ -33,7 +33,7 @@ export async function readFlat({ repo, sha, token, paths, gh }, path, key) {
 export const entryText = (entry) => (entry?.declaration !== undefined ? JSON.stringify(entry.declaration) : entry?.text ?? null);
 
 // The flat task entries as the roster's `{ pack, task, path, text }`, kept to the packs
-// the declaration names — the same filter the tree walk applies. A local pack's key
+// the declaration names - the same filter the tree walk applies. A local pack's key
 // is `local/<name>/<task>`, so the task is what follows the LAST slash.
 export function flatTaskRows(entries, declaredPacks) {
   return Object.entries(entries ?? {})

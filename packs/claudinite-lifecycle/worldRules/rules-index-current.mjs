@@ -6,7 +6,12 @@ import { packEntryId } from '../../../engine/pack_loader/pack-registry.mjs';
 // import of an export the member's engine lacks is a link-time SyntaxError that faults the
 // whole pack rather than one rule.
 import * as registry from '../../../engine/pack_loader/pack-registry.mjs';
-import { RULES_INDEX_FILE, RULES_INDEX_IMPORT } from '../../../engine/pack_loader/generate-rules-index.mjs';
+// The index's path and import line through a namespace too: both moved into
+// `.claudinite/flat/` in one engine release, and this rule reads whichever the member's
+// engine writes.
+import * as rulesIndex from '../../../engine/pack_loader/generate-rules-index.mjs';
+
+const { RULES_INDEX_FILE, RULES_INDEX_IMPORT } = rulesIndex;
 
 // That root as this rule spells repo paths: POSIX, whatever host the constant was joined on.
 // An engine without it leaves a sentinel no path can start with, so the exemption below
@@ -91,7 +96,7 @@ const rule = {
 
       for (const rel of imports) {
         // Resolved from the index's OWN directory, because that is what the harness
-        // resolves against — the canon's imports climb out of `.claudinite/flat/` with
+        // resolves against - the canon's imports climb out of `.claudinite/flat/` with
         // `..`, so this has to normalize rather than concatenate. A dangling import is
         // #807 in a new costume: the channel works, the rules still do not arrive, and
         // nothing says so.

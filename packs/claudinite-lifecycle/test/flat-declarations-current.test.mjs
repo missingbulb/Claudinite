@@ -42,8 +42,18 @@ test('flat-declarations-current: an edited, a new and a removed task are each fl
   assert.deepEqual(whats(run(base({ '.claudinite/flat/tasks.GENERATED.json': flatTasks(stale) }))).sort(), [
     `${LOCAL_TASK} is not in .claudinite/flat/tasks.GENERATED.json`,
     `.claudinite/flat/tasks.GENERATED.json carries a copy of ${TASK} that no longer matches it`,
-    '.claudinite/flat/tasks.GENERATED.json names "acme-pack/gone", which no declared pack here holds',
+    '.claudinite/flat/tasks.GENERATED.json names "acme-pack/gone" at .claudinite/shared/packs/acme-pack/tasks/gone/task.json, which is not a file here',
   ].sort());
+});
+
+// A pack the declaration never names can still be active, through another's
+// `requires`, and the converge writes its tasks too.
+test('flat-declarations-current: an entry for an undeclared pack whose source matches is silent', () => {
+  const required = '.claudinite/shared/packs/acme-pack-b/tasks/acme-task-c/task.json';
+  assert.deepEqual(run(base({
+    [required]: '{}\n',
+    '.claudinite/flat/tasks.GENERATED.json': flatTasks({ ...current, 'acme-pack-b/acme-task-c': { path: required, declaration: {} } }),
+  })), []);
 });
 
 test('flat-declarations-current: a task in an undeclared pack is not demanded', () => {

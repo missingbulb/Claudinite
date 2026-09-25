@@ -65,16 +65,21 @@ const rule = {
         flag(`${source.file} is missing or unreadable`);
         return;
       }
+      // Every declared pack's source must be there. A subset test, as rules-index-current
+      // makes: the `requires` closure activates packs the declaration never names, so
+      // an entry beyond the declared set is judged by its own source file instead.
       for (const [name, path] of held[i]) {
-        const want = parsed(ctx.read(path) ?? '');
-        const have = flat[name];
-        if (!have) flag(`${path} is not in ${source.file}`);
-        else if (have.path !== path || !isDeepStrictEqual(have.declaration ?? have.text, want.declaration ?? want.text)) {
-          flag(`${source.file} carries a copy of ${path} that no longer matches it`);
-        }
+        if (!flat[name]) flag(`${path} is not in ${source.file}`);
       }
-      for (const name of Object.keys(flat)) {
-        if (!held[i].has(name)) flag(`${source.file} names "${name}", which no declared pack here holds`);
+      for (const [name, have] of Object.entries(flat)) {
+        if (typeof have?.path !== 'string' || !ctx.exists(have.path)) {
+          flag(`${source.file} names "${name}" at ${have?.path}, which is not a file here`);
+          continue;
+        }
+        const want = parsed(ctx.read(have.path) ?? '');
+        if (!isDeepStrictEqual(have.declaration ?? have.text, want.declaration ?? want.text)) {
+          flag(`${source.file} carries a copy of ${have.path} that no longer matches it`);
+        }
       }
     });
     return out;

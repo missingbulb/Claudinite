@@ -33,7 +33,7 @@ import { ALL_RUN_PHASES } from './run-record.mjs';
 export const TASKS_USAGE_VERSION = 1;
 
 // Where the file lives, spelled once: `.claudinite/usage/`, beside the repo's other
-// rolling records. Rolling, not regenerated — each fold starts from the last — so its
+// rolling records. Rolling, not regenerated - each fold starts from the last - so its
 // name carries no GENERATED and no merge attribute resolves a conflict by dropping a side.
 export const TASKS_USAGE_PATH = '.claudinite/usage/task-runs-and-costs.json';
 // Where it lived before. Read as the prior state until the file has moved, and moved by

@@ -61,7 +61,7 @@ export function readAt(root, sha, path) {
   try { return git(root, ['show', `${sha}:${path}`]); } catch { return null; }
 }
 
-// A ROLLING file's prior state — one whose next version is folded from its last, so
+// A ROLLING file's prior state - one whose next version is folded from its last, so
 // losing it loses history. Read at `path`, or at `legacyPath` where the file has not
 // moved yet; `moves` is what to hand `pushGenerated` so the old bytes arrive at the new
 // path before the fold writes on top of them.

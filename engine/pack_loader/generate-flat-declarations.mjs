@@ -4,8 +4,8 @@
 // API, one request per file, and a session asking what runs here would otherwise open
 // every `tasks/<name>/task.json` across the mount and the local packs.
 //
-// Each entry carries the source file's parsed JSON as written — no defaults, no
-// normalisation — so every reader still runs the declaration through its own door, and
+// Each entry carries the source file's parsed JSON as written - no defaults, no
+// normalisation - so every reader still runs the declaration through its own door, and
 // the path it was read from, so a reader can name the file to change. A file that does
 // not parse carries its text instead: the reader that renders it as unreadable is the one
 // that already knows how.
@@ -82,7 +82,7 @@ async function activePacks(projectRoot) {
   return packs.filter((pack) => isActive(pack, { packs: declaredPacks(projectRoot) }));
 }
 
-// The two files' text, or null when nothing could be loaded — a broken loader or an
+// The two files' text, or null when nothing could be loaded - a broken loader or an
 // unvendored mount leaves whatever is on disk rather than blanking it.
 export async function flatDeclarationsContent(projectRoot) {
   try {
@@ -91,7 +91,7 @@ export async function flatDeclarationsContent(projectRoot) {
     const { tasks, dashboards } = flatDeclarations(projectRoot, active);
     return { [FLAT_TASKS_FILE]: render('tasks', tasks), [FLAT_DASHBOARD_FILE]: render('dashboards', dashboards) };
   } catch {
-    return null; // fail soft — a broken loader must never block a converge
+    return null; // fail soft - a broken loader must never block a converge
   }
 }
 
@@ -110,7 +110,7 @@ export async function writeFlatDeclarations(projectRoot) {
   return written;
 }
 
-// CLI: `node generate-flat-declarations.mjs [--write] [root]` — print both, or write them.
+// CLI: `node generate-flat-declarations.mjs [--write] [root]` - print both, or write them.
 async function main() {
   const argv = process.argv.slice(2);
   const root = argv.find((a) => !a.startsWith('--')) || process.env.CLAUDE_PROJECT_DIR || process.cwd();

@@ -28,7 +28,7 @@ export function foldedThroughAt(root) {
   for (const path of [TASKS_USAGE_PATH, LEGACY_TASKS_USAGE_PATH]) {
     try {
       return decodeTasksUsageFile(JSON.parse(readFileSync(`${root}/${path}`, 'utf8'))).runsFoldedThrough;
-    } catch { /* not at this path — the file may not have moved yet */ }
+    } catch { /* not at this path - the file may not have moved yet */ }
   }
   return null;
 }
