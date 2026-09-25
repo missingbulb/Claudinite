@@ -329,27 +329,29 @@ test('declaredMergeRules reads only active packs and reports collisions loudly',
   }
 });
 
-test('usage-fold\'s delivery shape — the regenerated aggregate and nothing else — resolves on built-ins', async () => {
-  const { default: usageFold } = await import('../../tasks/usage-fold/task.json', { with: { type: 'json' } });
-  const v = policyVerdict({
-    policy: usageFold.automerge,
-    entries: [edited('.claudinite/local/usage.GENERATED.json', '{}', '{"a":1}')],
-  });
-  assert.equal(v.mergeable, true, v.why);
-  // Any second file — the .gitattributes line is adoption's now — parks the run.
-  assert.equal(policyVerdict({
-    policy: usageFold.automerge,
-    entries: [
-      edited('.claudinite/local/usage.GENERATED.json', '{}', '{"a":1}'),
-      added('.gitattributes', 'x\n'),
-    ],
-  }).mergeable, false);
-  // A regenerated file elsewhere in the repo is some other task's delivery.
-  for (const file of ['packs/directory.GENERATED.md', '.claudinite/claudinite-rules.GENERATED.md']) {
-    assert.equal(policyVerdict({
-      policy: usageFold.automerge,
-      entries: [edited(file, 'a\n', 'b\n')],
-    }).mergeable, false, file);
+// Both folds deliver a ROLLING file under .claudinite/usage/ and, once, the move off
+// its old path; the rules they name are this pack's own merge-rules.json.
+const tasksPackRules = () => declaredMergeRules(
+  [{ id: 'claudinite-tasks', dir: path.join(path.dirname(new URL(import.meta.url).pathname), '..', '..') }],
+  { packs: ['claudinite-tasks'] },
+);
+
+test('the usage folds\' delivery shape — their rolling file, and its one move — lands, and nothing else does', async () => {
+  const { rules, errors } = tasksPackRules();
+  assert.deepEqual(errors, []);
+  for (const [task, file, legacy] of [
+    ['usage-fold', '.claudinite/usage/sessions-and-elements.json', '.claudinite/local/usage.GENERATED.json'],
+    ['tasks-usage-fold', '.claudinite/usage/task-runs-and-costs.json', '.claudinite/local/tasks-usage.GENERATED.json'],
+  ]) {
+    const { default: json } = await import(`../../tasks/${task}/task.json`, { with: { type: 'json' } });
+    const verdict = (entries) => policyVerdict({ policy: json.automerge, entries, declaredRules: rules });
+    assert.equal(verdict([edited(file, '{}', '{"a":1}')]).mergeable, true, task);
+    assert.equal(verdict([added(file, '{}'), deleted(legacy)]).mergeable, true, `${task}: the move`);
+    assert.equal(verdict([edited(file, '{}', '{"a":1}'), added('.gitattributes', 'x\n')]).mergeable, false, `${task}: a second file`);
+    for (const other of ['packs/directory.GENERATED.md', '.claudinite/local/other.GENERATED.json', '.claudinite/usage/nested/x.json']) {
+      assert.equal(verdict([edited(other, 'a\n', 'b\n')]).mergeable, false, `${task}: ${other}`);
+    }
+    assert.equal(verdict([edited(legacy, '{}', '{"a":1}')]).mergeable, false, `${task}: the old path is only ever moved off`);
   }
 });
 

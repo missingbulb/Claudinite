@@ -138,3 +138,13 @@
   same work runs, exits the same way and prints the same markers.
 - **Actor:** @missingbulb (owner), who asked why every task re-implements one runner's job.
 - **Model:** Opus 5
+
+## 2026-09-25 · policy-changed · the fold's file moved to .claudinite/usage/sessions-and-elements.json (#2322)
+- **Reason:** the file rolls forward rather than regenerating, so it lost `GENERATED` and took a
+  name saying what it tracks. The first fold after the upgrade reads its prior state from the old
+  path and moves the file in a pure-rename commit, so no history is dropped.
+- **Actor:** @missingbulb (owner).
+- **Mechanism:** automerge is now this pack's `rolling-usage-files` plus `rolling-usage-file-moves`,
+  replacing `under:.claudinite/local && generated-file-changes`, which no longer matches the file.
+- **Retire when:** #2323 removes the old-path read and the move rule.
+- **Landed:** #2322

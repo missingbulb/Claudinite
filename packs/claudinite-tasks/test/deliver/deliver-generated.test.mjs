@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { baseTip, readAt, pushGenerated, generatedTarget } from '../../public/delivery.mjs';
+import { baseTip, readAt, readRollingAt, pushGenerated, generatedTarget } from '../../public/delivery.mjs';
 import { removeTree } from '../../../../engine/remove-tree.mjs';
 
 // The PR half needs GitHub; the GIT half is where the risk lives and it is fully
@@ -161,6 +161,20 @@ test('a move lands as a pure rename commit before the regenerated content', () =
       'the move commit holds the old bytes unchanged at the new path');
     assert.match(sh(origin, 'diff', '--name-status', '-M100%', 'main', 'gen/m~1'), /^R100\told\.json\tusage\/new\.json$/m);
     assert.equal(sh(origin, 'show', 'gen/m:usage/new.json'), '{"history":[1,2,3,4]}\n');
+  } finally { removeTree(dir); }
+});
+
+test('readRollingAt reads a file not yet moved from its old path, and names the move', () => {
+  const { dir, origin, work } = fixture();
+  try {
+    writeFileSync(join(work, 'old.json'), 'history\n');
+    sh(work, 'add', '-A');
+    sh(work, 'commit', '--quiet', '-m', 'old');
+    sh(work, 'push', '--quiet', 'origin', 'main');
+    const sha = baseTip(work, origin, 'main');
+    assert.deepEqual(readRollingAt(work, sha, 'usage/new.json', 'old.json'), { text: 'history\n', moves: { 'old.json': 'usage/new.json' } });
+    assert.deepEqual(readRollingAt(work, sha, 'README.md', 'old.json'), { text: '# repo\n', moves: {} }, 'the new path wins, and nothing moves');
+    assert.deepEqual(readRollingAt(work, sha, 'usage/new.json', 'absent.json'), { text: null, moves: {} });
   } finally { removeTree(dir); }
 });
 
