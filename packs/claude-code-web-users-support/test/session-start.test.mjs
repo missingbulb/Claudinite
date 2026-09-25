@@ -6,6 +6,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { removeTree } from '../../../engine/remove-tree.mjs';
+import { git } from '../../../engine-tests/helpers.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const PREPARE = join(here, '..', 'session-prepare.mjs');
@@ -13,24 +14,32 @@ const START = join(here, '..', 'session-start.mjs');
 const COPIED = join('.claudinite', 'temp', 'packs', 'current_user');
 
 // The pack's two steps, run exactly as the engine runs them: subprocesses, handed the pack's
-// own entry config in CLAUDINITE_PACK_CONFIG and the session's identity in
-// CLAUDE_CODE_USER_EMAIL. Most of what follows is one of the ways the copy can miss, because
-// every one of them must be fail-soft: the pack contributes a nicety, and a nicety that can
-// stop a session from starting is a defect, not a feature.
+// own entry config in CLAUDINITE_PACK_CONFIG and the session's identity: the GitHub login its
+// token reads back, and CLAUDE_CODE_USER_EMAIL for the legacy directory. Most of what follows
+// is one of the ways the copy can miss, because every one of them must be fail-soft: the pack
+// contributes a nicety, and a nicety that can stop a session from starting is a defect, not a
+// feature.
 //
-// Attendedness is one of those inputs, so every case states the one it means and none inherits
-// the ambient value: the harness exports CLAUDE_CODE_SESSION_ATTENDED=0 in exactly the sessions
-// the task queue runs in, so a case that let it through would assert about the session the
-// suite happens to run in rather than the one it describes, green at a terminal and in CI and
-// red for every unattended run. `attended: null` is the older harness that sets nothing at all.
-const { CLAUDE_CODE_SESSION_ATTENDED: _ambientAttended, ...BASE_ENV } = process.env;
+// Attendedness and the tokens are among those inputs, so every case states the ones it means
+// and none inherits the ambient value: the harness exports CLAUDE_CODE_SESSION_ATTENDED=0 in
+// exactly the sessions the task queue runs in, and a real GH_TOKEN in every web session, so a
+// case that let them through would assert about the session the suite happens to run in rather
+// than the one it describes. `attended: null` is the older harness that sets nothing at all.
+// The login is served from a `data:` URL, so no case goes to the network; `login: null` is a
+// lookup that fails, against a port nothing listens on.
+const { CLAUDE_CODE_SESSION_ATTENDED: _ambientAttended, GH_TOKEN: _gh, GITHUB_TOKEN: _github, ...BASE_ENV } = process.env;
+const userUrl = (login) => (login === null
+  ? 'http://127.0.0.1:9/user'
+  : `data:application/json,${encodeURIComponent(JSON.stringify({ login }))}`);
 
-const run = (step, project, { email = 'me@example.com', config = {}, attended = '1', ...extra } = {}) => spawnSync('node', [step], {
+const run = (step, project, { email = 'me@example.com', login = 'acme-user', config = {}, attended = '1', ...extra } = {}) => spawnSync('node', [step], {
   encoding: 'utf8',
   env: {
     ...BASE_ENV,
     CLAUDE_PROJECT_DIR: project,
     CLAUDE_CODE_USER_EMAIL: email,
+    GH_TOKEN: 'acme-token',
+    CLAUDINITE_GITHUB_USER_URL: userUrl(login),
     CLAUDINITE_PACK_CONFIG: JSON.stringify(config),
     // An unreachable store, so a case that reaches the clone path fails there rather than
     // going to the network from a test.
@@ -45,9 +54,9 @@ const copied = (root, rel) => readFileSync(join(root, COPIED, rel), 'utf8');
 const STORE = { repo: 'owner/store' };
 
 // A store this tree holds, so the copy takes its local-first branch.
-function storeHere(root, files, { path = 'preferences', email = 'me@example.com' } = {}) {
+function storeHere(root, files, { path = 'preferences', dir = 'acme-user' } = {}) {
   for (const [rel, body] of Object.entries(files)) {
-    const target = join(root, path, email, rel);
+    const target = join(root, path, dir, rel);
     mkdirSync(dirname(target), { recursive: true });
     writeFileSync(target, body);
   }
@@ -111,24 +120,79 @@ test('nothing copied still leaves a pack the engine can load', () => {
   // declares this pack, so the file has to be there even when nobody's pack is.
   const root = project();
   try {
-    const r = run(PREPARE, root, { email: 'nobody@example.com', config: STORE });
+    const r = run(PREPARE, root, { login: 'nobody', config: STORE });
     assert.equal(r.status, 0);
     assert.match(copied(root, 'RULES.md'), /No personal pack/);
+  } finally { removeTree(root); }
+});
+
+test('the pack is addressed by the GitHub login, lower-cased, and the note says which', () => {
+  // GitHub compares logins case-insensitively and a directory name does not, so the store keeps
+  // the lower-case form and the reader folds what the API returns into it.
+  const root = project();
+  try {
+    storeHere(root, { 'RULES.md': 'BY LOGIN\n' });
+    storeHere(root, { 'RULES.md': 'BY EMAIL\n' }, { dir: 'me@example.com' });
+    run(PREPARE, root, { login: 'Acme-User', config: STORE });
+    assert.match(copied(root, 'RULES.md'), /BY LOGIN/, 'the login wins over the legacy email directory');
+    const r = run(START, root, { login: 'Acme-User', config: STORE });
+    assert.equal(r.status, 0);
+    assert.match(r.stdout, /GitHub user Acme-User/);
+    assert.match(r.stdout, /preferences\/acme-user\//);
+    assert.doesNotMatch(r.stdout, /fallback/);
+  } finally { removeTree(root); }
+});
+
+test('with no login directory yet, the legacy email directory is read, and the note says to move it', () => {
+  const root = project();
+  try {
+    storeHere(root, { 'RULES.md': 'BY EMAIL\n' }, { dir: 'me@example.com' });
+    run(PREPARE, root, { config: STORE });
+    assert.match(copied(root, 'RULES.md'), /BY EMAIL/);
+    const out = run(START, root, { config: STORE }).stdout;
+    assert.match(out, /preferences\/me@example\.com\//);
+    assert.match(out, /fallback/);
+    assert.match(out, /preferences\/acme-user\//, 'names the directory to move it to');
+  } finally { removeTree(root); }
+});
+
+test('a login that cannot be read falls back to the email, and the note says why', () => {
+  const root = project();
+  try {
+    storeHere(root, { 'RULES.md': 'BY EMAIL\n' }, { dir: 'me@example.com' });
+    for (const opts of [{ login: null }, { login: '../escape' }, { GH_TOKEN: '' }]) {
+      const r = run(PREPARE, root, { ...opts, config: STORE });
+      assert.equal(r.status, 0);
+      assert.match(copied(root, 'RULES.md'), /BY EMAIL/, JSON.stringify(opts));
+      const out = run(START, root, { ...opts, config: STORE }).stdout;
+      assert.match(out, /no GitHub login/, JSON.stringify(opts));
+      assert.match(out, /me@example\.com/);
+    }
+  } finally { removeTree(root); }
+});
+
+test('no usable identity of either kind is a soft note naming both', () => {
+  const root = project();
+  try {
+    run(PREPARE, root, { login: null, email: '', config: STORE });
+    assert.match(copied(root, 'RULES.md'), /No personal pack/);
+    const out = run(START, root, { login: null, email: '../../../etc/passwd', config: STORE }).stdout;
+    assert.match(out, /no GitHub login/);
+    assert.match(out, /CLAUDE_CODE_USER_EMAIL/);
   } finally { removeTree(root); }
 });
 
 test('what a session copies in never shows up as a change to commit', () => {
   // The member's own .gitignore may say nothing about the session root, so the root has to
   // ignore itself, on the copy path and on the placeholder path alike.
-  for (const email of ['me@example.com', 'nobody@example.com']) {
+  for (const login of ['acme-user', 'nobody']) {
     const root = project();
     try {
-      assert.equal(spawnSync('git', ['init', '-q', root]).status, 0);
+      git(root, 'init', '-q');
       storeHere(root, { 'RULES.md': 'x\n' });
-      assert.equal(run(PREPARE, root, { email, config: STORE }).status, 0);
+      assert.equal(run(PREPARE, root, { login, config: STORE }).status, 0);
       assert.ok(existsSync(join(root, COPIED, 'RULES.md')));
-      const status = spawnSync('git', ['status', '--porcelain', '--untracked-files=all'], { cwd: root, encoding: 'utf8' });
-      assert.doesNotMatch(status.stdout, /\.claudinite/, email);
+      assert.doesNotMatch(git(root, 'status', '--porcelain', '--untracked-files=all'), /\.claudinite/, login);
     } finally { removeTree(root); }
   }
 });
@@ -136,26 +200,22 @@ test('what a session copies in never shows up as a change to commit', () => {
 test('every miss is a soft note from the start step, never a halt', () => {
   const root = project();
   try {
-    run(PREPARE, root, { email: 'nobody@example.com', config: STORE });
-    const r = run(START, root, { email: 'nobody@example.com', config: STORE });
+    run(PREPARE, root, { login: 'nobody', config: STORE });
+    const r = run(START, root, { login: 'nobody', config: STORE });
     assert.equal(r.status, 0);
-    assert.match(r.stdout, /owner\/store holds no pack for this person/);
+    assert.match(r.stdout, /owner\/store holds no pack at preferences\/nobody\/ or preferences\/me@example\.com\//);
     assert.match(r.stdout, /default interaction behavior/);
     assert.doesNotMatch(r.stdout, /STOP|AskUserQuestion/);              // fail-soft, no halt-gate
     assert.doesNotMatch(r.stdout, /hookSpecificOutput|additionalContext/); // plain text, no JSON envelope
   } finally { removeTree(root); }
 });
 
-test('the start step names the reason without a status file to read it from', () => {
-  // The reasons are a pure function of the config and the environment, so the step that says
-  // them needs nothing the step that acted on them left behind.
+test('a session declined whoever it is says why, from the config and the environment alone', () => {
   const root = project();
   try {
     for (const [opts, expected] of [
       [{ config: {} }, /declares no store/],
       [{ config: STORE, attended: '0' }, /unattended/],
-      [{ config: STORE, email: '' }, /CLAUDE_CODE_USER_EMAIL is not set/],
-      [{ config: STORE, email: '../../../etc/passwd' }, /not a usable directory name/],
     ]) {
       run(PREPARE, root, opts);
       assert.match(copied(root, 'RULES.md'), /No personal pack/, JSON.stringify(opts));
@@ -193,8 +253,8 @@ test("an earlier session's pack is gone before this one's is copied", () => {
     run(PREPARE, root, { config: STORE });
     assert.ok(existsSync(join(root, COPIED, 'skills', 'gone', 'SKILL.md')));
 
-    removeTree(join(root, 'preferences', 'me@example.com', 'skills'));
-    writeFileSync(join(root, 'preferences', 'me@example.com', 'RULES.md'), 'SECOND\n');
+    removeTree(join(root, 'preferences', 'acme-user', 'skills'));
+    writeFileSync(join(root, 'preferences', 'acme-user', 'RULES.md'), 'SECOND\n');
     run(PREPARE, root, { config: STORE });
     assert.match(copied(root, 'RULES.md'), /SECOND/);
     assert.equal(existsSync(join(root, COPIED, 'skills', 'gone', 'SKILL.md')), false);

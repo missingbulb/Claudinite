@@ -44,5 +44,11 @@ test("only the pack's own RULES.md is read, not every Markdown file in it", () =
 test('inert where this repo is not the store, where the pack names none, and for files store-file-names already reports', () => {
   assert.deepEqual(rule.run(ctx(['src/app.js'], {})), []);
   assert.deepEqual(rule.run(ctx(['preferences/a@b.c/RULES.md'], { 'preferences/a@b.c/RULES.md': PREFS }, null)), []);
-  assert.deepEqual(rule.run(ctx(['preferences/README.md', 'preferences/ariel/RULES.md'], { 'preferences/ariel/RULES.md': PREFS })), []);
+  assert.deepEqual(rule.run(ctx(['preferences/README.md', 'preferences/a b/RULES.md'], { 'preferences/a b/RULES.md': PREFS })), []);
+});
+
+test('a login-named pack is judged like an email-named one', () => {
+  const found = rule.run(ctx(['preferences/acme-user/RULES.md'], { 'preferences/acme-user/RULES.md': PREFS }));
+  assert.equal(found.length, 2);
+  assert.match(found[0].what, /preferences\/acme-user\/provenance\/turn-callout\.md/);
 });

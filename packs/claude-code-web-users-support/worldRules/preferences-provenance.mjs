@@ -1,5 +1,5 @@
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
-import { resolveStore, isUsableIdentity } from '../user_pack_address.mjs';
+import { resolveStore, storeDirForm } from '../user_pack_address.mjs';
 // A namespace import, guarded in `run`: the pack and engine lanes deliver on separate
 // cadences, and a member whose engine predates the helper must load this pack rather
 // than fault on a missing named export.
@@ -14,7 +14,7 @@ import * as provenance from '../../../engine/checks/helpers/provenance.mjs';
 //
 // ADVISORY, like everything in this pack: the loss is a missing why for a rule, never a
 // broken repo. RELEVANCE-FIRST like its siblings: inert unless this repo IS the store -
-// only the one repo that holds `<path>/<email>/` packs has anything to judge.
+// only the one repo that holds `<path>/<login>/` packs has anything to judge.
 const PACK = 'claude-code-web-users-support';
 
 // @deprecated The sidecar folder a person's provenance sat in while the store was flat and
@@ -47,9 +47,9 @@ const rule = {
     if (!held.length) return [];
     const out = [];
     for (const file of held) {
-      const email = file.slice(prefix.length, -'/RULES.md'.length);
-      if (!isUsableIdentity(email)) continue; // store-file-names reports the name
-      const dir = `${prefix}${email}/provenance`;
+      const name = file.slice(prefix.length, -'/RULES.md'.length);
+      if (!['login', 'email'].includes(storeDirForm(name))) continue; // store-file-names reports the name
+      const dir = `${prefix}${name}/provenance`;
       for (const b of ruleBlocks(ctx.read(file) ?? '')) {
         if (!b.slug) {
           out.push(finding(rule, {
