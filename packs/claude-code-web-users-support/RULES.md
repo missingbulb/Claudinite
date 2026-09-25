@@ -25,3 +25,12 @@
   [`environment-setup-command.sh`](environment-setup-command.sh) whole and unedited into the
   environment's Setup script field, then rebuild; a project-specific step belongs in its own
   pack's `env` declaration, never in that body. (web-session-halt)
+
+- **A scratch clone of a repository outside this session's own GitHub scope is read-only in
+  practice** — a `git fetch` against it succeeds while a `git push` `403`s, because the session's
+  access is scoped to the repos actually added to it, not organization-wide. Don't re-diagnose the
+  `403` as a broader block, don't retry with another remote or a token, and don't route around it
+  by editing a vendored or mirrored copy of that repo's content in place — the next sync overwrites
+  the edit. Finish and verify the change in the scratch clone, then hand it off as a patch (a diff
+  posted on an issue, a comment) for a session whose scope actually reaches that repo to apply.
+  (scoped-scratch-clone)
