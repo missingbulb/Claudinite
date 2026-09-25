@@ -296,6 +296,15 @@ export async function packUpdate(targetRoot, {
   if (await writeRulesIndex(targetRoot)) applied.push(`converged ${RULES_INDEX_FILE}`);
   if (ensureRulesIndexImport(targetRoot)) applied.push('added the CLAUDE.md pack-index import');
   if (ensureRulesIndexMergeAttribute(targetRoot)) applied.push('declared merge=ours for the pack index');
+  //     The rest of the flat directory is a function of the same pack set. Read
+  //     through a namespace and guarded: an engine older than the flat directory
+  //     carries neither export, and this pack must not fault beside it.
+  const wiring = await import('../../../engine/converge-wiring.mjs');
+  const flat = await import('../../../engine/pack_loader/generate-flat-declarations.mjs').catch(() => ({}));
+  if (typeof flat.writeFlatDeclarations === 'function') {
+    for (const file of await flat.writeFlatDeclarations(targetRoot)) applied.push(`converged ${file}`);
+  }
+  if (typeof wiring.removeRetiredIndexFiles === 'function') applied.push(...wiring.removeRetiredIndexFiles(targetRoot));
 
   // …and sweep the staging directory of anything this run did NOT put there: a file
   // staged by an earlier cycle was either delivered or abandoned, and either way the

@@ -24,6 +24,8 @@ import { join, basename, dirname, relative, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { writeRulesIndex, RULES_INDEX_FILE, RULES_INDEX_IMPORT } from './pack_loader/generate-rules-index.mjs';
 import { writeSkillsIndex, SKILLS_INDEX_FILE } from './pack_loader/generate-skills-index.mjs';
+import { writeFlatDeclarations } from './pack_loader/generate-flat-declarations.mjs';
+import { FLAT_DIR, RETIRED_INDEX_FILES, RETIRED_RULES_INDEX_IMPORT } from './pack_loader/flat-dir.mjs';
 import { LOCAL_PACKS_SUBDIR, LOCAL_DECL_PREFIX, SHARED_SUBDIR, TEMP_PACKS_SUBDIR } from './pack_loader/pack-registry.mjs';
 
 // The mount's two halves as git wants them spelled: '/' separators, and the shared
@@ -142,6 +144,9 @@ export function removeRetiredCorpusImport(root) {
 // index is a file nothing loads.
 const RULES_INDEX_IMPORT_RE = new RegExp(`^\\s*${RULES_INDEX_IMPORT.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'm');
 
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const RETIRED_RULES_INDEX_IMPORT_RE = new RegExp(`^(\\s*)${escapeRe(RETIRED_RULES_INDEX_IMPORT)}(\\s*)$`, 'm');
+
 export function ensureRulesIndexImport(root) {
   const path = join(root, CLAUDE_MD);
   if (!existsSync(path)) {
@@ -150,12 +155,32 @@ export function ensureRulesIndexImport(root) {
   }
   const text = readFileSync(path, 'utf8');
   if (RULES_INDEX_IMPORT_RE.test(text)) return false;
+  // The index moved into the flat directory: the old import is rewritten where it
+  // stands, so the repo's own CLAUDE.md keeps its layout.
+  if (RETIRED_RULES_INDEX_IMPORT_RE.test(text)) {
+    writeFileSync(path, text.replace(RETIRED_RULES_INDEX_IMPORT_RE, `$1${RULES_INDEX_IMPORT}$2`));
+    return true;
+  }
   const lines = text.split('\n');
   const title = lines.findIndex((l) => l.startsWith('# '));
   const at = title === -1 ? 0 : title + 1;
   lines.splice(at, 0, ...(at === 0 ? [RULES_INDEX_IMPORT, ''] : ['', RULES_INDEX_IMPORT]));
   writeFileSync(path, lines.join('\n'));
   return true;
+}
+
+// The two indexes' pre-flat paths. Each is removed only once its replacement is on
+// disk: both are regenerated wholesale from the declaration and carry nothing else,
+// but a converge that could not write the new one keeps the old one loading.
+export function removeRetiredIndexFiles(root) {
+  const removed = [];
+  for (const file of RETIRED_INDEX_FILES) {
+    if (existsSync(join(root, file)) && existsSync(join(root, FLAT_DIR, basename(file)))) {
+      rmSync(join(root, file));
+      removed.push(`removed retired ${file}`);
+    }
+  }
+  return removed;
 }
 
 // --- the mount's own git attributes -----------------------------------------
@@ -405,6 +430,8 @@ export async function convergeWiring(root, fullName, { seedLocalPack = false } =
   // loads it, then the merge attribute that keeps it from being hand-resolved.
   if (await writeRulesIndex(root)) changed.push(RULES_INDEX_FILE);
   if (await writeSkillsIndex(root)) changed.push(SKILLS_INDEX_FILE);
+  changed.push(...await writeFlatDeclarations(root));
+  changed.push(...removeRetiredIndexFiles(root));
   if (ensureRulesIndexImport(root)) changed.push(`${CLAUDE_MD} rules-index import`);
   if (ensureMountAttributes(root)) changed.push(MOUNT_ATTRIBUTES_FILE);
   if (ensureMountIgnore(root)) changed.push(MOUNT_IGNORE_FILE);

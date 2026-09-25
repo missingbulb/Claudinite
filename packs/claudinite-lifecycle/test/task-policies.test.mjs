@@ -40,7 +40,8 @@ test('an adoption-shaped diff lands: declaration, re-vendored mount (its policy 
     // coversMountPolicySources exists for.
     { file: '.claudinite/shared/packs/acme-pack/tasks/acme-task-b/task.json', before: null, after: '{}\n' },
     { file: '.claudinite/shared/packs/acme-pack-f/merge-rules.json', before: '[]\n', after: '[{"name":"x"}]\n' },
-    { file: '.claudinite/claudinite-rules.GENERATED.md', before: 'old\n', after: 'new\n' },
+    { file: '.claudinite/flat/claudinite-rules.GENERATED.md', before: 'old\n', after: 'new\n' },
+    { file: '.claudinite/flat/tasks.GENERATED.json', before: null, after: '{}\n' },
   ]);
   assert.equal(v.mergeable, true, v.why);
 });
@@ -64,7 +65,8 @@ test('an update-shaped diff lands: the converged mount, the stamp, a staged work
     // The mount carries canon-authored policy files — the case coversMountPolicySources exists for.
     { file: '.claudinite/shared/packs/acme-pack/tasks/acme-task-b/task.json', before: '{}\n', after: '{"a":1}\n' },
     { file: '.claudinite/pending-workflows/claudinite-executor.yml', before: null, after: 'name: x\n' },
-    { file: '.claudinite/claudinite-rules.GENERATED.md', before: 'old\n', after: 'new\n' },
+    { file: '.claudinite/flat/claudinite-rules.GENERATED.md', before: 'old\n', after: 'new\n' },
+    { file: '.claudinite/flat/tasks.GENERATED.json', before: null, after: '{}\n' },
     { file: '.claudinite-settings.json', before: '{"engineVersion":1}\n', after: '{"engineVersion":2}\n' },
   ]);
   assert.equal(v.mergeable, true, v.why);

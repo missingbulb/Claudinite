@@ -26,10 +26,10 @@ test('skills-index-current: a declared pack holding a skill with no index is fla
 });
 
 test('skills-index-current: an index that does not name a mounted skill is flagged, one that does is silent', () => {
-  const stale = run(base({ '.claudinite/claudinite-skills.GENERATED.md': '| `other-skill` | demo | x |\n' }));
+  const stale = run(base({ '.claudinite/flat/claudinite-skills.GENERATED.md': '| `other-skill` | demo | x |\n' }));
   assert.equal(stale.length, 1);
   assert.match(stale[0].what, /"demo-skill" is mounted from a declared pack/);
-  assert.deepEqual(run(base({ '.claudinite/claudinite-skills.GENERATED.md': '| `demo-skill` | demo | demo |\n' })), []);
+  assert.deepEqual(run(base({ '.claudinite/flat/claudinite-skills.GENERATED.md': '| `demo-skill` | demo | demo |\n' })), []);
 });
 
 test('skills-index-current: a repo holding no skill for its declared packs demands nothing', () => {

@@ -80,10 +80,10 @@ test('every import in the committed index resolves to a file that exists', () =>
   // Every import but one names a tracked file. The exception is the pack copied for the
   // person in front of the session, which no checkout carries and every session writes —
   // the step runner guarantees it, even empty, before anything reads the index.
-  const committed = paths.filter((rel) => !rel.startsWith('temp/'));
+  const committed = paths.filter((rel) => !rel.startsWith('../temp/'));
   assert.equal(committed.length, paths.length - 1, 'exactly one import is a session-written path');
   for (const rel of committed) {
-    assert.ok(existsSync(join(ROOT, '.claudinite', rel)), `dangling import in ${RULES_INDEX_FILE}: @${rel}`);
+    assert.ok(existsSync(join(ROOT, dirname(RULES_INDEX_FILE), rel)), `dangling import in ${RULES_INDEX_FILE}: @${rel}`);
   }
 });
 

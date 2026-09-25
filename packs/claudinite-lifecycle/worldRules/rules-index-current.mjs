@@ -15,6 +15,9 @@ const COPIED_ROOT = typeof registry.TEMP_PACKS_SUBDIR === 'string'
   ? registry.TEMP_PACKS_SUBDIR.split(/[\\/]/).join('/')
   : '\u0000';
 
+// The directory the index's imports resolve against, from the engine that wrote it.
+const INDEX_DIR = posix.dirname(RULES_INDEX_FILE.split(/[\\/]/).join('/'));
+
 // The rules index is the ONLY channel a pack's prose reaches a session on (#807). The
 // SessionStart prose step that used to carry it is gone, deliberately — one channel, so
 // no session can be running on a stale copy of one while the other is fine.
@@ -88,11 +91,11 @@ const rule = {
 
       for (const rel of imports) {
         // Resolved from the index's OWN directory, because that is what the harness
-        // resolves against — the canon's imports climb out of `.claudinite/` with
+        // resolves against — the canon's imports climb out of `.claudinite/flat/` with
         // `..`, so this has to normalize rather than concatenate. A dangling import is
         // #807 in a new costume: the channel works, the rules still do not arrive, and
         // nothing says so.
-        const path = posix.normalize(posix.join('.claudinite', rel));
+        const path = posix.normalize(posix.join(INDEX_DIR, rel));
         // Except for the one import no checkout can satisfy: the pack copied for the
         // person in front of the session, which the step runner writes every session and
         // nobody tracks. Judged against the committed tree it would read as dangling in

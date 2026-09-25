@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
 import {
   ruleImports, renderRulesIndex, corpusRootFor, writeRulesIndex, rulesIndexImports,
   RULES_INDEX_FILE, RULES_INDEX_IMPORT,
@@ -155,7 +155,7 @@ test('the index names exactly the packs a repo declares, and every import resolv
   const text = readFileSync(join(root, RULES_INDEX_FILE), 'utf8');
   const paths = text.split('\n').filter((l) => l.startsWith('@')).map((l) => l.slice(1));
   assert.ok(paths.length, text);
-  for (const rel of paths) assert.ok(existsSync(join(root, '.claudinite', rel)), `dangling import: @${rel}`);
+  for (const rel of paths) assert.ok(existsSync(join(root, dirname(RULES_INDEX_FILE), rel)), `dangling import: @${rel}`);
   assert.deepEqual(
     (await rulesIndexImports(root)).map((i) => i.id).sort(),
     paths.map((p) => p.replace(/.*\/packs\/([^/]+)\/.*/, '$1')).sort(),
@@ -184,7 +184,7 @@ test('the index carries the copied pack\'s prose when, and only when, a pack cop
   const line = withCopy.at(-1);
   assert.equal(line.id, 'current_user');
   // LAST: a person's own rules are read against the project's, so they follow them.
-  assert.equal(line.path, 'temp/packs/current_user/RULES.md');
+  assert.equal(line.path, '../temp/packs/current_user/RULES.md');
 });
 
 test('a copied pack discovered mid-session is not imported twice', () => {

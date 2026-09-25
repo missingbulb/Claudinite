@@ -50,7 +50,8 @@ function entryFor(projectRoot, file) {
 
 const isDir = (p) => { try { return statSync(p).isDirectory(); } catch { return false; } };
 
-// Keyed `<pack>/<task>` and `<pack>`, sorted, so the file's bytes are a function of the
+// Keyed `<pack>/<task>` and `<pack>`, a local pack spelled `local/<name>` as the
+// declaration spells it, and sorted, so the file's bytes are a function of the
 // declaration and the pack contents alone.
 export function flatDeclarations(projectRoot, active) {
   const corpusRoot = corpusRootFor(projectRoot);
@@ -59,15 +60,16 @@ export function flatDeclarations(projectRoot, active) {
   for (const pack of active) {
     if (pack.temp) continue;
     const dir = packDirIn(pack, corpusRoot);
+    const id = pack.local ? `local/${pack.id}` : pack.id;
     const tasksDir = join(dir, 'tasks');
     if (isDir(tasksDir)) {
       for (const name of readdirSync(tasksDir).sort()) {
         const file = join(tasksDir, name, 'task.json');
-        if (existsSync(file)) tasks[`${pack.id}/${name}`] = entryFor(projectRoot, file);
+        if (existsSync(file)) tasks[`${id}/${name}`] = entryFor(projectRoot, file);
       }
     }
     const descriptor = join(dir, DESCRIPTOR_FILE);
-    if (existsSync(descriptor)) dashboards[pack.id] = entryFor(projectRoot, descriptor);
+    if (existsSync(descriptor)) dashboards[id] = entryFor(projectRoot, descriptor);
   }
   const sorted = (o) => Object.fromEntries(Object.keys(o).sort().map((k) => [k, o[k]]));
   return { tasks: sorted(tasks), dashboards: sorted(dashboards) };
