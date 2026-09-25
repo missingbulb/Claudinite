@@ -25,3 +25,11 @@
   holding the store. What moved is its scope: one finding per top-level entry rather than per file,
   because a misnamed directory holding a whole pack is one mistake with one fix.
 - **Landed:** #2188
+
+## 2026-09-25 · scope-changed · a directory is a lower-case GitHub login now, an email the legacy form (#2321)
+- **Reason:** the reader addresses a person by GitHub login, lower-cased, so a mixed-case login is
+  unaddressable and an email-named directory is read only through the fallback #2320 removes.
+- **Actor:** @missingbulb (owner).
+- **Mechanism:** unchanged carrier and severity; the email branch is the advisory the fallback's
+  `@legacy-tolerance` marker names.
+- **Landed:** #2321

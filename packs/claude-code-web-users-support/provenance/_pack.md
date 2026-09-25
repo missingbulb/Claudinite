@@ -94,3 +94,8 @@
   needs a new migration op, and existing members wait for a converge PR to get it.
 - **Actor:** @missingbulb (owner).
 - **Model:** claude-opus-5-5
+
+## 2026-09-25 · reworded · the store holds one `<login>/` directory per person (#2321)
+- **Reason:** the adoption question and header described the email-named layout.
+- **Actor:** @missingbulb (owner).
+- **Landed:** #2321
