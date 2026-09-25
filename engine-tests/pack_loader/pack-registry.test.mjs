@@ -289,7 +289,7 @@ test('loadPacks: thin array wrapper over discoverPacks', async () => {
 
 // --- renamed packs ---------------------------------------------------------
 // The rename tolerance is what keeps a member from going dark for a cycle: its
-// declaration and its mount are renamed by different halves of one converge, and
+// declaration and its mount are renamed by different halves of one update, and
 // nothing may depend on which half landed first. These assertions are ABOUT the
 // legacy spellings, so a repo-wide rename sweep must never "fix" them into the new
 // ones — that leaves the test asserting today's id maps to itself, which is green
@@ -317,7 +317,7 @@ test('resolveDeclaredPacks: the old spelling pulls in the renamed pack requires'
 
 test('canonicalPackVersions: a version stamped under the old key is not read as absent', () => {
   assert.deepEqual(canonicalPackVersions({ 'tidy-repo': 6, 'git-github': 3 }), { basics: 6, 'git-github': 3 }); // @real-entity the rename map under test carries these ids
-  // Mid-converge a declaration can carry both; today's spelling is the one the
+  // Mid-update a declaration can carry both; today's spelling is the one the
   // flows wrote, so it wins rather than being clobbered by the residue.
   assert.deepEqual(canonicalPackVersions({ 'tidy-repo': 5, basics: 6 }), { basics: 6 });
 });

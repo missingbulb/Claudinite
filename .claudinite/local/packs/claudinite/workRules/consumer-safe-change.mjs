@@ -19,7 +19,7 @@ import { TEST_DIR } from '../../../../../vendoring/compute-vendor-set.mjs';
 // of, without either of the two things that carry consumers across:
 //
 //   a MIGRATION RECORD  — <flow>/migrations/<date>-<name>/migration.mjs, the
-//                         mechanism that rewrites a member on its next converge
+//                         mechanism that rewrites a member on its next update
 //   a REHEARSAL FIXTURE — vendoring/rehearsal/fixtures.mjs, which proves a
 //                         consumer in that shape still converges green
 //
@@ -60,7 +60,7 @@ const LOCAL_PACKS = '.claudinite/local/packs';
 // finding at all — so every name `engine/**` and `packs/**` export is a contract the
 // canon has never seen the other side of. The engine root vendors WHOLESALE, so a
 // dropped name does not degrade a member: the importing module throws at load, its
-// pack fails to load, and the converge's self-test refuses the whole tree.
+// pack fails to load, and the update's self-test refuses the whole tree.
 //
 // Neither rehearsal can see it. The canary's local pack imports nothing out of
 // `.claudinite/shared/` (a stated design property of its rules), and no fixture local

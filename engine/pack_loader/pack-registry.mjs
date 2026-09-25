@@ -22,7 +22,7 @@ export const localPacksDir = (root) => join(resolve(root), LOCAL_PACKS_SUBDIR);
 // reads this constant. It stays exported because fielded pack versions import it by
 // name, and the engine reaches a member ahead of its packs — a named import of an
 // export that is gone is a link-time SyntaxError that faults the whole pack, fails
-// the mount's self-test and blocks the converge that would have fixed it. It comes
+// the mount's self-test and blocks the update that would have fixed it. It comes
 // out when no fielded pack version imports it any more — a question answered off
 // the trunk's own pack history by the lane-shim test that guards this surface, not
 // by what the current tree happens to import (#1911).

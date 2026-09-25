@@ -60,7 +60,7 @@ export const FRESH = 'fresh';
 //
 // THE REF IS GONE (#1252), and with it `ref-not-on-trunk`. That state asked whether
 // the member's stamped ref was an ancestor of canon's default branch, because the
-// anti-rewind guard used to refuse a converge over a ref it could not place — the
+// anti-rewind guard used to refuse an update over a ref it could not place — the
 // guard now compares versions and needs no ref, so the wedge it reported cannot
 // happen and the per-member compare call that detected it is a read nobody needs.
 //

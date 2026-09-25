@@ -59,7 +59,7 @@ outage self-heals by looking at the queue rather than by replaying a ledger.
   `claudinite-scheduler.yml` carries a single cron: two ticks a day, twelve
   hours apart, every task asked at both, on a repo-hashed minute constrained to
   **:10-:50** and a repo-hashed hour (written once when the file is scaffolded,
-  and preserved by every converge after: `packs/claudinite-tasks/src/adopt/hash-minute.mjs`, a pure function of the repo full name that
+  and preserved by every update after: `packs/claudinite-tasks/src/adopt/hash-minute.mjs`, a pure function of the repo full name that
   bootstrap stamps in and the update re-derives), a `concurrency` group, a
   `workflow_dispatch` trigger (whose one `wake` input is how a task is forced,
   here or from another repo), and a call into the vendored scheduler run — no logic of its own

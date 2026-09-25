@@ -100,7 +100,7 @@ test('the terminal vocabulary the runner acts on is the flows\' own', async () =
 // runner used to dispose of its own incumbent and mint its own branch where none
 // arrived; both are gone, so an executor that predates the hand-off has to stop the
 // run rather than deliver somewhere nothing is watching.
-test('a converge with no target branch fails, naming the executor that did not hand one in', async () => {
+test('an update with no target branch fails, naming the executor that did not hand one in', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'claudinite-update-target-'));
   const held = { ...process.env };
   try {
@@ -130,7 +130,7 @@ test('the rehearsal is exempt from that requirement — the canary gate hands in
   assert.ok(!workflow.includes('CLAUDINITE_TARGET_BRANCH'), 'the gate names no target — so the worker must not demand one');
   const src = fs.readFileSync('packs/claudinite-lifecycle/tasks/update/worker.mjs', 'utf8');
   const refusal = src.indexOf('no CLAUDINITE_TARGET_BRANCH');
-  assert.ok(refusal > 0, 'the worker still refuses a converge with no target to deliver on');
+  assert.ok(refusal > 0, 'the worker still refuses an update with no target to deliver on');
   assert.match(src.slice(src.lastIndexOf('if (', refusal), refusal), /rehearsalRef/,
     'the target requirement must stand down for a rehearsal');
 });
@@ -207,7 +207,7 @@ test('the apply-stage brief tells the session to LAND its own delivery, not to w
 });
 
 test('the needs-human terminal exits NON-ZERO, so the work item does not close outcome:done', async () => {
-  // #939's invisibility, pinned. A parked PR means the converge DELIVERED NOTHING,
+  // #939's invisibility, pinned. A parked PR means the update DELIVERED NOTHING,
   // but the runner returned normally, so the executor saw a clean code-work and closed
   // the item `outcome:done`. Every member's nightly update reported success for five
   // days while the whole fleet sat frozen on one canon ref. The executor's contract
@@ -220,7 +220,7 @@ test('the needs-human terminal exits NON-ZERO, so the work item does not close o
   const branch = dispatch.slice(dispatch.indexOf("terminal.action === 'needs-human'"));
   const body = branch.slice(0, branch.indexOf("terminal.action === 'apply-stage'"));
   assert.match(body, /process\.exit(Code)?\s*=?\s*\(?1/,
-    'the needs-human branch must exit non-zero — exiting 0 reports a converge that did not happen as success');
+    'the needs-human branch must exit non-zero — exiting 0 reports an update that did not happen as success');
 });
 
 // #1545's second half. Holding an owing pack's stamp means a re-staging cycle can leave

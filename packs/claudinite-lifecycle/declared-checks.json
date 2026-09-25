@@ -83,14 +83,14 @@
     "on_fail": "block",
     "since": "2026-09-06",
     "scope": "action",
-    "failureMessage": "the update flow replaces .claudinite/shared/ whole on its next converge, so an edit there is discarded — silently, and only once the mount next refreshes",
+    "failureMessage": "the update flow replaces .claudinite/shared/ whole on its next run, so an edit there is discarded — silently, and only once the mount next refreshes",
     "guardToolCalls": [
       {
         "tool": "/^(Edit|Write|NotebookEdit)$/",
         "inputField": "file_path",
         "match": "/(?:^|\\/)\\.claudinite\\/shared\\//",
         "what": "{tool} writes {field}, inside the vendored .claudinite/shared/ tree",
-        "fix": "make the change in the canon instead, or carry a difference this repo alone needs under .claudinite/local/packs/, which survives every converge"
+        "fix": "make the change in the canon instead, or carry a difference this repo alone needs under .claudinite/local/packs/, which survives every update"
       },
       {
         "tool": "Bash",

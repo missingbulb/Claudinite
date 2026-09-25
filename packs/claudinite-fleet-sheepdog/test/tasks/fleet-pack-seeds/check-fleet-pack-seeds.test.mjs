@@ -38,8 +38,8 @@ test('a member without the pack is writable, and says which case it was', () => 
 
 test('the mount gate outranks the write — a member is never handed a pack it does not have', () => {
   // A declared pack whose code is absent is a blocking `config` error there, and a
-  // member's mount carries only what it declared as of its last converge. So this is a
-  // WAIT: members converge nightly and are written the first run after the pack lands.
+  // member's mount carries only what it declared as of its last update. So this is a
+  // WAIT: members update nightly and are written the first run after the pack lands.
   const v = classify({ vendored: false });
   assert.equal(v.state, 'not-vendored');
   assert.match(v.detail, /blocking config error/);

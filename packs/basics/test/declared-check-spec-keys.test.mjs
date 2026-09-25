@@ -42,7 +42,7 @@ test('declared-check-spec-keys: a declaration the vocabulary places wholly is si
 
 // The wedge #1400 filed: a member's local pack declaring a key its engine does
 // not know must still LOAD — every rule in the file, not just the ones before
-// the unknown key — because the converge that would deliver the engine knowing
+// the unknown key — because the update that would deliver the engine knowing
 // it is itself gated on that load succeeding.
 test('a declaration carrying a key this engine cannot place still loads every rule in its file', () => {
   const root = makeRepo({ changed: {
@@ -75,7 +75,7 @@ test('a declaration carrying a key this engine cannot place still loads every ru
 // The pack lane delivers this file nightly and the engine lane only on a release,
 // so it must survive an engine that predates `unplacedSpecKeys` — a named import
 // of an absent export is a link-time SyntaxError the loader records as a fault,
-// and a fault parks the converge. Asserted as the positive effect on both sides,
+// and a fault parks the update. Asserted as the positive effect on both sides,
 // since a fail-soft path returning [] cannot be proven by "it did not throw".
 test('the engine dependency is fail-soft: an engine without the export makes the rule inert, the real one makes it report', () => {
   const spec = {

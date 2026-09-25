@@ -23,7 +23,7 @@ previous round still being open — the round runs and appends to that PR, which
 is what makes one review cover several weeks of comment work.
 
 `.claudinite/` is the mount, not the repo's source: `shared/` is vendored and
-the next converge replaces it whole, so a comment improved there is gone by
+the next update replaces it whole, so a comment improved there is gone by
 morning, and `local/` is written by the growth tasks. The same prefix gates
 the WRITE in this pack's `improve-comments-scope` check, and the test beside
 that check pins the two together — a scope this declaration hands out but the

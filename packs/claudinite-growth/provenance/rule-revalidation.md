@@ -49,3 +49,9 @@
 - **Mechanism:** the corpus is the repo's own local packs; the shelf is canon-curation's twin task,
   loading the same skill.
 - **Landed:** #2047 (Closes #2044).
+
+## 2026-09-25 · reworded · "converge" in the nightly-update sense reads "update"
+- **Reason:** owner decision: the mechanism that re-vendors a mount is called update; "converge"
+  stays only for a work item reaching its end state.
+- **Actor:** @missingbulb (owner).
+- **Model:** claude-opus-5-5

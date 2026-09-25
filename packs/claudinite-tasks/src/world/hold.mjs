@@ -7,7 +7,7 @@
 // Why a variable rather than a commit: cancelling one run means "move on", an
 // intent the failure continuation and the leash already serve. Stopping the
 // SYSTEM is a different intent, and the only lever that existed for it was
-// dormancy, which needs a commit and a converge to take effect and another to
+// dormancy, which needs a commit and an update to take effect and another to
 // undo. A variable takes effect on the next run and clears the same way.
 //
 // What it freezes: STARTS. A run already past this gate finishes the drain it is

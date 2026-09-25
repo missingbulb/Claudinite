@@ -11,7 +11,7 @@ const CANON = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const CHECK_THE_WORLD = join(CANON, 'engine/checks/check_the_world.mjs');
 
 // THE REGRESSION (#689). check_the_world is run BY A CONVERGE, from a process whose cwd
-// is inside `.claudinite/shared/` — the exact tree the converge has just deleted and
+// is inside `.claudinite/shared/` — the exact tree the update has just deleted and
 // re-copied. On Linux that process keeps running in an unlinked directory, and so does
 // every child it spawns; `process.cwd()` in the child then throws `ENOENT … uv_cwd`
 // before a single check runs. The whole fleet reported `checks-could-not-run` on every
@@ -23,7 +23,7 @@ const CHECK_THE_WORLD = join(CANON, 'engine/checks/check_the_world.mjs');
 // CLAUDE_PROJECT_DIR fallback this fails at the cwd call, exactly as the fleet did.
 
 // Spawn `check_the_world <args>` from a process whose cwd has been deleted, mimicking
-// the converge. Returns { status, stderr } instead of throwing so a failure is asserted
+// the update. Returns { status, stderr } instead of throwing so a failure is asserted
 // on rather than crashing the test.
 function fromDeletedCwd(args, env = {}) {
   const box = mkdtempSync(join(tmpdir(), 'ctw-root-'));

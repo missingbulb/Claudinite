@@ -321,7 +321,7 @@ export function bucketWeekly(rows) {
 // author, which is every exclusion but one: the corpus-only exclusion (a commit that
 // touched nothing outside `.claudinite/`) needs each commit's file list, one request
 // per commit, which this page's budget does not have. What survives it is the
-// converge's own commits, and those carry the housekeeping marker in their messages
+// update's own commits, and those carry the housekeeping marker in their messages
 // anyway — so the gap is narrow, and it is stated rather than implied away.
 //
 // `window` is github.mjs's `listCommitsSince` answer, or `undefined` when that read

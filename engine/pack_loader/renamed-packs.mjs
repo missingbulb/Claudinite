@@ -23,7 +23,7 @@
 //
 // RETIREMENT is a convergence window, not a census, and the window is PER ENTRY: an
 // entry comes out a week after `legacy-shape-in-use` starts reporting that spelling,
-// which is the time a repo that converges nightly needs to read its own finding and
+// which is the time a repo that updates nightly needs to read its own finding and
 // rename its declaration. The canon cannot enumerate the repos that use it, so "when
 // no member still declares it" is a condition nothing can ever answer — and until it
 // is answered the map is load-bearing for exactly the repos that stopped converging.
@@ -89,7 +89,7 @@ export function canonicalPackVersions(packVersions) {
   const out = {};
   for (const [id, version] of Object.entries(packVersions)) {
     const to = canonicalPackId(id);
-    // A declaration mid-converge can carry BOTH spellings. Today's wins: it is the
+    // A declaration mid-update can carry BOTH spellings. Today's wins: it is the
     // one the flows have written, and the legacy key is the residue they replace.
     if (to !== id && Object.hasOwn(packVersions, to)) continue;
     out[to] = version;

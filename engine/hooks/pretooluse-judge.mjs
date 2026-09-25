@@ -17,7 +17,7 @@
 //    there whatever the on_fail - the record for a hook that never fired;
 //  - a Bash command that deletes a remote branch is blocked (the delete-push
 //    fails in this environment, so it can never succeed).
-// Registered on every tool (the converge's PRETOOLUSE_MATCHER) — see
+// Registered on every tool (converge-wiring's PRETOOLUSE_MATCHER) — see
 // bootstrap.md. A call no declaration names costs the cached context read
 // (hook-context.mjs) and says nothing. A guard that cannot decide lets the call
 // through: an unreadable declaration or registry is the mount self-test's

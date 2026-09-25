@@ -12,9 +12,9 @@
 // parked in the `failure` lane — the one a person diagnoses (#1119).
 //
 // This lives in the engine rather than in the workflows that call it because
-// `.github/workflows/` is the one path a converge cannot push into: a member's
+// `.github/workflows/` is the one path an update cannot push into: a member's
 // copy of a workflow moves only through a PR a human merges, while this module
-// converges nightly like the rest of the engine.
+// updates nightly like the rest of the engine.
 
 import { pathToFileURL } from 'node:url';
 import { makeGh } from '../world/github.mjs';

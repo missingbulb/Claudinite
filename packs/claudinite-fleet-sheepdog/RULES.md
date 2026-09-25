@@ -26,7 +26,7 @@
   calls the whole fleet behind on one arbitrary day. (judging-whether-member)
 
 - **Answering why the fleet did not move** — read the member's own artifacts first: its
-  declaration, its stamp, the runs on its head sha. This repo dispatches; each member converges
+  declaration, its stamp, the runs on its head sha. This repo dispatches; each member updates
   itself, with its own token and its own delivery policy. Propose a settings change as a conclusion,
   never as the diagnosis. (answering-fleet-did)
 

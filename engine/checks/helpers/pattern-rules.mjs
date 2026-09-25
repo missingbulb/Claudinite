@@ -47,7 +47,7 @@ import { normalizeEdges, barrierFindings, staleFindings } from './reference-scan
 // typo (asserting nothing, silently) or a key a newer engine knows, and the load
 // cannot tell them apart. Refusing it would wedge the second case — a member's
 // pack lane and engine lane converge on separate cycles, so a declaration can
-// legitimately reach an engine older than its vocabulary, and the converge that
+// legitimately reach an engine older than its vocabulary, and the update that
 // would deliver the newer engine is itself gated on the load (#1400). The typo is
 // caught instead by the `declared-check-spec-keys` world rule, advisory where the
 // skew is possible and blocking in the canon, where engine and declarations ship

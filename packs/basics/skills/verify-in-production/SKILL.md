@@ -174,7 +174,7 @@ already closed and there is nothing left to wait on but the release itself.
   passed. Aim it just past the release you expect — the re-arm covers a miss, so don't pad it.
 - **`Retry-every:`** is the extension you are prescribing: when the run finds the change not
   yet live, it re-arms `Not-before:` to **now + `Retry-every:`** — never the old value plus it.
-  Size it to the release you wait on — a nightly converge retries daily, a next-session rule in
+  Size it to the release you wait on — a nightly update retries daily, a next-session rule in
   minutes.
 
 Then the mark, as `/do-later` applies it: **`task:origin:ad-hoc`**, the one label the scheduler

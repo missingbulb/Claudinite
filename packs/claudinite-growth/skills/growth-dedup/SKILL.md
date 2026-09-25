@@ -16,7 +16,7 @@ human-gated PR and the tracking issue.
 
 **The yardstick is the mounted canon** — the exact revision the repo currently consumes, what
 `.claudinite/shared/` holds at the mount's stamp — never a live fetch (a promotion is visible
-here only once the update has converged the mount to include it). The mount is never a prune
+here only once the update has brought the mount to include it). The mount is never a prune
 *target*, only what you prune *against*.
 
 ## Start from the canon's diff, not the canon

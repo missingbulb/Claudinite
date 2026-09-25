@@ -131,6 +131,6 @@ own shape. Move it there; do not write it here.
 
 ## 3. The mount is never edited
 
-A file under `.claudinite/shared/` arrived from a canon and the next converge replaces the
+A file under `.claudinite/shared/` arrived from a canon and the next update replaces the
 whole tree. Change it in the canon, or carry the difference in the repo's own
 `.claudinite/local/packs/`.

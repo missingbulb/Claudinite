@@ -240,7 +240,7 @@ member reads quiet here exactly when its own preconditions read it quiet.
 **One exclusion is deliberately skipped.** The full test also drops a commit that touched nothing
 outside `.claudinite/`, which needs each commit's file list — a request per commit, per member, which
 this budget does not have. So a corpus-only commit counts as work here unless its message says
-otherwise (the converge's own commits do). The gap is stated on the mark's hover rather than implied
+otherwise (the update's own commits do). The gap is stated on the mark's hover rather than implied
 away.
 
 A listing that filled its single page is a **horizon**: the days before its oldest commit are not

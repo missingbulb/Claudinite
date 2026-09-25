@@ -2,7 +2,7 @@ import { finding } from '../../../engine/checks/helpers/findings.mjs';
 import { packEntryId } from '../../../engine/pack_loader/pack-registry.mjs';
 import * as index from '../../../engine/pack_loader/generate-skills-index.mjs';
 
-// The sibling of rules-index-current for the skills index: the converge writes it,
+// The sibling of rules-index-current for the skills index: the update writes it,
 // and a repo whose converge has stopped, or that declared a pack since its last
 // refresh, carries a catalog that no longer names what is mounted. Asked from the
 // repo's own files, as rules-index-current is (a rule cannot await the generator):

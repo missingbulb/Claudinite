@@ -37,9 +37,9 @@ A member that already declares the pack keeps its entry, and one that already ca
 
 ## The mount gate
 
-A declared pack whose code is **not in the member's mount** is a blocking `config` error there ("declares unknown pack"), and a member's mount carries only what that member declared as of its last converge. So a seed is written only where the pack's code is already on disk — `.claudinite/shared/packs/<id>/pack.mjs`, falling back to `packs/…` so the canon repo (which mounts nothing and runs its live tree) is swept by the same code path.
+A declared pack whose code is **not in the member's mount** is a blocking `config` error there ("declares unknown pack"), and a member's mount carries only what that member declared as of its last update. So a seed is written only where the pack's code is already on disk — `.claudinite/shared/packs/<id>/pack.mjs`, falling back to `packs/…` so the canon repo (which mounts nothing and runs its live tree) is swept by the same code path.
 
-`not-vendored` is a **wait, not a finding**: members converge nightly, and each is written the first run after its own mount carries the pack. For a pack arriving with canon, the migration record that ships it declares it and re-converges the mount in one transactional commit, so most members never pass through this state at all.
+`not-vendored` is a **wait, not a finding**: members update nightly, and each is written the first run after its own mount carries the pack. For a pack arriving with canon, the migration record that ships it declares it and re-vendors the mount in one transactional commit, so most members never pass through this state at all.
 
 ## The write
 

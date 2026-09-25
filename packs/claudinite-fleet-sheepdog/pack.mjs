@@ -44,7 +44,7 @@ export default {
   // Every sweep here runs as a task on the enforcer's own queue, and each one reads the
   // queue's vocabulary (its published `task-constants.mjs`) to ask whether a member's
   // scheduler is dormant. Declared so the vendor set carries the code this pack imports:
-  // an enforcer that mounted the sweeps without it would fail its own converge on a
+  // an enforcer that mounted the sweeps without it would fail its own update on a
   // dangling import.
   requires: ['claudinite-tasks'],
   // Audits the enforcer's config as it stands, whatever this session touched: a seed

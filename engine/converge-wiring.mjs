@@ -174,7 +174,7 @@ export const MOUNT_ATTRIBUTES_FILE = `${MOUNT_ROOT}/.gitattributes`;
 //
 // The shared subtree is canon-owned content the member never authored, so the git HOST
 // is told so: Linguist keeps a member's language stats off the corpus (which outweighs
-// a small member's own source by byte count) and collapses the mount in a converge
+// a small member's own source by byte count) and collapses the mount in an update
 // diff. Presentation only — the CHECK-scope exclusion is a separate, structural rule
 // in the file-set builder (engine/checks/helpers/repo-context.mjs), which drops the
 // mount prefix before attributes are ever consulted, so that exclusion holds on a host
@@ -345,7 +345,7 @@ export function seedRepoLocalPack(root, fullName) {
 // row nothing writes any more (#1750). `badges` is
 // not in CONFIG_KEYS, so a member still carrying it gets an unknown-setting error
 // until the key goes; doing it here — beside the retired corpus import, for the
-// same reason — means the converge that already runs on every member clears it,
+// same reason — means the update that already runs on every member clears it,
 // and nobody hand-edits a settings file to satisfy a check.
 // Returns true when the key was removed. A malformed settings file is left alone.
 //

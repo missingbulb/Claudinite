@@ -48,7 +48,7 @@
   Node exits 13. (adding-module-packs)
 
 
-- **A pack that fails to load** — it fails the mount's self-test, the converge refuses to land at
+- **A pack that fails to load** — it fails the mount's self-test, the update refuses to land at
   all, and the member cannot receive the pack version that would have fixed it. (pack-fails-load)
 
 ## Writing and keeping checks

@@ -19,7 +19,7 @@ const LOCAL_DECLARED = /^\.claudinite\/local\/packs\/.*declared-checks\.json$/;
 // THE ADVISORY HALF OF EVERY DECLARATION-SHAPE TOLERANCE the engine still
 // carries. Each of those tolerances lets a member's own file be read in a shape
 // that has since been renamed, and each is removed one convergence window after
-// this advisory ships (#1638) - the time a repo converging nightly needs to act on
+// this advisory ships (#1638) - the time a repo updating nightly needs to act on
 // its own finding. Nothing was telling the repos, which is why the window needed
 // the advisory first.
 //
@@ -87,13 +87,13 @@ const rule = {
       }
       if (typeof versionSpec.isLegacyVersion === 'function' && versionSpec.isLegacyVersion(entry?.version)) {
         flag(`the pack entry "${id}" is stamped with the pre-2026-08-20 integer version ${entry.version}`,
-          'let the converge restamp it — a date-anchored `<day>.<n>` says when, where a counter says only "behind by an unknown amount"; if the converge has run and the integer is still here, this mount is not converging');
+          'let the update restamp it — a date-anchored `<day>.<n>` says when, where a counter says only "behind by an unknown amount"; if the update has run and the integer is still here, this mount is not updating');
       }
     }
 
     if (typeof versionSpec.isLegacyVersion === 'function' && versionSpec.isLegacyVersion(raw.engineVersion)) {
       flag(`engineVersion is the pre-2026-08-20 integer ${raw.engineVersion}`,
-        'let the converge restamp it — an integer sorts below every date-anchored version, so this mount prices itself as ancient against all of them');
+        'let the update restamp it — an integer sorts below every date-anchored version, so this mount prices itself as ancient against all of them');
     }
 
     // A literal, not a read of the engine: `updates` left the vocabulary with #1643,

@@ -278,7 +278,7 @@ test('every record folder is <landed>-<slug>/migration.mjs, prefix matching its 
 
 // A workflow materialization can only be written by a caller that can get it delivered.
 // Writing one into a tree an Action-token push is about to carry does not deliver a
-// workflow — it rejects the whole ref and fails the converge with everything riding it.
+// workflow — it rejects the whole ref and fails the update with everything riding it.
 
 test('applyMaterializations: a workflow dest is skipped unless the caller announced it can withhold', async () => {
   const m = M({ materialize: [
@@ -880,7 +880,7 @@ test('executor-vars-bag: inserts the bag, preserves each member\'s stamped secre
   assert.match(after, /^ {10}# claudinite:secrets$/m);
   // The bag sits ABOVE the marker, outside the region the wiring converge regenerates.
   assert.ok(after.indexOf('CLAUDINITE_VARS:') < after.indexOf('# claudinite:secrets'),
-    'inside the stamped region the next converge would overwrite it');
+    'inside the stamped region the next update would overwrite it');
 
   // Re-running must not double the block: appliesTo is the guard, since split/join would
   // happily match the anchor a second time.
@@ -906,7 +906,7 @@ test('executor-vars-redelivery re-issues the same rewrite above where the strand
   // importing them, because the vendor set carries only records that still apply — and
   // the members this exists for are exactly the ones the original no longer applies to,
   // so an import would resolve to a file their mount does not carry, fail
-  // pack-independence, and stop the converge landing at all. Copied text drifts, so the
+  // pack-independence, and stop the update landing at all. Copied text drifts, so the
   // two are compared here instead.
   assert.deepEqual(reissue.rewrite, original.rewrite,
     'the two records must write the same block; the copy is what pack-independence forces');

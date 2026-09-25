@@ -60,7 +60,7 @@ test('a member whose seeded copy predates the template reshape is told, with the
   assert.equal(found[0].file, DEST);
   assert.match(found[0].what, /tooling\/build\.mjs/, 'the finding names the line the copy is missing');
   assert.match(found[0].fix, new RegExp(`cp ${PACK}/stubs/mypack\\.yml ${DEST.replace('.', '\\.')}`));
-  assert.match(found[0].fix, /converge cannot push to \.github\/workflows/);
+  assert.match(found[0].fix, /update cannot push to \.github\/workflows/);
 });
 
 test('a copy carrying every template line is silent, however it was reworded or extended', async () => {

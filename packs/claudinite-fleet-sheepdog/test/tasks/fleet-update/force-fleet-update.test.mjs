@@ -152,5 +152,5 @@ test('the 422 message names the stale-mount cause, not just the disabled-workflo
   // repo settings — the diagnosis this project's rules single out as never first.
   const detail = classifyDispatch(422).detail;
   assert.match(detail, /wake/, 'must name the undeclared-input cause');
-  assert.match(detail, /converge/, 'must say it heals on the member\'s next converge');
+  assert.match(detail, /next update/, 'must say it heals on the member\'s next update');
 });

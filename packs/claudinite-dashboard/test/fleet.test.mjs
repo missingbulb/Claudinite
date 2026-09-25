@@ -164,7 +164,7 @@ const member = (engineVersion, packVersions = {}) => ({
 // The defect this whole block exists to keep out (#1065, same class as #786): the
 // versioned flows record versions and nothing else, so the `ref` and `updated` that
 // used to sit beside them held the provenance of the LAST FULL RE-VENDOR. A mount
-// converging nightly carried a months-old pair forever — judging either read every
+// updating nightly carried a months-old pair forever — judging either read every
 // healthy member as behind or stalled. #1252 deleted both, so a member that somehow
 // still carries them must be judged on its versions exactly as one that does not.
 test('freshness is judged on versions, and stray provenance keys change nothing', () => {
@@ -439,7 +439,7 @@ test('a behind mount is a reason that names the packs, at routine severity', () 
     { now: NOW, canon: CANON },
   );
   const reason = s.reasons.find((r) => /behind canon/.test(r.text));
-  assert.equal(reason.level, 'info', 'behind is routine — the nightly converge catches it up');
+  assert.equal(reason.level, 'info', 'behind is routine — the nightly update catches it up');
   assert.match(reason.text, /acme-pack-b/);
 });
 

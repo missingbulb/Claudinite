@@ -54,7 +54,7 @@ export function renderSkillsIndex(rows) {
   const scoped = rows.filter((r) => r.paths.length).sort((a, b) => a.skill.localeCompare(b.skill));
   const rest = rows.filter((r) => !r.paths.length).sort((a, b) => a.skill.localeCompare(b.skill));
   const lines = [
-    '<!-- GENERATED — do not hand-edit; every converge rewrites it. Edit a skill\'s SKILL.md frontmatter. -->',
+    '<!-- GENERATED — do not hand-edit; every update rewrites it. Edit a skill\'s SKILL.md frontmatter. -->',
     '# Skills mounted here, and what loads each one',
     '',
     'A skill loads when the session\'s activity matches its description. A skill that names files',
@@ -81,7 +81,7 @@ export async function skillsIndexRows(projectRoot) {
     const packs = await loadPacks({ localRoot: projectRoot });
     return skillRows(packs.filter((pack) => isActive(pack, { packs: declaredPacks(projectRoot) })));
   } catch {
-    return []; // fail soft — a broken loader must never block a converge
+    return []; // fail soft — a broken loader must never block an update
   }
 }
 

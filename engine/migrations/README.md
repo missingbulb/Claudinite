@@ -57,7 +57,7 @@ export default {
   every member should run, whose parameters the canon knows and the member cannot derive
   (`materialize` would clobber a per-repo declaration; `rewrite` has no literal in common across
   repos). Declaring a pack whose code is not yet in the member's mount would be a blocking `config`
-  error there, so the update **re-converges the mount** whenever this pass changed the declaration.
+  error there, so the update **re-vendors the mount** whenever this pass changed the declaration.
   All honor an optional `appliesTo(read)` gate so a migration only touches the repos it's meant for
   (never the canon itself). [`apply.mjs`](apply.mjs) runs all four over a checkout
   (`node engine/migrations/apply.mjs`); idempotent, a no-op once done. Each member migrates **itself**:
@@ -118,4 +118,4 @@ history.
 2. Point every reader of the old path at `resolvePath(...)`, or gate an inline tolerance on
    `migrationActive('<slug>')` so it ends itself when the record ages out of the window.
 3. There is no step 3 — the record ships to consumers for 7 days, every member applies it on its own
-   next converge, and the folder remains here as the durable backfill for the long tail.
+   next update, and the folder remains here as the durable backfill for the long tail.

@@ -1,4 +1,4 @@
-// What a converge WROTE, classified: which of the cycle's own writes a member's
+// What an update WROTE, classified: which of the cycle's own writes a member's
 // own test suite could possibly see. The pack-update flow asks this to decide
 // whether the deterministic half may merge on its own or has to hand the branch
 // to the apply stage, whose session re-runs those tests (#1932).

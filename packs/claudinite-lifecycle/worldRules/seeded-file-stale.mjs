@@ -63,7 +63,7 @@ const rule = {
           what: `was seeded from ${pack.id}'s ${template} and no longer carries ${missing.length === 1 ? 'a line' : `${missing.length} lines`} that template has — the first is \`${missing[0]}\``,
           fix: `re-seed it — \`cp ${from} ${dest}\` — then re-apply whatever this repo deliberately changed in its copy`
             + (dest.startsWith('.github/workflows/')
-              ? ', and get that PR merged: a converge cannot push to .github/workflows/, which is why nothing delivered the change'
+              ? ', and get that PR merged: an update cannot push to .github/workflows/, which is why nothing delivered the change'
               : ''),
         }));
       }

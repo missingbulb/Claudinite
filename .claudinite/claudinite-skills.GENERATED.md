@@ -1,4 +1,4 @@
-<!-- GENERATED — do not hand-edit; every converge rewrites it. Edit a skill's SKILL.md frontmatter. -->
+<!-- GENERATED — do not hand-edit; every update rewrites it. Edit a skill's SKILL.md frontmatter. -->
 # Skills mounted here, and what loads each one
 
 A skill loads when the session's activity matches its description. A skill that names files

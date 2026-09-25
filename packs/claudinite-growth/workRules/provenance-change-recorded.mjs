@@ -62,7 +62,7 @@ const rule = {
       const filesNow = provenanceFiles(dir, head);
       const filesBefore = provenanceFiles(dir, base);
       // A pack with no provenance folder at the base is being brought onto the
-      // convention by this change - the marking pass, or a member's first converge
+      // convention by this change - the marking pass, or a member's first update
       // onto it - and its elements' history is the backfill's, not this change's.
       if (!filesBefore.size) continue;
       const gained = (id) => {

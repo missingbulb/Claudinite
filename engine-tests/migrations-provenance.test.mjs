@@ -53,7 +53,7 @@ test('markProvenance converts each local pack\'s references doc, marks its rules
     assert.deepEqual(audit.dangling, []);
     assert.deepEqual(audit.noBody, []);
     assert.equal(audit.referencesDoc, null);
-    assert.deepEqual(await applyProvenanceMarking({ id: 'm', markProvenance: true }, io), [], 'idempotent on the next converge');
+    assert.deepEqual(await applyProvenanceMarking({ id: 'm', markProvenance: true }, io), [], 'idempotent on the next update');
   } finally { removeTree(root); }
 });
 

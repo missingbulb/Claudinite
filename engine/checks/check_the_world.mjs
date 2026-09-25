@@ -29,7 +29,7 @@ const args = process.argv.slice(2);
 const has = (flag) => args.includes(flag);
 const value = (flag) => (args.includes(flag) ? args[args.indexOf(flag) + 1] : null);
 // The repo to sweep. `--root` first, then CLAUDE_PROJECT_DIR, and only then the cwd.
-// The env var is not a convenience: the callers that run this from inside a converge
+// The env var is not a convenience: the callers that run this from inside an update
 // (the update runner) have a cwd that no longer exists — the vendor step deletes
 // `.claudinite/shared/`, which is where code-work's cwd lives — and `process.cwd()` then
 // throws `ENOENT … uv_cwd` before a single check runs, which reads from the outside as

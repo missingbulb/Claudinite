@@ -147,7 +147,7 @@ what you need. The `claudinite-isolation` check enforces this outside the wiring
 A consuming project schedules **itself** (docs/PRINCIPLES.md). The script converges
 the mechanical half: the `claudinite-scheduler.yml` workflow at the repo's stable hashed cron
 minute and hours (computed, never guessed: `hash-minute.mjs`, a pure function of the full
-name; written once here and preserved by every converge after), the
+name; written once here and preserved by every update after), the
 executor workflow, the rules index and its
 `CLAUDE.md` import, the README pack-badge row and this repo's own seed local pack — the last two
 one-time seeds the repo owns from there (the update deliberately re-passes neither). Labels need

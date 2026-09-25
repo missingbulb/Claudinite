@@ -36,9 +36,9 @@ test('convergeSchedulerWorkflow: writes the stub with the repo-hashed cron, and 
 });
 
 
-// THE CRON A REPO ALREADY CARRIES IS ITS OWN (#1995). The converge preserves it
+// THE CRON A REPO ALREADY CARRIES IS ITS OWN (#1995). The update preserves it
 // rather than restamping, because `.github/workflows/` lands only through a pull
-// request a person merges: a converge that rewrote the line would put every member's
+// request a person merges: an update that rewrote the line would put every member's
 // scheduler behind a human gate every time the derivation changed.
 test('convergeSchedulerWorkflow: an existing cron is kept, a malformed one is replaced', () => {
   const kept = mkdtempSync(join(tmpdir(), 'cw-keep-'));
@@ -46,7 +46,7 @@ test('convergeSchedulerWorkflow: an existing cron is kept, a malformed one is re
   writeFileSync(join(kept, SCHEDULER_WORKFLOW), STUB.replace("cron: '10 * * * *'", "cron: '44 5,17 * * *'"));
   convergeSchedulerWorkflow(kept, REPO, STUB);
   assert.match(readFileSync(join(kept, SCHEDULER_WORKFLOW), 'utf8'), /cron: '44 5,17 \* \* \*'/,
-    "the repo's own hour survives a converge that did not write it");
+    "the repo's own hour survives an update that did not write it");
 
   // A line this repo did not write is not preserved: it is replaced by the derivation.
   const broken = mkdtempSync(join(tmpdir(), 'cw-fix-'));
@@ -59,7 +59,7 @@ test('convergeSchedulerWorkflow: an existing cron is kept, a malformed one is re
 
 // ── The canon's own copy against the stub it ships ──────────────────────────
 // THE HOME IS THE LAST REPO TO RECEIVE ITS OWN STUB CHANGES: every member gets
-// the stub written into `.github/workflows/` by its nightly converge, and the
+// the stub written into `.github/workflows/` by its nightly update, and the
 // canon has no mount and no converge, so its copy is hand-maintained and drifts.
 // That drift is invisible until it is a permission denial in production (#535:
 // `actions: read` here against `write` in the stub, ten days of a stranded PR).
@@ -88,7 +88,7 @@ test("the canon's own scheduler run workflow has not drifted from the stub it sh
 test("the canon's own cron is what the engine computes for it", () => {
   const mine = readFileSync(join(CANON_ROOT, '.github/workflows/claudinite-scheduler.yml'), 'utf8');
   const config = JSON.parse(readFileSync(join(CANON_ROOT, '.claudinite-settings.json'), 'utf8'));
-  // This repo's cron predates the hashed hour, and the converge preserves it.
+  // This repo's cron predates the hashed hour, and the update preserves it.
   const expected = '44 5,17 * * *';
   assert.match(mine, new RegExp(`cron: '${expected.replace(/[*]/g, '\\*')}'`),
     `the canon's workflow should carry cron '${expected}'`);
@@ -123,7 +123,7 @@ test('convergeWorkflows writes the executor workflow beside the cron one, verbat
 });
 
 
-// The old mechanism regenerated the list from the declarations every converge, so a
+// The old mechanism regenerated the list from the declarations every update, so a
 // task set that changed rewrote the file. Nothing about a declaration may move it now.
 test('a task set that changes leaves the executor workflow untouched', async () => {
   const root = mkRepo();
@@ -143,7 +143,7 @@ test('a task set that changes leaves the executor workflow untouched', async () 
 test('the vendored stubs stamp what the readers in this pack actually read', () => {
   const schedulerRun = readFileSync(join(CANON_ROOT, 'packs/claudinite-tasks/stubs/claudinite-scheduler.yml'), 'utf8');
   const executor = readFileSync(join(CANON_ROOT, 'packs/claudinite-tasks/stubs/claudinite-executor.yml'), 'utf8');
-  // The declared secrets are stamped by the converge at the marker it looks for, and
+  // The declared secrets are stamped by the update at the marker it looks for, and
   // only into the executor — the one workflow that runs task code.
   const root = mkRepo();
   writeFileSync(join(root, '.claudinite-settings.json'), JSON.stringify({ packs: [] }));
@@ -181,6 +181,6 @@ test('taskSecretNames is the tasks\' list alone; the stamp\'s adds the endpoint 
   const config = { taskScheduler: { agenticTaskInvocationEndpoints: { default: { url: 'https://x.invalid', tokenSecret: 'CCR_ROUTINE_TOKEN' } } } };
   // What `executor-workflow-secrets` holds a member to: deduped, sorted, no config.
   assert.deepEqual(taskSecretNames(decls), ['A_KEY', 'B_KEY']);
-  // What the converge stamps: that list plus the endpoint tokens the config names.
+  // What the update stamps: that list plus the endpoint tokens the config names.
   assert.deepEqual(secretNames(decls, config), ['A_KEY', 'B_KEY', 'CCR_ROUTINE_TOKEN']);
 });

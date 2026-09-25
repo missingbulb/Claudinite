@@ -177,7 +177,7 @@ test('the set reports the versions it is made of — engine, and each declared p
 // A pack's `updates/` is canon-internal, like its `test/`: the update flows run from the
 // canon tree the runner just fetched, and they reach canon-only machinery (this very
 // module) that no mount carries. Vendoring one would put an unresolvable import in every
-// member's tree — and the coherence guard below would abort the converge for it.
+// member's tree — and the coherence guard below would abort the update for it.
 test("a pack's updates/ never vendors — the flows run from the canon, not the mount", async () => {
   const { computeVendorSet } = await import('./compute-vendor-set.mjs');
   const { files, errors } = await computeVendorSet(['claudinite-lifecycle']); // @real-entity computed against the real canon tree, whose operational files this pins
@@ -240,7 +240,7 @@ test('a canon tree missing the pack directory is an error, before any write', as
   const root = makeCanon({ ...FIXTURE, packDirectory: false });
   const { errors } = await vendorAt(root, ['alpha']);
   assert.ok(errors.some((e) => e.what.includes('directory.GENERATED.md')),
-    'a mount silently missing the catalog would blind every member to what it could adopt — this must abort the converge');
+    'a mount silently missing the catalog would blind every member to what it could adopt — this must abort the update');
 });
 
 test('regression: the REAL canon tree carries the pack directory in every vendor set', async () => {

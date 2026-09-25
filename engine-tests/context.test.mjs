@@ -531,7 +531,7 @@ test('a non-boolean dormant is no longer the engine\'s error to raise', () => {
 
 test('the retired isDormant shim reads the old spelling and nothing else', () => {
   // Kept for the pack-lane window only: a member holds this engine beside a pack
-  // version that still imports it, and a missing export there crashes the converge
+  // version that still imports it, and a missing export there crashes the update
   // that would have delivered the fix.
   assert.equal(isDormant({ dormant: true }), true);
   assert.equal(isDormant({ packs: [{ id: 'acme-pack-b', config: { dormant: true } }] }), false,

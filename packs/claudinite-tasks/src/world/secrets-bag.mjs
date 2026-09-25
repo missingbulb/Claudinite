@@ -8,7 +8,7 @@
 //
 // THE BAG IS RETIRED (#1336, reversing #1301). The executor briefly carried one static
 // line, `CLAUDINITE_SECRETS: ${{ toJSON(secrets) }}`, so the workflow would stop being
-// a function of the task set — `.github/workflows/` is the one path a converge cannot
+// a function of the task set — `.github/workflows/` is the one path an update cannot
 // write, and a new secret therefore needs a human-merged PR in every member, which is
 // what wedged one in #1296. But serialising the whole secrets context is the shape
 // GitHub's malicious-workflow detection flags: every executor run parked with zero

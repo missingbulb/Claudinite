@@ -1,10 +1,10 @@
 import { finding } from '../../../../../engine/checks/helpers/findings.mjs';
 
-// `.github/workflows/` IS THE ONE VENDORED PATH A CONVERGE CANNOT PUSH INTO. A
-// push authored with the default `GITHUB_TOKEN` — which every converge uses —
+// `.github/workflows/` IS THE ONE VENDORED PATH AN UPDATE CANNOT PUSH INTO. A
+// push authored with the default `GITHUB_TOKEN` — which every update uses —
 // may not write a workflow file, so a member's copy of the scheduler and executor
 // workflows moves only through a pull request a human merges, in every repo, one
-// at a time. Every other engine file converges nightly and unattended.
+// at a time. Every other engine file updates nightly and unattended.
 //
 // So a line of LOGIC in these two files costs a fleet-wide human-merged PR to
 // change, and a line of PROSE in them costs the same for a wording fix. The rule
@@ -36,7 +36,7 @@ const rule = {
   scope: 'world',
   description: 'The scheduler and executor workflows carry no inline program — every decision lives in an engine module they name',
   doc: 'packs/claudinite-tasks/stubs/claudinite-scheduler.yml',
-  why: 'a converge cannot push to .github/workflows/, so logic left in these two files can only be changed by a human-merged PR in every member repo, while the engine module it belongs in converges nightly',
+  why: 'an update cannot push to .github/workflows/, so logic left in these two files can only be changed by a human-merged PR in every member repo, while the engine module it belongs in updates nightly',
 
   run(ctx) {
     const files = ctx.tracked.filter((f) => WORKFLOW.test(f)).sort();
@@ -61,16 +61,16 @@ const rule = {
           out.push(finding(rule, {
             file,
             line,
-            what: `${file} runs github-script — a program living in a file a converge cannot update`,
-            fix: 'move the script into a module under packs/claudinite-tasks/src/ and call it with a single-line `run: node <module>`; the engine converges nightly, this file needs a human-merged PR per repo',
+            what: `${file} runs github-script — a program living in a file an update cannot write`,
+            fix: 'move the script into a module under packs/claudinite-tasks/src/ and call it with a single-line `run: node <module>`; the engine updates nightly, this file needs a human-merged PR per repo',
           }));
         }
         if (BLOCK_RUN.test(text)) {
           out.push(finding(rule, {
             file,
             line,
-            what: `${file} carries a block \`run:\` — a shell script living in a file a converge cannot update`,
-            fix: 'move the script into a module under packs/claudinite-tasks/src/ and call it with a single-line `run: node <module>`; the engine converges nightly, this file needs a human-merged PR per repo',
+            what: `${file} carries a block \`run:\` — a shell script living in a file an update cannot write`,
+            fix: 'move the script into a module under packs/claudinite-tasks/src/ and call it with a single-line `run: node <module>`; the engine updates nightly, this file needs a human-merged PR per repo',
           }));
         }
       });

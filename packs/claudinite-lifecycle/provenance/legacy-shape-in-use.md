@@ -46,6 +46,7 @@
 - **Model:** claude-opus-5
 - **Landed:** #1919
 
+<<<<<<< HEAD
 ## 2026-09-25 · scope-changed · also names a check's retired `severity` spelling
 - **Reason:** `severity: blocking|advisory` became `on_fail: block|advise` (owner decision,
   2026-09-25); the engine still reads the old spelling in a settings override, a local pack's
@@ -55,3 +56,10 @@
 - **Mechanism:** this check: it already owns every declaration-shape tolerance's advisory, and it
   reads the member's own files only, so a vendored pack's old spelling is left to that pack's
   update.
+=======
+## 2026-09-25 · reworded · "converge" in the nightly-update sense reads "update"
+- **Reason:** owner decision: the mechanism that re-vendors a mount is called update; "converge"
+  stays only for a work item reaching its end state.
+- **Actor:** @missingbulb (owner).
+- **Model:** claude-opus-5-5
+>>>>>>> b51f2317 (Say "update" where live prose meant the nightly converge)

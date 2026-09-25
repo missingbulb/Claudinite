@@ -1,5 +1,5 @@
 // The executor's secret bag (#1301). The reader is the whole compatibility surface
-// between an engine that converges nightly and an executor workflow that moves only
+// between an engine that updates nightly and an executor workflow that moves only
 // by human-merged PR, so both shapes are pinned here.
 
 import { test } from 'node:test';

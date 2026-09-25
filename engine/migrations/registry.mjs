@@ -83,7 +83,7 @@ export async function applyFileAliases(migration, { exists, move }) {
 // distinct injected readers. Gated by the migration's `appliesTo` so it only
 // touches repos that ship the pipeline (never the canon repo itself).
 // A materialization whose dest is a WORKFLOW FILE can only be written by a caller that
-// can get it delivered. The nightly converge pushes with the Action's GITHUB_TOKEN, which
+// can get it delivered. The nightly update pushes with the Action's GITHUB_TOKEN, which
 // GitHub never lets write under `.github/workflows/`, and the refusal rejects the whole
 // ref — so writing one into a tree that is about to be pushed by such a caller does not
 // deliver a workflow, it fails the entire converge and everything else riding it.
@@ -192,7 +192,7 @@ async function declarationFile(read) {
 // makes the op idempotent by construction — a no-op once the entry is there.
 //
 // ORDER MATTERS AROUND IT. Declaring a pack whose code is not in the member's mount
-// is a blocking `config` error there, so the caller must re-converge the mount after
+// is a blocking `config` error there, so the caller must re-vendor the mount after
 // applying (the update task does; see its worker). This module only writes the file.
 //
 // It round-trips the file through JSON rather than editing settings as text, so the

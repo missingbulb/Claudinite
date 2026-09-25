@@ -86,7 +86,7 @@ test('buildRoster: the declaration is read once per repo, and both questions use
 });
 
 // THE RENAME'S WINDOW (#1252). A member is a member under either settings-file name
-// until its own converge runs the record — and this sweep is what tells the fleet
+// until its own update runs the record — and this sweep is what tells the fleet
 // which repos are covered. Read only the current name and every un-converged member
 // drops out as uncovered, which reads as a fleet losing adoption overnight.
 test('buildRoster: a member still carrying the retired settings-file name is measured normally', async () => {

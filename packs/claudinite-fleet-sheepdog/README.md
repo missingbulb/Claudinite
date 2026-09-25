@@ -38,8 +38,8 @@ member's default branch guarded by the blob sha the read returned, idempotent, n
 direction. Three properties keep it safe. It **names no pack** — every id comes from config, so the
 enforcer never becomes a second place packs are known. It **gates on the member's own mount**: a
 declared pack whose code is absent is a blocking `config` error there, and a member's mount carries
-only what it declared as of its last converge, so the sweep writes only where the pack is already on
-disk — `not-vendored` is a wait rather than a finding, and members converge nightly, so a rollout
+only what it declared as of its last update, so the sweep writes only where the pack is already on
+disk — `not-vendored` is a wait rather than a finding, and members update nightly, so a rollout
 needs no coordination. And it **seeds, never overrides**: a member that already declares the pack, or
 already carries a config for it, keeps both. The fleet's list is a floor, and a choice a repo made is
 a decision the sweep cannot second-guess.
@@ -183,7 +183,7 @@ implementation, never in how a task is wired.
 
 The cadences follow what each question can change on. Roster is daily on its coverage question, and
 its freshness half rides along rather than gating on a weekly clock it would have to compute; pack
-seeds is daily because a member becomes writable the moment its nightly converge vendors the pack,
+seeds is daily because a member becomes writable the moment its nightly update vendors the pack,
 which makes daily mean "the next morning".
 
 Every ceiling here is `none`. The pack-seed sweep's write goes to **other** repos, and the ceiling

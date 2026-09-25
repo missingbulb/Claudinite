@@ -248,9 +248,9 @@ export function classifyDispatch(status) {
       // refuses dispatch — that one is a repo to nudge. The other is a member whose
       // scheduler workflow predates the `wake` input: GitHub rejects a dispatch
       // naming an input the workflow does not declare, so the member is behind on
-      // its mount, NOT misconfigured, and it heals on its own next converge. Saying
+      // its mount, NOT misconfigured, and it heals on its own next update. Saying
       // only "disabled" sent a reader to the repo's settings for a stale checkout.
-      return { state: 'not-dispatchable', detail: 'the workflow exists but refused the dispatch (422) — either its scheduler workflow predates the `wake` input, which its next converge lands, or GitHub has disabled it (cron is switched off on inactive repos)' };
+      return { state: 'not-dispatchable', detail: 'the workflow exists but refused the dispatch (422) — either its scheduler workflow predates the `wake` input, which its next update lands, or GitHub has disabled it (cron is switched off on inactive repos)' };
     default:
       return { state: 'error', detail: `dispatch returned ${status}` };
   }

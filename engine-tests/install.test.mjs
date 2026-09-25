@@ -59,7 +59,7 @@ test('an install stamps the latest version and fetches NO migration records', as
 // A record names the version main cuts AFTER its merge (#1726), so until that bump the
 // manifest sits one number below the content it ships. The install reads the number the
 // content is in effect at — otherwise the record would ride into a fresh install and be
-// replayed onto it by the next converge.
+// replayed onto it by the next update.
 test('versionsInEffect: a pending record above the manifest lifts the number; nothing else moves it', () => {
   const packs = [{ id: 'p', version: '60913.4' }, { id: 'q', version: '60913.4' }, { id: 'bare', version: null }];
   const records = [
