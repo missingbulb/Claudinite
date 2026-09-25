@@ -65,5 +65,4 @@
 - **Reason:** owner decision retiring the baseline vocabulary; the pack every repo declares is
   basics.
 - **Actor:** @missingbulb (owner).
-- **Model:** claude-opus-5-5
 - **Mechanism:** the skill description, triggering on what it did before.

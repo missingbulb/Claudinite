@@ -17,5 +17,4 @@
 - **Reason:** owner decision retiring the baseline vocabulary; the mechanism that re-vendors a mount
   is called update.
 - **Actor:** @missingbulb (owner).
-- **Model:** claude-opus-5-5
 - **Mechanism:** the skill description, re-vendoring kept as a trigger.

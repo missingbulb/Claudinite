@@ -9,4 +9,3 @@
 ## 2026-09-25 · reworded · the lever's id is now fleet-update
 - **Reason:** the sheepdog lever was renamed from fleet-baseline.
 - **Actor:** @missingbulb (owner).
-- **Model:** claude-opus-5-5

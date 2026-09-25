@@ -46,4 +46,3 @@
 - **Reason:** owner decision: the mechanism that re-vendors a mount is called update; "converge"
   stays only for a work item reaching its end state.
 - **Actor:** @missingbulb (owner).
-- **Model:** claude-opus-5-5

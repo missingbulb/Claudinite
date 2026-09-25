@@ -67,6 +67,5 @@
   update, so it is named for it. The report's `converged`/`did-not-converge` outcomes became
   `updated`/`did-not-update` for the same reason.
 - **Actor:** @missingbulb (owner).
-- **Model:** claude-opus-5-5
 - **Rejected:** renaming the sweep's `FLEET_BASELINE_*` environment knobs: a hand-run still setting
   the old `DRY_RUN` name would run live.
