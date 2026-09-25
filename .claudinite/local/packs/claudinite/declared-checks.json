@@ -497,6 +497,7 @@
     "since": "2026-09-21",
     "failureMessage": "git's auto-gc detaches and keeps writing under .git after the command returns, so the fixture's removal races it: the suite passes locally and CI fails with ENOTEMPTY",
     "scanFiles": "/\\.test\\.mjs$/",
+    "excludeFiles": "/^engine-tests\\/remove-tree\\.test\\.mjs$/",
     "scanTracked": true,
     "scanIgnoringComments": true,
     "checkEachFile": [

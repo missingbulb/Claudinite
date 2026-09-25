@@ -22,6 +22,11 @@ const tracked = () => execFileSync('git', ['ls-files', '*.mjs'], { cwd: repoRoot
 
 test('it removes a git working tree, and a second call is not an error', () => {
   const root = mkdtempSync(join(tmpdir(), 'remove-tree-'));
+  // Bare git on purpose, and the one fixture in the repo that stays that way: the
+  // shared runner's env turns auto-gc off, which is the FIRST line of defence, and
+  // `removeTree`'s retry is the second, the one that covers a tree some other
+  // code built without that env. A fixture here wearing the first fix would leave
+  // the fallback's own test covering a case the fallback is not for.
   execFileSync('git', ['init', '-q', root]);
   mkdirSync(join(root, 'nested'), { recursive: true });
   writeFileSync(join(root, 'nested', 'a.txt'), 'x');

@@ -7,6 +7,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { removeTree } from '../../engine/remove-tree.mjs';
+import { git } from '../helpers.mjs';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -146,12 +147,11 @@ test('names the repo off the checkout\'s origin remote, else the runner\'s envir
   try {
     assert.match(run(corpus, project), /Loaded Claudinite: 1 pack, /);
     assert.match(run(corpus, project, { GITHUB_REPOSITORY: 'someone/theirs' }), /Loaded Claudinite from repo someone\/theirs: 1 pack, /);
-    const git = (...args) => assert.equal(spawnSync('git', args, { cwd: project, encoding: 'utf8' }).status, 0);
-    git('init', '-q');
-    git('remote', 'add', 'origin', 'https://github.com/owner/repo.git');
+    git(project, 'init', '-q');
+    git(project, 'remote', 'add', 'origin', 'https://github.com/owner/repo.git');
     // The checkout's own remote outranks whatever the environment says.
     assert.match(run(corpus, project, { GITHUB_REPOSITORY: 'someone/theirs' }), /Loaded Claudinite from repo owner\/repo: 1 pack, /);
-    git('remote', 'set-url', 'origin', 'git@github.com:owner/other');
+    git(project, 'remote', 'set-url', 'origin', 'git@github.com:owner/other');
     assert.match(run(corpus, project), /from repo owner\/other: /);
   } finally { removeTree(corpus); removeTree(project); }
 });

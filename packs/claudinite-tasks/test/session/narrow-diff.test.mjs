@@ -4,11 +4,11 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { removeTree } from '../../../../engine/remove-tree.mjs';
+import { git } from '../../../../engine-tests/helpers.mjs';
 import {
   classifyPath, commentOnly, narrowVerdict, diffEntries,
 } from '../../queue/tasks/implement-request/narrow-diff.mjs';
@@ -66,23 +66,20 @@ test('narrowVerdict: a diff with no code at all is narrow', () => {
 
 test('diffEntries reads a real branch, added and deleted files included', () => {
   const repo = mkdtempSync(path.join(tmpdir(), 'narrow-diff-'));
-  const git = (...args) => execFileSync('git', args, { cwd: repo, encoding: 'utf8' });
   try {
-    git('init', '-q', '-b', 'main');
-    git('config', 'user.email', 'test@example.com');
-    git('config', 'user.name', 'test');
+    git(repo, 'init', '-q', '-b', 'main');
     mkdirSync(path.join(repo, 'engine'));
     writeFileSync(path.join(repo, 'engine/a.mjs'), 'const a = 1; // one\n');
     writeFileSync(path.join(repo, 'engine/gone.mjs'), 'const g = 1;\n');
-    git('add', '-A');
-    git('commit', '-qm', 'base');
+    git(repo, 'add', '-A');
+    git(repo, 'commit', '-qm', 'base');
 
-    git('checkout', '-q', '-b', 'work');
+    git(repo, 'checkout', '-q', '-b', 'work');
     writeFileSync(path.join(repo, 'engine/a.mjs'), 'const a = 1; // two\n');
     writeFileSync(path.join(repo, 'README.md'), 'hello\n');
     rmSync(path.join(repo, 'engine/gone.mjs'));
-    git('add', '-A');
-    git('commit', '-qm', 'work');
+    git(repo, 'add', '-A');
+    git(repo, 'commit', '-qm', 'work');
 
     const entries = diffEntries({ base: 'main', cwd: repo });
     assert.deepEqual(entries.map((e) => e.file).sort(), ['README.md', 'engine/a.mjs', 'engine/gone.mjs']);
