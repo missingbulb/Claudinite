@@ -202,7 +202,8 @@ import { normalizeEdges, barrierFindings, staleFindings } from './reference-scan
 //                      path source reads the `value` group of every tracked
 //                      path the regex hits (the whole path without one). The
 //                      added-lines source is the line source over the lines
-//                      the change adds. Every value carries its ORIGIN — the
+//                      the change adds, less any value a line it removes from
+//                      the same file also carried. Every value carries its ORIGIN - the
 //                      file, the line where a line produced it — plus the named
 //                      groups of the path and line regexes that found it, and
 //                      all of them interpolate into the quantifiers' templates
@@ -1076,7 +1077,13 @@ function resolveValueSets(ctx, spec, parsed) {
       for (const f of ctx.changedFiles) {
         const pm = s.inFilesMatching.exec(f);
         if (!pm || excluded(f, spec.excludeMatchers)) continue;
-        for (const { line, text } of ctx.addedLines(f)) collectLine(s, text, f, line, pm.groups ?? {}, add);
+        // A value the change also removed from this file was already there: the
+        // line was edited, not added.
+        const before = new Set();
+        for (const { line, text } of ctx.removedLines(f)) collectLine(s, text, f, line, pm.groups ?? {}, (v) => before.add(v));
+        for (const { line, text } of ctx.addedLines(f)) {
+          collectLine(s, text, f, line, pm.groups ?? {}, (v, ...rest) => { if (!before.has(v)) add(v, ...rest); });
+        }
       }
     } else {
       const docPaths = s.fromParsedFile !== undefined ? [s.fromParsedFile]

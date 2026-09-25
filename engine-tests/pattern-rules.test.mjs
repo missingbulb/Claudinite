@@ -1825,6 +1825,13 @@ test('extractValueSets: fromAddedLinesMatching derives from the change under sco
     const findings = runRule(rule, ctxOf(root));
     assert.deepEqual(findings.map((f) => [f.file, f.what]), [['packs/p/a.mjs', 'packs/p/a.mjs names the brand-new engine export fresh by name']]);
   } finally { cleanup(root); }
+  // An edited line is not an added value: the same value on a line the change
+  // removed from that file was already there.
+  const edited = makeRepo({
+    base: { 'engine/h.mjs': 'export function old(a) {}\n', 'packs/p/a.mjs': "import { old } from '../../engine/h.mjs';\n" },
+    changed: { 'engine/h.mjs': 'export function old(a, b) {}\n', 'packs/p/a.mjs': "import { old } from '../../engine/h.mjs';\n// edited\n" },
+  });
+  try { assert.deepEqual(runRule(rule, ctxOf(edited)), []); } finally { cleanup(edited); }
   assert.throws(() => patternRule({
     ...meta('fx-added-set-noscope'),
     extractValueSets: [{ setName: 's', fromAddedLinesMatching: /(?<value>x)/, inFilesMatching: /a/, whenSetEmpty: 'assertNothing' }],
