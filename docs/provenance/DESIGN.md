@@ -378,9 +378,8 @@ is what decides. A pack-root
 `references.md` that still exists is a finding: advisory through the conversion window the
 migration states, blocking after it, with the command in the fix text. In a member, a migration
 record in `claudinite-lifecycle` runs `mark` and `convert-references` over the local packs at the
-next converge, so every member is marked without a session; its empty files are backfilled by hand, a session in that repo running the backfilling skill:
-rule-revalidation fills only the files its claims lead it to, and the owner declined a task for
-the set of members that predate provenance (2026-09-25).
+next converge, so every member is marked without a session; its empty files are backfilled by a session in that repo running the backfilling skill, since
+rule-revalidation fills only the files its claims lead it to.
 
 **No README is trimmed by the marking pass.** Which sentence of a README is history is a
 judgment made with the element's evidence in hand, so it belongs to the backfill run and not to
@@ -584,7 +583,7 @@ on `main`; a second reading a week after the shelf's last empty file fills.
   per unmarked rule (about 850 files on the shelf, 185 in the home's local pack; the count is
   `mark`'s own report and the file count under `provenance/`). Backfill: one pull request per
   pack, 36 on the shelf and one local, by hand; a member's local packs by hand, in a session
-  on that repo, when the owner opens one. Growth flows: a handful of `born` entries a week fleet-wide,
+  on that repo. Growth flows: a handful of `born` entries a week fleet-wide,
   read from the extract pull requests' diffs; zero `reaffirmed` entries from a revalidation run
   that found everything still true. `references.md` files on the shelf: 21 before the conversion,
   0 after; in members' local packs the same fall at the converge that runs the migration record. About
