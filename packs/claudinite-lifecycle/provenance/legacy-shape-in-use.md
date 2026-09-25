@@ -60,3 +60,11 @@
 - **Reason:** owner decision: the mechanism that re-vendors a mount is called update; "converge"
   stays only for a work item reaching its end state.
 - **Actor:** @missingbulb (owner).
+
+## 2026-09-25 · scope-changed · names files left at the pre-flat and pre-usage paths (#2322)
+- **Reason:** readers and writers tolerate the old paths until #2323, and the holders need telling
+  first.
+- **Mechanism:** unchanged, the advisory world check; it now reads the tracked tree as well as the
+  declaration.
+- **Retire when:** #2323 takes the tolerances out.
+- **Landed:** #2322

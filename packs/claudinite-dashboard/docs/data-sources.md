@@ -9,8 +9,8 @@ here changes those rules, it adds fields under them. Page readers are named by f
 ## 1. Every figure → its source
 
 *Live* is a read the page already makes (ETag-revalidated, free on a 304); *fold* is the
-member's `usage.GENERATED.json` at head sha; ***tasks fold*** is the second past-data file
-beside it, `tasks-usage.GENERATED.json`, written by its own task on its own watermark — a
+member's `sessions-and-elements.json` at head sha; ***tasks fold*** is the second past-data file
+beside it, `task-runs-and-costs.json`, written by its own task on its own watermark — a
 member folding one and not the other is ordinary, so nothing reads across the two;
 *declaration* is the task file at head sha;
 *config* is the deployment's `dashboard.config.json`. A figure with two sources takes the live

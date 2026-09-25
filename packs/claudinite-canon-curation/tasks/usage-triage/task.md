@@ -17,7 +17,7 @@ the element's provenance entry for it in the same diff.
 
 The Context section is binding scope: propose about the subjects it names, and do
 not re-derive which findings count. The review's file,
-`.claudinite/local/usage-review.GENERATED.json`, carries each finding's figures,
+`.claudinite/usage/element-review-findings.json`, carries each finding's figures,
 its possible causes and its issue number.
 
 Never merge what you open. Where you settle no cause, comment that finding's issue

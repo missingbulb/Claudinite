@@ -38,7 +38,7 @@ applied to the whole corpus. The **nightly maintenance is the only regular write
    injected"; #807 measured that claim and found it false: the SessionStart hook has no
    delivery receipt, and ~80KB of a live session's guidance was truncated away on the way in
    without a trace on either side. So the corpus now reaches a session through
-   `.claudinite/claudinite-rules.GENERATED.md` — a **consumer-owned** file, sitting BESIDE the
+   `.claudinite/flat/claudinite-rules.GENERATED.md` — a **consumer-owned** file, sitting BESIDE the
    mount rather than inside it (the submodule future in 1 forbids the latter), generated from
    the repo's own declaration by [generate-rules-index.mjs](../engine/pack_loader/generate-rules-index.mjs)
    on every converge, and `@`-imported by the repo's `CLAUDE.md`, which the harness loads in

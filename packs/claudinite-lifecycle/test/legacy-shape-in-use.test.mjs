@@ -111,3 +111,20 @@ test('legacy-shape-in-use: a local pack\'s coded check still carrying severity i
   assert.match(findings[0].what, /"acme-check" in the local pack "local\/acme-pack" declares severity/);
   assert.match(findings[0].fix, /on_fail: 'advise'/);
 });
+
+test('legacy-shape-in-use: files left at the pre-flat and pre-usage paths are each reported', () => {
+  const files = {
+    [SETTINGS_FILE]: JSON.stringify({ packs: ['acme-pack'] }),
+    '.claudinite/claudinite-rules.GENERATED.md': '@x\n',
+    '.claudinite/local/usage.GENERATED.json': '{}',
+    '.claudinite/local/dashboard/acme-pack.GENERATED.json': '{}',
+    '.claudinite/local/packs/own/RULES.md': 'x',
+    '.claudinite/usage/sessions-and-elements.json': '{}',
+  };
+  const found = rule.run({ ...ctx(files), tracked: Object.keys(files) }).map((f) => f.file).sort();
+  assert.deepEqual(found, [
+    '.claudinite/claudinite-rules.GENERATED.md',
+    '.claudinite/local/dashboard/acme-pack.GENERATED.json',
+    '.claudinite/local/usage.GENERATED.json',
+  ]);
+});

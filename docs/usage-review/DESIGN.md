@@ -35,7 +35,7 @@ observed record       ──┘
 - **The expectation** is the skill's own, in its frontmatter (§2). Without it, "zero loads"
   means nothing: a version-bump skill and a broken one both read zero. With it, zero is either
   exactly right or exactly the finding.
-- **The record** is the fold (`usage.GENERATED.json`) for rates over the window, plus a
+- **The record** is the fold (`sessions-and-elements.json`) for rates over the window, plus a
   deterministic digest of the captures still inside retention for the one comparison no counter
   makes — what a session was doing when a skill did not load (§4.2).
 - **The rules** are data, not code: one JSON file of declarations the growth pack ships, each
@@ -392,7 +392,7 @@ recorded as *not sampled*; the rules still evaluate from the fold.
 | **Scope** | every subject the repo mounts — its local packs **and** the vendored canon; a finding about a canon subject is evidence the repo cannot act on, and it carries it upward (§6) |
 | **Performs** | code, entirely: the evaluator over the rule file, the fold, the live reads, and the digests |
 | **Triage** | `usage-triage`, weekly, `agent_model: opus`, the only stage that changes anything; precondition: at least one finding whose `since` is 14 days old with cause `known` or `probable` and no open triage PR for its subject; a `claudinite-canon-curation` task over `packs/` in the canon, the same skill (`triaging-usage-findings`, in `claudinite-growth`) over local packs elsewhere; `expected_outcome: fresh_pr`, automerge `nothing` |
-| **Writes** | `.claudinite/local/usage-review.GENERATED.json` — `window` (both windows' bounds and denominators), `notEvaluated` (rule, floor, figure), `unstated` (skills with no `usage` block), `findings` sorted by rule then subject (rule, subject, pack, figures for both windows, cause, sentences, digests, and `since`, the first review date the finding appeared) — delivered by the shared generated-file helper on one accumulating PR, automerge `nothing`, whose body renders the findings as a table per cause confidence; the unchanged-compare ignores the stamp alone, so a day that changes no finding opens nothing |
+| **Writes** | `.claudinite/usage/element-review-findings.json` — `window` (both windows' bounds and denominators), `notEvaluated` (rule, floor, figure), `unstated` (skills with no `usage` block), `findings` sorted by rule then subject (rule, subject, pack, figures for both windows, cause, sentences, digests, and `since`, the first review date the finding appeared) — delivered by the shared generated-file helper on one accumulating PR, automerge `nothing`, whose body renders the findings as a table per cause confidence; the unchanged-compare ignores the stamp alone, so a day that changes no finding opens nothing |
 
 `since` is what makes a finding's age readable without diffing history, and it is what the
 consumers below key on.

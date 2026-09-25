@@ -65,7 +65,7 @@
           "maxLength": 4
         },
         "source": {
-          "description": "generated — from this pack's own .claudinite/local/dashboard/<pack>.GENERATED.json in the member's tree. latest-release and repo-stars are platform facts the page already reads for every member, so a pack asking for one ships no code at all.",
+          "description": "generated — from this pack's own .claudinite/usage/<pack>-dashboard-values.json in the member's tree. latest-release and repo-stars are platform facts the page already reads for every member, so a pack asking for one ships no code at all.",
           "enum": ["generated", "latest-release", "repo-stars"],
           "default": "generated"
         }

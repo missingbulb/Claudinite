@@ -15,7 +15,7 @@ and a lockfile are committed; the corpus is fetched and never committed.
 ```
 Committed                                     Materialised by install, gitignored
 ├── .claudinite-settings.json  the manifest    .claudinite/shared/    engine + entitled packs
-├── claudinite-lock.json       the lockfile    .claudinite/claudinite-rules.GENERATED.md
+├── claudinite-lock.json       the lockfile    .claudinite/flat/claudinite-rules.GENERATED.md
 ├── .claudinite/licence.jwt    the entitlement .claude/skills/        mounted skills
 ├── .claudinite/local/packs/   the repo's own  .claudinite/cache/     verified artifacts
 ├── .claude/settings.json      hook wiring

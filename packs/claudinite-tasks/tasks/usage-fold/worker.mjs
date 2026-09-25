@@ -21,12 +21,13 @@
 //      of the above can answer — commits, lines and releases;
 //   6. fold: hour rows over the last three days, day rows recomputed from scratch,
 //      appended rows past their watermarks, week rows advanced past `foldedThrough`;
-//   7. deliver the regenerated `.claudinite/local/usage.GENERATED.json` on a PR
+//   7. deliver the folded `.claudinite/usage/sessions-and-elements.json` on a PR
 //      that lands itself where this repo's delivery settings allow - and open
 //      NOTHING when the recompute is byte-identical apart from its stamp.
 //
-// The aggregate lives under `.claudinite/local/` because that is the repo-owned area
-// the vendoring refresh never touches; the mount root itself is read-only canon.
+// The aggregate lives under `.claudinite/usage/`, beside the repo's other rolling
+// records, where the vendoring refresh never reaches; the mount root itself is
+// read-only canon.
 
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
