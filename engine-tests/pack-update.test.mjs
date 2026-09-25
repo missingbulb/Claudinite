@@ -315,7 +315,7 @@ test('dry run judges the whole plan and writes nothing', async () => {
 test('packRecordsInGap is that pack\'s records only', () => {
   const behind = packRecordsInGap('claudinite-fleet-sheepdog', { packVersions: { 'claudinite-fleet-sheepdog': 0 } }); // @real-entity this pack's own records are the subject
   assert.ok(behind.every((d) => d.startsWith('packs/claudinite-fleet-sheepdog/migrations/')), behind.join(', ')); // @real-entity this pack's own records are the subject
-  assert.deepEqual(packRecordsInGap('claudinite-fleet-sheepdog', { packVersions: { 'claudinite-fleet-sheepdog': 99 } }), []); // @real-entity this pack's own records are the subject
+  assert.deepEqual(packRecordsInGap('claudinite-fleet-sheepdog', { packVersions: { 'claudinite-fleet-sheepdog': '999999.1' } }), []); // @real-entity this pack's own records are the subject
 });
 
 // The stamp is written as well as read, and both sides have to agree about a
@@ -368,7 +368,7 @@ test('a pack the canon renamed takes its old mount directory with it', async () 
 // but `legacySpellingsOf` reads both off the same `RENAMED_PACKS` map and sweeps them
 // identically. This pins that the composed rules already produce the right answer for
 // the shape that actually froze a fleet (#1186): no new migration-record delete op is
-// needed, because a converge that lays down the survivor already takes the absorbed
+// needed, because an update that lays down the survivor already takes the absorbed
 // leftover with it, the same as a rename's.
 test('an absorbed pack takes its own leftover mount directory with it, the same as a rename', async () => {
   // The declaration a member carried before the collapse: the absorbed pack declared
@@ -541,7 +541,7 @@ test('two packs staging the same workflow path are BOTH held back', async () => 
   removeTree(root);
 });
 
-test('a converge that wrote something the repo\'s own tests can see summons the stage alone', () => {
+test('an update that wrote something the repo\'s own tests can see summons the stage alone', () => {
   // No record asked and nothing was withheld — the deterministic half simply wrote
   // into a file a member's suite reads. `runSelfTest` is Claudinite's probes, so
   // nothing before this point ran that suite; the session is what can (#1932).
