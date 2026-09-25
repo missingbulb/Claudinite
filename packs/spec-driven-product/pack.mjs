@@ -2,7 +2,7 @@
 // product against an executable spec. Prose only, and declared rather than
 // detected.
 export default {
-  version: '60922.2',
+  version: '60925.1',
   minEngineVersion: '60925.1',
   ruleRoutingGuidance: {
     belongs: 'playbook for shipping a small end-user product from an executable spec — leaf claims, owner-owned expecteds, green-main releases',

@@ -12,7 +12,7 @@
 // `environment-setup-command.sh` is the generic body a project pastes into its web
 // environment's Setup script field. What a repo does with the pack is its README.
 export default {
-  version: '60925.1',
+  version: '60925.2',
   minEngineVersion: '60925.1',
   ruleRoutingGuidance: {
     belongs: 'what a project offers people working from Claude Code on the web, where the session knows who they are',

@@ -1,7 +1,7 @@
 // A project-class pack for research work: prose only, declared by a project of
 // this class rather than fingerprinted from its tree.
 export default {
-  version: '60922.2',
+  version: '60925.1',
   minEngineVersion: '60925.1',
   ruleRoutingGuidance: {
     belongs: 'methodology for iterating an algorithm over sample inputs against annotated ground truth — scoring, phases, session continuity',

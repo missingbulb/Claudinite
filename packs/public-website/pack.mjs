@@ -7,7 +7,7 @@ import { isPage, STAMP } from './public/version.mjs';
 const carriesAStamp = (ctx) => ctx.tracked.some((f) => isPage(f) && new RegExp(STAMP.source).test(ctx.read(f) ?? ''));
 
 export default {
-  version: '60921.1',
+  version: '60925.1',
   minEngineVersion: '60925.1',
   ruleRoutingGuidance: {
     belongs: 'being a public website whatever serves it: the version scheme and page stamp, client-side caching and data freshness',

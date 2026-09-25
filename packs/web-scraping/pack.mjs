@@ -5,7 +5,7 @@
 // skill, activated by declaration.
 
 export default {
-  version: '60922.1',
+  version: '60925.1',
   minEngineVersion: '60925.1',
   ruleRoutingGuidance: {
     belongs:

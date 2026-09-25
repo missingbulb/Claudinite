@@ -4,7 +4,7 @@
 //
 // Declared by hand; it carries no fingerprint.
 export default {
-  version: '60921.1',
+  version: '60925.1',
   minEngineVersion: '60925.1',
   ruleRoutingGuidance: {
     belongs: 'driving a web app you do not own — its DOM, synthetic input, change watching, injected UI',
