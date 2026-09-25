@@ -12,7 +12,7 @@ export default {
   // `migrationApplies` is `want > have` against the stamped version, and what gets
   // stamped is this manifest's number — so a record declaring a version above it would
   // re-apply every cycle, forever, draining never.
-  version: '60925.2',
+  version: '60925.3',
   minEngineVersion: '60925.1',
   ruleRoutingGuidance: {
     belongs: 'cross-project working discipline, issue-branch-PR lifecycle, repo hygiene, doc/reference integrity and the general engineering, testing and debugging skills',
