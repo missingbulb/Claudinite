@@ -302,7 +302,7 @@ const LOCAL_DECL = 'local/';
 // second — so the collision is not an edge case there, it is every member.
 //
 // Dropping either side would drop what a member wrote: `config` answers it gave at
-// adoption, `rules` severities it chose, `accept` entries standing against findings
+// adoption, `rules` overrides it chose, `accept` entries standing against findings
 // that would otherwise come back. So the two are MERGED. The survivor is the entry
 // that appeared first, and its own values win a key conflict — the absorbed entry
 // fills only what the survivor does not say. Arrays (`accept`, `rules`, `via`)
@@ -562,6 +562,74 @@ export async function applyProvenanceMarking(migration, io) {
   return applied;
 }
 
+// Write side - "a check says what it does when it fails": `severity: "blocking" |
+// "advisory"` becomes `on_fail: "block" | "advise"` in the member's own files - its
+// settings overrides, its local packs' declared checks, and the rule objects and
+// `finding()` calls in its local packs' check modules. A NAMED CODEMOD like the ones
+// above: which files carry the field is the repo's own disk, so it needs `listDir`,
+// and a caller without it rewrites nothing rather than half-rewriting. A pack's
+// `test/` is the member's own assertions and is left alone; the engine mirrors the
+// old field on every finding while the old spelling is read at all.
+const ON_FAIL_OF = { blocking: 'block', advisory: 'advise' };
+const OLD_DECLARED = /"severity"(\s*:\s*)"(blocking|advisory)"/g;
+const OLD_CODED = /\bseverity(\s*:\s*)(['"])(blocking|advisory)\2/g;
+
+function localCheckFiles(io) {
+  const out = [];
+  const walk = (dir) => {
+    for (const name of (io.listDir(dir) ?? []).sort()) {
+      const path = `${dir}/${name}`;
+      if (name === 'declared-checks.json' || (name.endsWith('.mjs') && !name.endsWith('.test.mjs'))) out.push(path);
+      else if (name !== 'test' && name !== 'node_modules' && !name.includes('.')) walk(path);
+    }
+  };
+  walk(LOCAL_PACK_ROOT);
+  return out;
+}
+
+export async function applyOnFailRename(migration, io) {
+  if (!migration.renameOnFail) return [];
+  if (typeof io.listDir !== 'function') return [];
+  if (migration.appliesTo && !(await migration.appliesTo(io.read))) return [];
+  const applied = [];
+
+  const file = await declarationFile(io.read);
+  let config = null;
+  if (file) { try { config = JSON.parse(await io.read(file)); } catch { config = null; } }
+  if (config !== null && typeof config === 'object' && !Array.isArray(config)) {
+    let moved = 0;
+    const renamed = (rules) => {
+      if (rules === null || typeof rules !== 'object' || Array.isArray(rules)) return rules;
+      return Object.fromEntries(Object.entries(rules).map(([id, v]) => {
+        if (!Object.hasOwn(ON_FAIL_OF, v)) return [id, v];
+        moved += 1;
+        return [id, ON_FAIL_OF[v]];
+      }));
+    };
+    const next = { ...config };
+    if (next.rules !== undefined) next.rules = renamed(next.rules);
+    if (Array.isArray(next.packs)) {
+      next.packs = next.packs.map((e) => (e && typeof e === 'object' && e.rules !== undefined ? { ...e, rules: renamed(e.rules) } : e));
+    }
+    if (moved) {
+      await io.write(file, `${JSON.stringify(next, null, 2)}\n`);
+      applied.push(`${file}: ${moved} override(s) respelled "off" | "advise" | "block"`);
+    }
+  }
+
+  for (const path of localCheckFiles(io)) {
+    const text = await io.read(path);
+    if (text == null) continue;
+    const next = path.endsWith('.json')
+      ? text.replace(OLD_DECLARED, (_, sep, v) => `"on_fail"${sep}"${ON_FAIL_OF[v]}"`)
+      : text.replace(OLD_CODED, (_, sep, q, v) => `on_fail${sep}${q}${ON_FAIL_OF[v]}${q}`);
+    if (next === text) continue;
+    await io.write(path, next);
+    applied.push(`${path}: severity respelled on_fail`);
+  }
+  return applied;
+}
+
 export async function applyMigration(migration, io) {
   const applied = [];
   applied.push(...(await applyFileAliases(migration, io)));
@@ -571,6 +639,7 @@ export async function applyMigration(migration, io) {
   applied.push(...(await applyLocalDeclarationNormalization(migration, io)));
   applied.push(...(await applyTaskSchedulingFields(migration, io)));
   applied.push(...(await applyProvenanceMarking(migration, io)));
+  applied.push(...(await applyOnFailRename(migration, io)));
   applied.push(...(await applyPackRenames(migration, io)));
   // AFTER the renames: a setting moving onto a pack's entry has to find that entry
   // under the id the pack carries TODAY, which is what the rename above just settled.
