@@ -1,6 +1,6 @@
 ---
 name: production-retrospective
-description: Design and file the review that comes back on its own once a larger element has lived in production. Use when designing a larger element, when filing a migration plan's chain, when a merge completes a design-doc'd element, or when defining a new retrospective class for a pack, a repo, or the fleet.
+description: Design and file the review that comes back once a larger element has lived in production. Use when designing such an element, or when its merge completes it.
 metadata:
   body: workflow
   usage:

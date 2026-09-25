@@ -86,8 +86,8 @@
     "scanFiles": "/(^|\\/)SKILL\\.md$/",
     "matchLines": [
       {
-        "match": "/^description:(?:\\s+\\S+){61}/",
-        "what": "this description runs past 60 words",
+        "match": "/^description:(?:\\s+\\S+){31}/",
+        "what": "this description runs past 30 words",
         "fix": "cut it to what decides whether to reach for the skill, and leave the method to the body, which loads only when the skill does"
       }
     ]

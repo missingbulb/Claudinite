@@ -32,3 +32,9 @@
 - **Mechanism:** the skill's description names the sourcing facet, which is what a session reaching
   this skill by picking it, rather than through the wiki-tree guard, triggers on.
 - **Landed:** #1947 (Closes #1946) · pack version 60913.1.
+
+## 2026-09-25 · trigger-changed · description cut to the 30-word cap
+- **Reason:** the description summarised the method the body already carries; every session paid for
+  it.
+- **Mechanism:** the description, as before.
+- **Actor:** @missingbulb (owner).

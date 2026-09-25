@@ -1,6 +1,6 @@
 ---
 name: macos-entitlements-and-tcc
-description: Which gate a protected macOS resource sits behind — the TCC usage string in Info.plist, the Hardened Runtime entitlement, or both — and why the App Sandbox stays off the Developer ID track. Use when editing an .entitlements file or Info.plist, or adding a capability.
+description: Which gate a protected macOS resource sits behind: a TCC usage string, a Hardened Runtime entitlement, or both. Use when editing an .entitlements file or Info.plist, or adding a capability.
 metadata:
   body: guidelines
   usage:

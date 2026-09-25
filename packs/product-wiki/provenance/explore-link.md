@@ -7,3 +7,9 @@
 - **Mechanism:** a skill, body workflow, reached by its description; skills mount structurally from
   the pack's own folder, so the manifest needed no entry.
 - **Landed:** #1422 (Closes #1421) · pack version 60830.1.
+
+## 2026-09-25 · trigger-changed · description cut to the 30-word cap
+- **Reason:** the description summarised the method the body already carries; every session paid for
+  it.
+- **Mechanism:** the description, as before.
+- **Actor:** @missingbulb (owner).

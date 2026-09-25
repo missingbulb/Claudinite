@@ -9,3 +9,9 @@
 - **Actor:** @missingbulb (owner).
 - **Model:** Opus 5
 - **Mechanism:** the description keeps its trigger phrases; only the label it names became literal.
+
+## 2026-09-25 · trigger-changed · description cut to the 30-word cap
+- **Reason:** the description summarised the method the body already carries; every session paid for
+  it.
+- **Mechanism:** the description, as before.
+- **Actor:** @missingbulb (owner).

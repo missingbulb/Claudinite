@@ -34,3 +34,9 @@
 - **Mechanism:** `force-load-on-file-edits-paths` gains `pyproject.toml`, `setup.cfg` and
   `setup.py`, each also matched one directory down.
 - **Landed:** #1667 (Closes #1662) · pack version 60904.2.
+
+## 2026-09-25 · trigger-changed · description cut to the 30-word cap
+- **Reason:** the description summarised the method the body already carries; every session paid for
+  it.
+- **Mechanism:** the description, as before.
+- **Actor:** @missingbulb (owner).

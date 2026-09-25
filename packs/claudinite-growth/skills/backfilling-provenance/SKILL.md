@@ -1,6 +1,6 @@
 ---
 name: backfilling-provenance
-description: Filling a pack's empty provenance files from its history. Use when a pack under packs/ or .claudinite/local/packs/ carries empty provenance files, or when asked to backfill or write a pack's provenance.
+description: Filling a pack's empty provenance files from its history. Use when a pack carries empty provenance files, or when asked to backfill a pack's provenance.
 metadata:
   body: workflow
   usage:

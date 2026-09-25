@@ -1,6 +1,6 @@
 ---
 name: flutter-golden-tests
-description: Widget-test and golden mechanics in Flutter — loading real fonts before a golden, fixed-duration pumps instead of pumpAndSettle around spinners, one fixed viewport per suite. Use when writing or debugging a widget test or golden, or when goldens render as boxes, hang, or drift.
+description: Widget-test and golden mechanics in Flutter. Use when writing or debugging a widget test or golden, or when goldens render as boxes, hang, or drift.
 metadata:
   body: guidelines
   usage:
