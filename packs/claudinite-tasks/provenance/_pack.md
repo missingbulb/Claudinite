@@ -107,3 +107,12 @@
   update holds this version until the member's engine is at 60925.1.
 - **Actor:** @missingbulb (owner).
 - **Mechanism:** the manifest's `minEngineVersion`, which the pack update enforces.
+
+## 2026-09-25 · reaffirmed · the per-repo anchor could not deliver the stagger it existed for (#1995)
+- **Source:** the cadence-without-anchors migration record's comment, moved here by the comment
+  pass.
+- **Reason:** `taskScheduler.dailyHour` was kept to run members an hour ahead of the canon, but this
+  repo's own record showed Actions firing up to 78 minutes off schedule across one week, wider than
+  that stagger.
+- **Actor:** @missingbulb (owner).
+- **Model:** claude-opus-5-5

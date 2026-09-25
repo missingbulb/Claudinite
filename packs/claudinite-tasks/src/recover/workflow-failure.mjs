@@ -1,7 +1,6 @@
-// THE ESCALATION SURFACE FOR A WORKFLOW THAT FAILED AS A WHOLE (docs/PRINCIPLES.md).
-// A scheduled run reaches no one when it goes red — nothing is
-// watching the Actions tab — so a run-level failure becomes a human-visible
-// issue instead.
+// THE ESCALATION SURFACE FOR A WORKFLOW THAT FAILED AS A WHOLE. A scheduled run
+// reaches no one when it goes red - nothing is watching the Actions tab - so a
+// run-level failure becomes a human-visible issue instead.
 //
 // ONE OPEN ISSUE, by a fixed title: create-or-comment, so a week of nightly
 // failures is one thread rather than seven issues. The labels are ensured

@@ -5,11 +5,9 @@
 // and still applies to anything below `claudinite-tasks` 60831.6. What it cannot reach
 // is a member that stamped PAST 60831.6 without receiving it: `migrationApplies` is
 // `want > have`, so above the number the record stops applying and stops vendoring,
-// and the staged copy is swept by the next cycle as a leftover. Five members reached
-// exactly that state when their apply-stage PRs were merged before the stage delivered
-// the withheld file. The stamp is no longer advanced while a file is owed, but nothing
-// retroactively lowers a stamp already written, so the only way back into range is a
-// record at a version above where they landed.
+// and the staged copy is swept by the next cycle as a leftover. Nothing retroactively
+// lowers a stamp already written, so the only way back into range is a record at a
+// version above where they landed.
 //
 // IT IS NOT A DUPLICATE DELIVERY. `appliesTo` tests the destination's own content, so
 // on a member that already carries the line this is inert; the eight that received it

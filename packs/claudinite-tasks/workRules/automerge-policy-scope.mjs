@@ -8,10 +8,8 @@ import {
 // here, at the Stop hook and on every PR, so a run that mis-measured (or lied
 // about) its own diff goes red before GitHub's queued auto-merge can fire.
 //
-// SELF-GATING BY THE TRAILER, the shape improve-comments-scope keys on its
-// pinned commit subject: a landing run stamps `Claudinite-Automerge-Policy:
-// <expr>` into its final commit message (deliver-pr.md owns when), so this rule
-// runs everywhere the pack is active and costs ~nothing on a branch that armed
+// SELF-GATING BY THE TRAILER: a landing run stamps `Claudinite-Automerge-Policy:
+// <expr>` into its final commit message, so this rule runs everywhere the pack is active and costs ~nothing on a branch that armed
 // nothing. No trailer, no findings — a wide PR left open for review must stay
 // green, since red CI would get it closed as failed rather than read. The LAST
 // trailer on the branch wins: a run that re-measured after amending its scope
