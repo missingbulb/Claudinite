@@ -14,7 +14,7 @@ import * as provenance from '../../../engine/checks/helpers/provenance.mjs';
 //
 // ADVISORY, like everything in this pack: the loss is a missing why for a rule, never a
 // broken repo. RELEVANCE-FIRST like its siblings: inert unless this repo IS the store -
-// only the one repo that holds `<path>/<email>/` packs has anything to judge.
+// only the one repo that holds `<path>/<login>/` packs has anything to judge.
 const PACK = 'claude-code-web-users-support';
 
 // @deprecated The sidecar folder a person's provenance sat in while the store was flat and

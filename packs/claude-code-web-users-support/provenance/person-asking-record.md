@@ -21,3 +21,10 @@
   stating exactly that address is what this rule is for.
 - **Actor:** @missingbulb (owner).
 - **Landed:** #2188
+
+## 2026-09-25 · reworded · a new pack is named for the lower-case GitHub login, and lands with its CODEOWNERS line (#2321)
+- **Reason:** the reader addresses a person by GitHub login, folded to lower case since GitHub
+  compares logins case-insensitively; a directory added without regenerating the block has no owner
+  line of its own.
+- **Actor:** @missingbulb (owner).
+- **Landed:** #2321

@@ -21,3 +21,8 @@
   person's directory is a pack, so its provenance sits where every other pack keeps it.
 - **Actor:** @missingbulb (owner).
 - **Landed:** #2188
+
+## 2026-09-25 · reworded · the pack is at `<path>/<login>/` (#2321)
+- **Reason:** personal packs are addressed by GitHub login.
+- **Actor:** @missingbulb (owner).
+- **Landed:** #2321

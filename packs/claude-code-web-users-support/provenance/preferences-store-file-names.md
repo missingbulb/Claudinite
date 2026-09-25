@@ -25,3 +25,12 @@
   holding the store. What moved is its scope: one finding per top-level entry rather than per file,
   because a misnamed directory holding a whole pack is one mistake with one fix.
 - **Landed:** #2188
+
+## 2026-09-25 · scope-changed · a directory is a lower-case GitHub login now (#2321)
+- **Reason:** the reader addresses a person by GitHub login, lower-cased, so an email-named or
+  mixed-case directory is unaddressable.
+- **Actor:** @missingbulb (owner).
+- **Mechanism:** unchanged.
+- **Rejected:** an email-directory fallback during the rename - one store and one person, so the
+  store renames in the same step instead.
+- **Landed:** #2321

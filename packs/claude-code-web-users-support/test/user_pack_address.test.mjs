@@ -30,14 +30,14 @@ test('resolveStore: nothing usable is null — "unset" and "wrong" collapse on p
 });
 
 test('packDirFor: one pack per person, in a directory named for their identity', () => {
-  assert.equal(packDirFor({ repo: 'o/n', path: 'preferences' }, 'me@example.com'), 'preferences/me@example.com');
-  assert.equal(packDirFor({ repo: 'o/n', path: 'team/people' }, 'me@example.com'), 'team/people/me@example.com');
+  assert.equal(packDirFor({ repo: 'o/n', path: 'preferences' }, 'acme-user'), 'preferences/acme-user');
+  assert.equal(packDirFor({ repo: 'o/n', path: 'team/people' }, 'acme-user'), 'team/people/acme-user');
 });
 
 test("declineReason: every way a session gets no pack, in the reader's own words", () => {
   // One list, two readers: the copy stops on it and the start step says it. A reason that read
   // differently in the two places would be a session told something that did not happen.
-  const ok = { CLAUDE_CODE_USER_EMAIL: 'me@example.com' };
+  const ok = {};
   const store = { repo: 'o/n' };
   assert.equal(declineReason(store, ok), null);
   assert.equal(declineReason(store, { ...ok, CLAUDE_CODE_SESSION_ATTENDED: '1' }), null);
@@ -47,16 +47,11 @@ test("declineReason: every way a session gets no pack, in the reader's own words
   assert.match(declineReason({}, ok), /declares no store/);
   assert.match(declineReason({ repo: 'not-a-repo' }, ok), /declares no store/);
   assert.match(declineReason(store, { ...ok, CLAUDE_CODE_SESSION_ATTENDED: '0' }), /unattended/);
-  assert.match(declineReason(store, {}), /CLAUDE_CODE_USER_EMAIL is not set/);
-  assert.match(declineReason(store, { CLAUDE_CODE_USER_EMAIL: '../../etc/passwd' }), /not a usable directory name/);
-  // An implausible identity is quoted back tidily rather than raw.
-  assert.doesNotMatch(declineReason(store, { CLAUDE_CODE_USER_EMAIL: 'a"b' }), /"/);
 });
 
-test('isUsableIdentity: an identity becomes a path and a URL, so an implausible one is refused', () => {
-  assert.equal(isUsableIdentity('me@example.com'), true);
-  assert.equal(isUsableIdentity('first.last+tag@sub.example.co.uk'), true);
-  for (const bad of ['', 'nobody', '../../../etc/passwd', 'a/b@c.com', 'a@b/../c', 'a b@c.com', null, 42]) {
+test('isUsableIdentity: a GitHub login in lower case, since it becomes a path and a URL', () => {
+  for (const ok of ['a', 'acme-user', 'a1-b2-c3', 'x'.repeat(39)]) assert.equal(isUsableIdentity(ok), true, ok);
+  for (const bad of ['', 'Acme-User', '-acme', 'acme-', 'ac--me', 'x'.repeat(40), 'a_b', 'me@example.com', '../x', 'a/b', 'a b', null, 42]) {
     assert.equal(isUsableIdentity(bad), false, String(bad));
   }
 });

@@ -18,3 +18,9 @@
   person's pack also carries skill bodies and its own provenance files, and reading one of those as
   a rule index would report its every bullet.
 - **Landed:** #2188
+
+## 2026-09-25 · scope-changed · judges login-named packs (#2321)
+- **Reason:** the store now names directories by GitHub login.
+- **Actor:** @missingbulb (owner).
+- **Mechanism:** unchanged.
+- **Landed:** #2321
