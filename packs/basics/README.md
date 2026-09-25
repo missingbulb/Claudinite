@@ -125,6 +125,6 @@ how another pack ships a fixed barrier of its own as manifest data.
 directories, because it validates that skill's action rather than a property of the repo: on a
 branch whose commit subject is `Claudinite tidy: improve comments` it strips the comments from both
 sides of every changed file and reds anything left over, plus any change at all under
-`.claudinite/` — the mount is not the repo's own source. Silent everywhere else, so an ordinary
+`.claudinite/shared/`, since the vendored mount is not the repo's own source. Silent everywhere else, so an ordinary
 branch pays nothing for it. The [improve-comments](tasks/improve-comments/README.md) task is what
 writes under it, weekly, over the files the window's commits touched.

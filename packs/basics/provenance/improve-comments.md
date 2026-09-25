@@ -24,3 +24,12 @@
 - **Reason:** owner decision: the mechanism that re-vendors a mount is called update; "converge"
   stays only for a work item reaching its end state.
 - **Actor:** @missingbulb (owner).
+
+## 2026-09-25 · scope-changed · the pass may improve comments under .claudinite/local/
+- **Reason:** the owner narrowed the exclusion to the vendored `.claudinite/shared/`; the repo's
+  local packs are its own source. The path-naming advice now follows the rewritten writing-comment
+  rule.
+- **Mechanism:** the skill's leave-alone list and the task's `commits-outside:.claudinite/shared/`
+  precondition.
+- **Actor:** @missingbulb (owner).
+- **Model:** claude-opus-5-5

@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs';
 import { makeRepo, cleanup, deletePath } from '../../../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../../../engine/checks/helpers/repo-context.mjs';
 import { runRule } from '../../../../../engine/checks/helpers/work.mjs';
-import rules from '../../../skills/improve-comments/checks.mjs';
+import rules, { MOUNT_PREFIX } from '../../../skills/improve-comments/checks.mjs';
 import taskJson from '../../../tasks/improve-comments/task.json' with { type: 'json' };
 import { normalizeTaskDeclaration } from '../../../../claudinite-tasks/public/task-declaration.mjs';
 // The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
@@ -129,20 +129,31 @@ test('the title the scope gate keys on is the one the worker doc pins', () => {
     'the worker doc must pin the same subject the scope gate keys on');
 });
 
-// `.claudinite/` is the mount, not the repo's own source. The vendored `shared/`
-// half is already invisible to every check, so what the gate has to carry is
-// `.claudinite/local/`, which a run can reach and edit. Both halves of the
-// exclusion are asserted — the scope a round is handed, and the gate on the write.
-test('a comment-only edit inside .claudinite/ is still outside this pass\'s surface', () => {
+// The vendored `.claudinite/shared/` half is not the repo's source and the next update
+// replaces it; `.claudinite/local/` is, and the pass may improve its comments like any other.
+test('a comment-only edit inside .claudinite/local/ is within this pass\'s surface', () => {
   const root = makeRepo({
     base: { '.claudinite/local/packs/x/hook.mjs': '// the old note\nrun();\n' },
     changed: { '.claudinite/local/packs/x/hook.mjs': '// a better note\nrun();\n' },
     commitMsg: RUN,
   });
   try {
-    const findings = runScope(root);
-    assert.deepEqual(files(findings), ['.claudinite/local/packs/x/hook.mjs']);
-    assert.match(findings[0].what, /\.claudinite\//);
-    assert.match(findings[0].fix, /revert \.claudinite\/local\/packs\/x\/hook\.mjs/);
+    assert.deepEqual(runScope(root), []);
   } finally { cleanup(root); }
+});
+
+test('a code change inside .claudinite/local/ is blocked like any other', () => {
+  const root = makeRepo({
+    base: { '.claudinite/local/packs/x/hook.mjs': '// note\nrun(a);\n' },
+    changed: { '.claudinite/local/packs/x/hook.mjs': '// note\nrun(b);\n' },
+    commitMsg: RUN,
+  });
+  try {
+    assert.deepEqual(files(runScope(root)), ['.claudinite/local/packs/x/hook.mjs']);
+  } finally { cleanup(root); }
+});
+
+test('the scope a round is handed excludes the same mount prefix the gate refuses', () => {
+  assert.ok(task.preconditions.includes(`commits-outside:${MOUNT_PREFIX}`),
+    `the task must scope its rounds with commits-outside:${MOUNT_PREFIX}`);
 });
