@@ -73,7 +73,7 @@ export function shipsReleasePipeline(ctx) {
 
 const rule = {
   id: 'cer/release-workflows',
-  severity: 'blocking',
+  on_fail: 'block',
   description: 'The orchestrator (chrome-extension-release.yml, named "Release to Chrome Store", daily at the contract cron) and the reusable workflows + composite actions it calls must be vendored into .github/',
   doc: 'packs/chrome-extension/skills/chrome-store-releases/SKILL.md',
   why: 'every extension repo ships the same pipeline entirely from its own .github/ — vendored from the pack, kept in sync by baselining, with no cross-repo @main dependency',

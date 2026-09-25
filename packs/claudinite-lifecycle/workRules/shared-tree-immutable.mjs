@@ -32,7 +32,7 @@ const UPDATE_RUN = /^Claudinite update\b/;
 
 const rule = {
   id: 'shared-tree-immutable',
-  severity: 'advisory',
+  on_fail: 'advise',
   since: '2026-09-06',
   scope: 'work',
   doc: 'packs/claudinite-lifecycle/RULES.md',

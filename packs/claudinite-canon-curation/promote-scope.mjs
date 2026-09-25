@@ -20,7 +20,7 @@ export const BRANCH_PREFIX = 'growth-promote';
 
 const rule = {
   id: 'promote-scope',
-  severity: 'blocking',
+  on_fail: 'block',
   description: 'The growth promote stage writes only under this canon\'s corpus roots',
   doc: 'packs/claudinite-canon-curation/tasks/growth-promote/task.md',
   why: 'promote runs unattended with a fleet-wide token; a write outside the corpus roots escapes the review-by-blast-radius boundary the growth lifecycle is built on',

@@ -53,7 +53,7 @@ const lineOf = (text, index) => text.slice(0, index).split('\n').length;
 
 const rule = {
   id: 'signal-teardown-routing',
-  severity: 'blocking',
+  on_fail: 'block',
   description: 'An AppKit app that installs a capture tap routes SIGTERM/SIGINT/SIGHUP into NSApp.terminate, with SIG_IGN before resume() (*.swift)',
   doc: 'packs/macos/RULES.md',
   why: 'NSApplication installs no signal handlers, so an unrouted SIGTERM/SIGINT/SIGHUP kills the process with no teardown and abandons the capture tap\'s IOProc on the device — the state that wedges some USB input devices until they are re-plugged',

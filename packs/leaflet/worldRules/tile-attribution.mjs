@@ -165,7 +165,7 @@ function topLevelKeys(src, open) {
 
 const rule = {
   id: 'leaflet/tile-attribution',
-  severity: 'blocking',
+  on_fail: 'block',
   description: 'An L.tileLayer(...) built with a literal options object carries the tile provider\'s attribution',
   doc: 'packs/leaflet/RULES.md',
   why: 'the provider\'s attribution is a licence term, not decoration — an unattributed tile layer uses the tiles outside their terms, and nothing about the running map looks wrong, so a UI tidy-up drops it and no one notices',

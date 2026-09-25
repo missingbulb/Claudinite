@@ -3,7 +3,7 @@
 // deploys: the gotchas any SAM project hits, as checks, prose and two skills.
 export default {
   version: '60922.2',
-  minEngineVersion: '60822.1',
+  minEngineVersion: '60925.1',
   ruleRoutingGuidance: {
     belongs: 'serverless AWS stacks: SAM template shape, Lambda handler paths, esbuild bundling, API Gateway and CloudFront gotchas',
     excludes: 'backend Google ID token validation — google-identity; generic Node packaging habits — node',

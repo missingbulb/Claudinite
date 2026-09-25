@@ -31,3 +31,8 @@
 - **Mechanism:** the check moves into the pack that owns the executor it quantifies over,
   `packs/claudinite-tasks/worldRules/task-code-work-env.mjs`.
 - **Landed:** #1326 (Closes #1325) · pack version 60824.1.
+
+## 2026-09-25 · reworded · `severity: blocking|advisory` is spelled `on_fail: block|advise`
+- **Reason:** owner decision, 2026-09-25: the field names what happens when the check fails, and
+  *severity* keeps its impact sense; what this element enforces is unchanged.
+- **Actor:** @missingbulb (owner).

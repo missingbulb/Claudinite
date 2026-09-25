@@ -219,7 +219,7 @@ test('release-workflows: the pre-vendoring @main shape is flagged for every vend
   const root = makeRepo({ changed: files });
   try {
     const flagged = run(releaseWorkflows, root);
-    assert.ok(flagged.every((f) => f.severity !== 'advisory'), 'nothing here is advisory any more');
+    assert.ok(flagged.every((f) => f.on_fail !== 'advise'), 'nothing here is advisory any more');
     // The three calls the vendoring repointed; the bump call was local all along.
     for (const call of ORCHESTRATOR_CALLS.filter((c) => !LEGACY_ORCHESTRATOR.includes(`./.github/workflows/${c}`))) {
       assert.ok(flagged.some((f) => f.what.includes(`does not call the local reusable workflow ./.github/workflows/${call}`)), call);

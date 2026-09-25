@@ -99,7 +99,7 @@
     }
   ],
   "rules": {
-    "declared-check-spec-keys": "blocking"
+    "declared-check-spec-keys": "block"
   },
   "accept": [
     {

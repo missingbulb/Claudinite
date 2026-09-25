@@ -57,8 +57,8 @@
   current `main` before merging: a whole-tree aggregate is judged post-merge, so a branch's own
   green never covers it. (adding-changing-check)
 
-- **Writing a check's `fix` text** — name only remedies matching the enforced severity; sessions
-  follow the words, not the `severity` field. An advisory's remedies are act on it or leave it,
+- **Writing a check's `fix` text** - name only remedies matching the enforced `on_fail`; sessions
+  follow the words, not the field. An advisory's remedies are act on it or leave it,
   never a config-acceptance escape. (writing-checks-fix)
 
 
@@ -118,7 +118,7 @@
   number, an "until" or a "kept as it was" is an entry on the element's provenance file, and the
   maintainer's method is the growth skills'. (writing-packs-readme)
 
-- **Changing a carrier on the shelf** - a rule, a skill's trigger, a check's gate or severity, a
+- **Changing a carrier on the shelf** - a rule, a skill's trigger, a check's gate or on_fail, a
   task's policy - lands with the entry on its provenance file in the same change; the forced
   `changing-pack-elements` skill names the kind. (changing-carrier-shelf)
 

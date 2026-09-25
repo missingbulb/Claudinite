@@ -51,7 +51,7 @@ function siblingTerms(ctx, taskFile) {
 
 const rule = {
   id: 'task-declaration-shape',
-  severity: 'blocking',
+  on_fail: 'block',
   description: 'A tasks/<name>/task.json carries the task contract (id, description, trigger, preconditions, expected_outcome) with legal enum values, a stated trigger saying who mints an occurrence and a well-formed precondition expression stating when the task runs; an agentic task names its worker file and bounds its run, and any code_work carries a timeout and stays task-local',
   doc: 'packs/claudinite-tasks/README.md',
   why: 'the scheduler run and executor read agent_model/expected_outcome/preconditions from this file, not the work item — an illegal or missing value means a task never fires, fires wrong, or writes past its ceiling',
@@ -62,7 +62,7 @@ const rule = {
       const text = ctx.read(file);
       if (text === null) continue;
       const flag = (what, fix) => out.push(finding(rule, { file, what, fix }));
-      const advise = (what, fix) => out.push(finding(rule, { file, severity: 'advisory', what, fix }));
+      const advise = (what, fix) => out.push(finding(rule, { file, on_fail: 'advise', what, fix }));
 
       const decl = readDeclarationFields(text);
       if (decl.error) {

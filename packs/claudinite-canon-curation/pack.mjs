@@ -13,7 +13,7 @@
 // `tasks/<name>/task.json` (packs/claudinite-tasks/discover.mjs), so none is declared here.
 export default {
   version: '60923.1',
-  minEngineVersion: '60822.1',
+  minEngineVersion: '60925.1',
   ruleRoutingGuidance: {
     belongs: 'curating a canon\'s packs/ shelf — promoting member lessons, sweeping members for unhomed technologies, authoring and policing its packs',
     excludes: 'a repo\'s rules for its own product — its local packs; authoring content — claudinite-growth; housekeeping — basics',

@@ -9,7 +9,7 @@ const SOURCE = /\.(html?|mjs|cjs|jsx?|tsx?)$/;
 
 export default {
   version: '60921.1',
-  minEngineVersion: '60822.1',
+  minEngineVersion: '60925.1',
   ruleRoutingGuidance: {
     belongs: 'map rendering with the Leaflet library — map init options, tile layers, markers and divIcons, CDN plugin pinning',
     excludes: 'generic HTML markup rules — that is html; non-map dependency policy belongs to node',

@@ -18,3 +18,8 @@
 - **Reason:** the check's message named the root-level glob as the silent shape for the same reason.
 - **Actor:** @missingbulb (owner).
 - **Landed:** #2161 (Refs #2150).
+
+## 2026-09-25 · reworded · `severity: blocking|advisory` is spelled `on_fail: block|advise`
+- **Reason:** owner decision, 2026-09-25: the field names what happens when the check fails, and
+  *severity* keeps its impact sense; what this element enforces is unchanged.
+- **Actor:** @missingbulb (owner).

@@ -637,7 +637,7 @@ const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 // Run the given edges over the context. Returns { findings, stale }: the crossing
 // findings that survive each edge's reviewed exceptions, plus the stale exception
 // pairs the caller may surface as prune-me findings (gated on a whole-repo sweep).
-// `rule` supplies id / severity / doc. Every crossing finding carries the resolved
+// `rule` supplies id / on_fail / doc. Every crossing finding carries the resolved
 // path as `resolved`; config-shape findings (empty glob) do not.
 //
 // The per-context scan state — the repo index, each file's split lines and
@@ -864,7 +864,7 @@ export function specFinding(rule, { what, fix }) {
     what: `barriers config: ${what}`,
     why: 'a malformed barrier declaration silently enforces nothing',
     fix,
-    severity: 'blocking',
+    on_fail: 'block',
   });
 }
 

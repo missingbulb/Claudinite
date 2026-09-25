@@ -31,7 +31,7 @@ const MOUNT = '.claudinite/shared/';
 
 const rule = {
   id: 'descriptor-usable',
-  severity: 'blocking',
+  on_fail: 'block',
   description: "a pack's dashboard.json is one the dashboard's own reader can use",
   doc: 'packs/claudinite-dashboard/dashboard-descriptor.schema.json',
   why: 'a descriptor the reader rejects renders as an apology on a card in someone else\'s browser — the pack ships, converges, and reports nothing, with nothing going red anywhere the author looks',

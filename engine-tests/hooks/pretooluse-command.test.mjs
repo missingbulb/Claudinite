@@ -26,11 +26,11 @@ const PACK = `export default {
 `;
 const DECLARED = JSON.stringify([
   {
-    id: 'fixture-block', severity: 'blocking', scope: 'action', failureMessage: 'the fixture forbids it',
+    id: 'fixture-block', on_fail: 'block', scope: 'action', failureMessage: 'the fixture forbids it',
     guardToolCalls: [{ tool: 'Bash', inputField: 'command', match: '/\\bforbidden-cmd\\b/', what: 'ran forbidden-cmd', fix: 'do not' }],
   },
   {
-    id: 'fixture-advise', severity: 'advisory', scope: 'action', failureMessage: 'the fixture frowns on it',
+    id: 'fixture-advise', on_fail: 'advise', scope: 'action', failureMessage: 'the fixture frowns on it',
     guardToolCalls: [{ tool: 'Bash', inputField: 'command', match: '/\\bnoisy-cmd\\b/', what: 'ran noisy-cmd', fix: 'quieter' }],
   },
 ]);
@@ -79,7 +79,7 @@ test('a call no guard names passes with nothing said', () => {
 });
 
 test('the settings overrides apply: a demoted guard advises, a guard turned off is silent', () => {
-  const demoted = repo({ packs: ['local/fixture-guards'], rules: { 'fixture-block': 'advisory' } });
+  const demoted = repo({ packs: ['local/fixture-guards'], rules: { 'fixture-block': 'advise' } });
   try {
     const r = run(demoted, bash('forbidden-cmd'));
     assert.equal(r.status, 0, r.stderr);

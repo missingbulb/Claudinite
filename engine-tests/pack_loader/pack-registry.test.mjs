@@ -230,7 +230,7 @@ test('discoverPacks: gathers a local pack\'s bundled skill-owned checks', async 
   mkdirSync(join(packDir, 'skills', 'thing'), { recursive: true });
   writeFileSync(join(packDir, 'pack.mjs'), `export default { id: 'proj', rules: [], skills: ['thing'] };`);
   writeFileSync(join(packDir, 'skills', 'thing', 'checks.mjs'),
-    `export default [{ id: 'proj-thing', severity: 'advisory', description: 'x', doc: 'd', why: 'w', run: () => [] }];`);
+    `export default [{ id: 'proj-thing', on_fail: 'advise', description: 'x', doc: 'd', why: 'w', run: () => [] }];`);
   try {
     const { packs } = await discoverPacks({ localRoot: root });
     const local = packs.find((p) => p.id === 'proj');
@@ -247,10 +247,10 @@ test('discoverPacks: a pack\'s declared-checks.json rides its world rules, a ski
   mkdirSync(join(packDir, 'skills', 'thing'), { recursive: true });
   writeFileSync(join(packDir, 'pack.mjs'), `export default { id: 'proj', worldRules: [], skills: ['thing'], ruleRoutingGuidance: { belongs: 'whatever proj owns', excludes: 'whatever proj does not' } };`);
   writeFileSync(join(packDir, 'declared-checks.json'), JSON.stringify([
-    { id: 'proj-declared', severity: 'blocking', failureMessage: 'it matters', scanFiles: '/\\.txt$/', matchLines: [{ match: '/bad/', what: 'w', fix: 'f' }] },
+    { id: 'proj-declared', on_fail: 'block', failureMessage: 'it matters', scanFiles: '/\\.txt$/', matchLines: [{ match: '/bad/', what: 'w', fix: 'f' }] },
   ]));
   writeFileSync(join(packDir, 'skills', 'thing', 'declared-checks.json'), JSON.stringify([
-    { id: 'proj-thing-declared', severity: 'advisory', failureMessage: 'it matters too', scanFiles: '/\\.txt$/', matchLines: [{ match: '/bad/', what: 'w', fix: 'f' }] },
+    { id: 'proj-thing-declared', on_fail: 'advise', failureMessage: 'it matters too', scanFiles: '/\\.txt$/', matchLines: [{ match: '/bad/', what: 'w', fix: 'f' }] },
   ]));
   try {
     const { packs, errors } = await discoverPacks({ localRoot: root });

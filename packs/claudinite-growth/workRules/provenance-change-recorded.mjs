@@ -32,7 +32,7 @@ import * as provenance from '../../../engine/checks/helpers/provenance.mjs';
 // cannot see a deleted file.
 const rule = {
   id: 'provenance-change-recorded',
-  severity: 'blocking',
+  on_fail: 'block',
   scope: 'work',
   since: '2026-09-20',
   doc: 'packs/claudinite-growth/skills/changing-pack-elements/SKILL.md',
@@ -131,7 +131,7 @@ const rule = {
         if (!b || b.text.trim() === '') continue;
         if (!h.text.startsWith(b.text.replace(/\s+$/, ''))) {
           out.push(finding(rule, {
-            file: h.file, severity: 'advisory',
+            file: h.file, on_fail: 'advise',
             what: `${fileOfId(id)} lost or altered a line it had at the base - a provenance file is meant to grow`,
             fix: 'a wrong entry is answered by a later entry: restore the base text and append what this change decides after the last entry, or leave it where the rewrite is the correct history (the backfill replacing what the conversion wrote) and let the diff be the record',
           }));

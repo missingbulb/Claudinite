@@ -19,7 +19,7 @@ import { isPage, STAMP, VERSION_RECORD } from '../public/version.mjs';
 
 const rule = {
   id: 'public-website/version-stamp-matches-package',
-  severity: 'blocking',
+  on_fail: 'block',
   since: '2026-09-13',
   description: "A page's version stamp must carry package.json's version",
   doc: 'packs/public-website/RULES.md',

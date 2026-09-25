@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { validateManifest, normalizeManifest, PACK_FIELDS, RULE_SCOPES, MAX_ROUTING_WORDS } from '../../engine/pack_loader/pack-schema.mjs';
 import { loadPacks } from '../../engine/pack_loader/pack-registry.mjs';
 
-const rule = (id) => ({ id, severity: 'blocking', description: 'd', doc: 'x.md', why: 'w', run: () => [] });
+const rule = (id) => ({ id, on_fail: 'block', description: 'd', doc: 'x.md', why: 'w', run: () => [] });
 
 const valid = {
   id: 'demo',

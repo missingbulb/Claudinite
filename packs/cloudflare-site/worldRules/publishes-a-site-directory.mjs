@@ -13,7 +13,7 @@ import { parseWranglerConfig, publishedDir, wranglerConfigPath, WRANGLER_CONFIGS
 
 const rule = {
   id: 'cloudflare-site/publishes-a-site-directory',
-  severity: 'blocking',
+  on_fail: 'block',
   since: '2026-09-13',
   description: 'The wrangler config names a published subdirectory that exists, and pins a compatibility date',
   doc: 'packs/cloudflare-site/RULES.md',

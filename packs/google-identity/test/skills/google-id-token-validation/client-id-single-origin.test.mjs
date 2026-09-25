@@ -29,7 +29,7 @@ test('google-client-id-single-origin: flags a change adding a copy of a literal 
   try {
     const findings = run(root);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].severity, 'advisory');
+    assert.equal(findings[0].on_fail, 'advise');
     assert.equal(findings[0].file, 'extension/background.mjs');
     assert.equal(findings[0].line, 1);
     assert.match(findings[0].what, /already present in extension\/config\.mjs/);

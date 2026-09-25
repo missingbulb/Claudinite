@@ -19,7 +19,7 @@ test('jwt-sign-sets-expiry: a sign with no expiry anywhere in the file is an adv
   try {
     const findings = run(root);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].severity, 'advisory');
+    assert.equal(findings[0].on_fail, 'advise');
     assert.equal(findings[0].line, 2);
     assert.match(findings[0].what, /no expiry/);
   } finally { cleanup(root); }

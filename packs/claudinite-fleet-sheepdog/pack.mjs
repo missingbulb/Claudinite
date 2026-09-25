@@ -36,7 +36,7 @@ import { fleetTokenHandoverStep } from './fleet-token.mjs';
 
 export default {
   version: '60922.6',
-  minEngineVersion: '60822.1',
+  minEngineVersion: '60925.1',
   ruleRoutingGuidance: {
     belongs: 'fleet-enforcer duties for the repo watching every other repo — coverage, freshness, standardized packs',
     excludes: 'anything a member does to itself — its comments are basics, lessons are claudinite-growth; the fleet brief is claudinite-dashboard',

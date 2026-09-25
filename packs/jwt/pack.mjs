@@ -9,7 +9,7 @@ const SOURCE = /\.(mjs|cjs|js|jsx|ts|tsx|py)$/;
 
 export default {
   version: '60922.1',
-  minEngineVersion: '60822.1',
+  minEngineVersion: '60925.1',
   ruleRoutingGuidance: {
     belongs: 'minting and validating JSON Web Tokens: algorithm pinning, claim validation, key strength and secrecy, expiry, JWE',
     excludes: 'the Google-issuer validator config — google-identity; OAuth client-side token acquisition — chrome-extension',

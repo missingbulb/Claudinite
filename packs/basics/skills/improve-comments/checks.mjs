@@ -44,7 +44,7 @@ const inMount = (p) => p.startsWith(MOUNT_PREFIX);
 
 const rule = {
   id: 'improve-comments-scope',
-  severity: 'blocking',
+  on_fail: 'block',
   scope: 'work',
   doc: 'packs/basics/skills/improve-comments/SKILL.md',
   description: 'An improve-comments run changes only comments in code files outside the .claudinite/ mount, and README.md documents',

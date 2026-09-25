@@ -8,3 +8,8 @@
 - **Model:** Opus 5
 - **Mechanism:** a line match over pack prose: `RULES.md`, `SKILL.md`, `task.md` in both roots,
   cleared by naming `task:origin:` on the line, so the remedy is the literal the reader needed.
+
+## 2026-09-25 · reworded · `severity: blocking|advisory` is spelled `on_fail: block|advise`
+- **Reason:** owner decision, 2026-09-25: the field names what happens when the check fails, and
+  *severity* keeps its impact sense; what this element enforces is unchanged.
+- **Actor:** @missingbulb (owner).

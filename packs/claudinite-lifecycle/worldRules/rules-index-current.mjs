@@ -43,7 +43,7 @@ const COPIED_ROOT = typeof registry.TEMP_PACKS_SUBDIR === 'string'
 // last converge, whose rules are simply not loading.
 const rule = {
   id: 'rules-index-current',
-  severity: 'blocking',
+  on_fail: 'block',
   description: `${RULES_INDEX_FILE} must exist, import every declared pack's rules, and be imported by CLAUDE.md`,
   doc: 'vendoring/DESIGN.md',
   why: 'it is the only channel a pack\'s rules reach a session on; missing, stale or unimported means the session silently runs with none',

@@ -15,7 +15,7 @@ ruleTester(voicesCached, {
     'a module-scope const holding the voice list': {
       files: { 'src/tts.js': `const voices = speechSynthesis.getVoices();\n${speakBody}` },
       at: [{
-        file: 'src/tts.js', line: 1, severity: 'blocking',
+        file: 'src/tts.js', line: 1, on_fail: 'block',
         what: /caches getVoices\(\)/,
         fix: /resolve the voice inside/,
       }],

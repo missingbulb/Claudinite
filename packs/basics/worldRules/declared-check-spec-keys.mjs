@@ -33,7 +33,7 @@ export function unplacedKeysWith(engine, spec) {
 
 const rule = {
   id: 'declared-check-spec-keys',
-  severity: 'advisory',
+  on_fail: 'advise',
   description: 'Every key in a declared check is one the engine\'s vocabulary places',
   why: 'a key the engine cannot place is dropped at load, so a typo\'d key asserts nothing at all and its check reads green forever',
 

@@ -72,5 +72,42 @@ test('legacy-shape-in-use: the retired servedBy alias is reported, the current o
 test('legacy-shape-in-use: never blocking', () => {
   const findings = run({ packs: [Object.keys(RENAMED_PACKS)[0]], dormant: true, engineVersion: 6 });
   assert.ok(findings.length >= 3);
-  assert.ok(findings.every((f) => f.severity === 'advisory'));
+  assert.ok(findings.every((f) => f.on_fail === 'advise'));
+});
+
+// The `severity` → `on_fail` rename: a member's settings overrides, its own local
+// packs' declared checks and its own coded checks can each still spell the old way.
+test('legacy-shape-in-use: an override still spelled "blocking" or "advisory" is reported with its new value', () => {
+  const findings = run({ packs: [{ id: 'acme-pack', rules: { 'acme-check': 'advisory' } }], rules: { 'acme-other': 'blocking', 'acme-off': 'off', 'acme-new': 'advise' } });
+  assert.equal(findings.length, 2);
+  assert.match(whats(findings), /"acme-check" on the "acme-pack" pack entry is set to "advisory"/);
+  assert.match(findings.find((f) => /acme-check/.test(f.what)).fix, /"advise"/);
+  assert.match(findings.find((f) => /acme-other/.test(f.what)).fix, /"block"/);
+});
+
+test('legacy-shape-in-use: a local pack\'s declared check still carrying severity is reported, a vendored one is not', () => {
+  const settings = JSON.stringify({ packs: ['local/acme-pack'] });
+  const legacy = '[\n  {\n    "id": "acme-check",\n    "severity": "blocking"\n  }\n]\n';
+  const findings = rule.run(ctx({
+    [SETTINGS_FILE]: settings,
+    '.claudinite/local/packs/acme-pack/declared-checks.json': legacy,
+    '.claudinite/local/packs/acme-pack/skills/acme-skill/declared-checks.json': '[{ "id": "acme-new", "on_fail": "advise" }]',
+    '.claudinite/shared/packs/acme-pack/declared-checks.json': legacy,
+  }));
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].file, '.claudinite/local/packs/acme-pack/declared-checks.json');
+  assert.equal(findings[0].line, 4);
+  assert.match(findings[0].fix, /"on_fail": "block"/);
+});
+
+test('legacy-shape-in-use: a local pack\'s coded check still carrying severity is reported, a canon one is not', () => {
+  const c = ctx({ [SETTINGS_FILE]: JSON.stringify({ packs: ['local/acme-pack'] }) });
+  c.packs = [
+    { id: 'local/acme-pack', local: true, dir: '/repo/.claudinite/local/packs/acme-pack', rules: [{ id: 'acme-check', severity: 'advisory' }, { id: 'acme-new', on_fail: 'block' }] },
+    { id: 'acme-canon', local: false, rules: [{ id: 'acme-old', severity: 'blocking' }] },
+  ];
+  const findings = rule.run(c);
+  assert.equal(findings.length, 1);
+  assert.match(findings[0].what, /"acme-check" in the local pack "local\/acme-pack" declares severity/);
+  assert.match(findings[0].fix, /on_fail: 'advise'/);
 });

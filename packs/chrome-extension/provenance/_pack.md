@@ -37,3 +37,9 @@
 - **Reason:** every session in every declaring repo pays for a `RULES.md` line, and a description of the pack is not a rule. A corpus-wide decision, cited here.
 - **Actor:** @missingbulb (owner).
 - **Landed:** #1634 · pack version 60903.2.
+
+## 2026-09-25 · scope-changed · `minEngineVersion` rises to 60925.1
+- **Reason:** this pack's checks declare `on_fail`, which an older engine does not read; the pack
+  update holds this version until the member's engine is at 60925.1.
+- **Actor:** @missingbulb (owner).
+- **Mechanism:** the manifest's `minEngineVersion`, which the pack update enforces.

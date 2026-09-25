@@ -47,7 +47,7 @@ function attributes(text) {
 
 const rule = {
   id: 'leaflet/asset-integrity',
-  severity: 'blocking',
+  on_fail: 'block',
   description:
     'Every CDN-loaded Leaflet asset — core bundle and plugins alike — is version-pinned and carries an SRI hash with crossorigin',
   doc: 'packs/leaflet/RULES.md',

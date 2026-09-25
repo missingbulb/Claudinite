@@ -11,7 +11,7 @@ const hasHook = (value) =>
 
 const rule = {
   id: 'firebase/functions-predeploy-build',
-  severity: 'blocking',
+  on_fail: 'block',
   description: 'A Firebase functions codebase with a build script wires that build as a firebase.json predeploy hook',
   doc: 'packs/firebase/skills/firebase-functions/SKILL.md',
   why: 'without the hook a deploy ships whatever compiled output happens to be on disk — a local `firebase deploy` after an edit silently publishes the previous build',

@@ -1003,13 +1003,13 @@ test('movePackOwnedSettings: dormant lands on the tasks pack entry and leaves th
   const { done, after } = await moveDormant({
     packs: ['acme-pack', { id: 'claudinite-tasks', config: { other: 1 } }], // @real-entity the record under test names this pack; that is its content
     dormant: true,
-    rules: { 'some-rule': 'blocking' },
+    rules: { 'some-rule': 'block' },
   });
   assert.equal(done.length, 1);
   assert.equal(after.dormant, undefined, 'the retired spelling is gone');
   assert.deepEqual(after.packs[1], { id: 'claudinite-tasks', config: { other: 1, dormant: true } }, // @real-entity the record under test names this pack; that is its content
     'the entry keeps the parameters it already had');
-  assert.deepEqual(after.rules, { 'some-rule': 'blocking' }, 'nothing else the member wrote is touched');
+  assert.deepEqual(after.rules, { 'some-rule': 'block' }, 'nothing else the member wrote is touched');
 });
 
 test('movePackOwnedSettings: a bare string entry is promoted to carry the parameter', async () => {

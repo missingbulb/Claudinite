@@ -31,7 +31,7 @@ import { TEST_DIR } from '../../../../../vendoring/compute-vendor-set.mjs';
 // consumer holds a copy of it and cannot be asked to change in the same commit:
 //
 //   pack-schema.mjs        the manifest vocabulary — #555's exact surface
-//   a rule's `severity`    advisory -> blocking turns a member red overnight
+//   a rule's `on_fail`     advise -> block turns a member red overnight
 //   either workflow stub   every member vendors it verbatim
 //   a removed export       a member's local pack imports the mount by name (#1848)
 //
@@ -179,15 +179,17 @@ export function contractChanges(changed, read, readBase = () => null) {
     if (!/\.mjs$/.test(file) || /\.test\.mjs$/.test(file) || file.startsWith('engine-tests/')) continue;
     // A rule in the canon's OWN local packs reaches no consumer by construction:
     // the vendor set carries engine/ and packs/, never .claudinite/local/, so such a
-    // rule runs in exactly one repo — this one — and its severity asks nothing of
+    // rule runs in exactly one repo - this one - and its on_fail asks nothing of
     // anybody else. Firing here would demand a migration for a change no member can
     // even see, which is the cried-wolf failure the narrowing above exists to avoid.
     if (file.startsWith(`${LOCAL_PACKS}/`)) continue;
     const isBlockingRule = (text) => Boolean(text)
-      && /severity:\s*'blocking'/.test(text)
+      // The legacy spelling counts on the base side, so the rename itself is not a
+      // rule becoming blocking.
+      && /on_fail:\s*'block'|severity:\s*'blocking'/.test(text)
       && /^\s*const rule = \{/m.test(text);
     if (isBlockingRule(read(file)) && !isBlockingRule(readBase(file))) {
-      out.push({ file, what: 'a rule that became blocking — a severity a member did not ask for turns it red overnight' });
+      out.push({ file, what: 'a rule that became blocking - an on_fail a member did not ask for turns it red overnight' });
     }
     // One file, one reason: a module reported already — the schema, a stub, a rule
     // that just became blocking — asks the author for the same record or fixture, and
@@ -214,7 +216,7 @@ export function carriesConsumers(changed) {
 
 const rule = {
   id: 'consumer-safe-change',
-  severity: 'blocking',
+  on_fail: 'block',
   scope: 'work',
   description: 'A change to a contract consumers hold a copy of ships a migration record or a rehearsal fixture',
   doc: 'consumer-safe-changes.md',

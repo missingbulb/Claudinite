@@ -17,7 +17,7 @@ test('declarative-content-set-icon: flags a SetIcon built from a path', () => {
   try {
     const findings = run(setIcon, root);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].severity, 'blocking');
+    assert.equal(findings[0].on_fail, 'block');
     assert.equal(findings[0].file, 'sw.js');
     assert.equal(findings[0].line, 3);
     assert.match(findings[0].fix, /imageData/);

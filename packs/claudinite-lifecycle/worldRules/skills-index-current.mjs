@@ -11,7 +11,7 @@ const SKILLS_INDEX_FILE = '.claudinite/claudinite-skills.GENERATED.md';
 
 const rule = {
   id: 'skills-index-current',
-  severity: 'blocking',
+  on_fail: 'block',
   description: `${SKILLS_INDEX_FILE} must exist and name every skill the declared packs bundle`,
   doc: 'engine/pack_loader/generate-skills-index.mjs',
   why: 'the index is the one readable answer to which skill loads when — a stale one sends a reader, and a session whose edit was held, to a skill that is not there or past one that is',

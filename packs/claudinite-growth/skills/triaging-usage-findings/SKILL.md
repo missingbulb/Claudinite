@@ -11,7 +11,7 @@ metadata:
 
 A finding is evidence that a decision may be due, never the decision. Your output
 is one pull request per subject carrying the **edit itself** - the moved lines,
-the changed trigger, the demoted severity - because a proposal is worth only as
+the changed trigger, the demoted on_fail - because a proposal is worth only as
 much as the diff it can be read against, and a decline costs a close.
 
 Never merge what you open.

@@ -279,7 +279,7 @@ export const PACK_ENTRY_KEYS = ['id', 'version', 'config', 'answers', 'rules', '
 // downstream lookup — packEntries, the packConfig view — keys by the pack's
 // own id whichever form the file used), `rules` and `accept` are the top-level
 // and per-entry settings merged (an entry-sourced acceptance carries
-// `pack: <id>` as provenance; conflicting severity overrides are a settings
+// `pack: <id>` as provenance; conflicting on_fail overrides are a settings
 // error), and `packConfig` is the per-pack parameter view, built from each
 // entry's `config`. Checks and env machinery
 // read this one shape regardless of which form the file used.
@@ -345,7 +345,7 @@ export function loadConfig(root) {
     }
     if (entry.rules !== undefined) {
       if (entry.rules !== null && typeof entry.rules === 'object' && !Array.isArray(entry.rules)) normalized.rules = entry.rules;
-      else badShape('rules', 'an object of per-rule severity overrides');
+      else badShape('rules', 'an object of per-rule overrides ("off", "advise" or "block")');
     }
     if (entry.accept !== undefined) {
       if (Array.isArray(entry.accept)) normalized.accept = entry.accept;
@@ -364,19 +364,19 @@ export function loadConfig(root) {
 
   // --- rules: top-level and per-entry merged; a conflict is a settings error,
   // never a silent last-writer-wins — two packs (or a pack and the top level)
-  // disagreeing about a rule's severity is a decision the project must make.
+  // disagreeing about a rule's on_fail is a decision the project must make.
   const rules = {};
   const ruleSource = {};
   const mergeRules = (overrides, source) => {
-    for (const [ruleId, severity] of Object.entries(overrides)) {
-      if (ruleId in rules && rules[ruleId] !== severity) {
+    for (const [ruleId, value] of Object.entries(overrides)) {
+      if (ruleId in rules && rules[ruleId] !== value) {
         errors.push({
-          what: `rule "${ruleId}" is set to "${rules[ruleId]}" by ${ruleSource[ruleId]} and "${severity}" by ${source}`,
+          what: `rule "${ruleId}" is set to "${rules[ruleId]}" by ${ruleSource[ruleId]} and "${value}" by ${source}`,
           fix: 'make the overrides agree, or keep the rule on one of them',
         });
         continue;
       }
-      rules[ruleId] = severity;
+      rules[ruleId] = value;
       ruleSource[ruleId] = source;
     }
   };

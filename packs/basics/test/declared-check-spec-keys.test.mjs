@@ -10,7 +10,7 @@ const run = (root) => specKeys.run(buildContext({ root, mode: 'all' }));
 
 const declaration = (extra) => JSON.stringify([{
   id: 'fx-keys',
-  severity: 'blocking',
+  on_fail: 'block',
   failureMessage: 'the fixture matters',
   scanFiles: '/\\.txt$/',
   matchLines: [{ match: '/TOK/', what: 'saw it', fix: 'remove it' }],
@@ -29,7 +29,7 @@ test('declared-check-spec-keys: a key the vocabulary cannot place is one finding
     assert.equal(findings.length, 2);
     assert.match(findings[0].what, /"fx-keys" carries "unlesLineMatches" inside "matchLines"/);
     assert.match(findings[1].what, /"fx-keys" carries "scanFile", which is not a spec key/);
-    assert.equal(findings[0].severity, 'advisory');
+    assert.equal(findings[0].on_fail, 'advise');
   } finally { cleanup(root); }
 });
 
@@ -48,12 +48,12 @@ test('a declaration carrying a key this engine cannot place still loads every ru
   const root = makeRepo({ changed: {
     '.claudinite/local/packs/demo/declared-checks.json': JSON.stringify([
       {
-        id: 'fx-future-key', severity: 'blocking', failureMessage: 'from a newer engine',
+        id: 'fx-future-key', on_fail: 'block', failureMessage: 'from a newer engine',
         scanFiles: '/\\.txt$/', sinceRelease: '60901.1',
         matchLines: [{ match: '/TOK/', what: 'saw it', fix: 'remove it' }],
       },
       {
-        id: 'fx-neighbour', severity: 'advisory', failureMessage: 'the rule beside it',
+        id: 'fx-neighbour', on_fail: 'advise', failureMessage: 'the rule beside it',
         scanFiles: '/\\.txt$/',
         matchLines: [{ match: '/OTHER/', what: 'saw the other', fix: 'remove it' }],
       },
@@ -79,7 +79,7 @@ test('a declaration carrying a key this engine cannot place still loads every ru
 // since a fail-soft path returning [] cannot be proven by "it did not throw".
 test('the engine dependency is fail-soft: an engine without the export makes the rule inert, the real one makes it report', () => {
   const spec = {
-    id: 'fx-guard', severity: 'blocking', failureMessage: 'm',
+    id: 'fx-guard', on_fail: 'block', failureMessage: 'm',
     scanFiles: '/\\.txt$/', scanFile: '/\\.md$/',
   };
   assert.deepEqual(unplacedKeysWith({ somethingElse: 1 }, spec), []);

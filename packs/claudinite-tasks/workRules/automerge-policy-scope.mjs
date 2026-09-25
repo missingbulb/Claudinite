@@ -24,7 +24,7 @@ import {
 // only merging on the same verdict this rule computes.
 const rule = {
   id: 'automerge-policy-scope',
-  severity: 'blocking',
+  on_fail: 'block',
   scope: 'work',
   doc: 'packs/claudinite-tasks/README.md',
   description: 'A branch that stamps the Claudinite-Automerge-Policy trailer — its run intends to land its own PR — carries only a diff that policy actually covers',

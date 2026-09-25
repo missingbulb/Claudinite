@@ -60,7 +60,7 @@ carrying that pack's own settings — its parameters, and the overrides/exemptio
     "baseline",
     { "id": "an-edge-graph-pack",
       "config": { "rules": [ { "from": "src", "to": "tests" } ] },
-      "rules": { "some-rule": "advisory" },
+      "rules": { "some-rule": "advise" },
       "accept": [ { "rule": "a-rule", "path": "src/shared/", "reason": "..." } ] },
     { "id": "a-framework-pack", "via": ["the-class-pack-requiring-it"] }
   ],
@@ -99,16 +99,17 @@ carrying that pack's own settings — its parameters, and the overrides/exemptio
     adoption flow), never a conformance finding —
     [packs/README.md](../../packs/README.md#adoption-interview-questions). A stored answer whose
     question the pack no longer declares is an *advisory* `config` finding.
-  - **rules** / **accept** — severity overrides and acceptances **motivated by declaring this
+  - **rules** / **accept** - on_fail overrides and acceptances **motivated by declaring this
     pack**; they may name *any* rule (declaring pack A can require an exemption to pack B's
     check), and the entry is their provenance — the file says which declaration required which
     exception. Same shapes as the top-level keys; entry-sourced acceptances surface with the
-    pack named. Two sources disagreeing on a rule's severity is a settings error, never a
+    pack named. Two sources disagreeing on a rule's on_fail is a settings error, never a
     silent last-writer-wins.
   - **via** — written by the engine (never by hand) when a dependency is materialized:
     the declared packs that directly require this one, kept accurate by the update
     backfill (an empty recomputed `via` marks an orphan the project can drop).
-- **rules** — per-rule severity override: `"off"` / `"advisory"` / `"blocking"`. The top-level
+- **rules** - per-rule on_fail override: `"off"` / `"advise"` / `"block"`. The retired spellings
+  `"advisory"` / `"blocking"` are still read, and `legacy-shape-in-use` names each one left. The top-level
   key holds project-wide overrides and those for skill-owned checks (which run
   pack-independently, so no pack entry can carry them).
 - **accept** — reviewed, reasoned exemptions. `path` matches exactly, or a whole subtree when it
@@ -173,14 +174,14 @@ the change in front of the session, one about the repo as a whole:
 
 One module per rule under `../packs/<pack>/worldRules/` (audits the repo as it stands) or
 `../packs/<pack>/workRules/` (judges the change in front of you), default-exporting
-`{ id, severity, description, doc, why, run(ctx) }`. The directory is the declaration —
+`{ id, on_fail, description, doc, why, run(ctx) }`. The directory is the declaration -
 there is no manifest line to add. The failure message *is* the instruction: `what` states the
 violation, `why` the one-line motivation, `fix` the exact remedy, `doc` the corpus doc that owns
 the depth. Write the fixture test first and see it fail — each pack carries one
 `<pack>/test/pack.test.mjs`, inside the pack's own `test/` directory (which no vendor set ships), sharing the scratch-git-repo harness
 [engine-tests/helpers.mjs](../../engine-tests/helpers.mjs); a violating fixture must find, a clean one must not.
-A new rule ships at its real severity, fail-fast: `blocking` when a finding is a defect to
-fix, `advisory` only when the rule's own semantics are directional (a smell to judge).
+A new rule ships at its real `on_fail`, fail-fast: `block` when a finding is a defect to
+fix, `advise` only when the rule's own semantics are directional (a smell to judge).
 
 **A blocking rule may declare `since` — the date it was added — and is then enforced as
 advisory for its first two weeks** (`GRACE_DAYS` in [helpers/findings.mjs](helpers/findings.mjs)),
@@ -206,7 +207,7 @@ structurally by the registry and compiled by [pattern-rules.mjs](helpers/pattern
 vocabulary is documented in that helper's header). Nothing wires them — no import, no manifest line;
 writing the declaration adds the check. One file to read for a pack's declared surface, and a format
 that admits no comments and no `doc` pointer, so a declaration carries its own case: `id`,
-`severity`, the optional `since` above, the `failureMessage` every finding prints, and the
+`on_fail` (`block` or `advise`), the optional `since` above, the `failureMessage` every finding prints, and the
 assertions with their `what`/`fix`.
 Regexes are strings in `/pattern/flags` form. A rule needing a hand-written `run(ctx)` stays its own
 module, listed in the manifest as before. The engine runs every pattern rule in

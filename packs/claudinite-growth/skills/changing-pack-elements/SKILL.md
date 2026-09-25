@@ -44,7 +44,7 @@ check's its id with `/` as `-`; a task's its id; the manifest's `_pack.md`. Whic
 | prose turned into a check | `converted`, with `Mechanism` and the deletion-test verdict |
 | a skill's description or `force-load-on-*` trigger | `trigger-changed`, with `Mechanism` |
 | a task's preconditions, `expected_outcome`, `automerge`, model or worker | `policy-changed`, with `Mechanism` |
-| a check's severity, or the gate deciding when it fires | `severity-changed`, with `Mechanism` |
+| a check's `on_fail`, or the gate deciding when it fires | `severity-changed`, with `Mechanism` |
 | what an element applies to, where its text reads the same - a manifest's `requires` or fingerprint, a check's file scope, a skill's corpus | `scope-changed`, with `Mechanism` |
 | a new element | `born`, with `Mechanism` - and `mark` first if the carrier has no file |
 | an element removed | `retired` - the file stays, and this is its last entry |

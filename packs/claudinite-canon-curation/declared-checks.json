@@ -1,7 +1,7 @@
 [
   {
     "id": "pack-independence",
-    "severity": "blocking",
+    "on_fail": "block",
     "failureMessage": "the vendor set ships a pack only when declared, so a cross-pack import crashes every consumer that vendors one pack without the other",
     "fix": "declare the dependency (requires) and pass configuration, move the shared helper into engine/checks/helpers, or accept the import with a reason in .claudinite-settings.json",
     "relevantWhen": {
@@ -25,7 +25,7 @@
   },
   {
     "id": "pack-directory-kebab-case",
-    "severity": "blocking",
+    "on_fail": "block",
     "since": "2026-09-06",
     "failureMessage": "the directory name is the public id every member declares, so another casing costs a fleet-wide rename",
     "forbidTrackedPathsMatching": [
@@ -38,7 +38,7 @@
   },
   {
     "id": "corpus-count-in-prose",
-    "severity": "advisory",
+    "on_fail": "advise",
     "since": "2026-09-06",
     "failureMessage": "a quoted count of checks or rules is stale at the next change; packs/README.md says how to count them",
     "scanFiles": "/(^|\\/)packs\\/.*\\.md$/",
@@ -54,7 +54,7 @@
   },
   {
     "id": "home-only-path-in-canon-prose",
-    "severity": "blocking",
+    "on_fail": "block",
     "since": "2026-09-06",
     "failureMessage": ".claudinite/local/packs/<pack>/ exists only in the canon home, so the name dangles everywhere else the prose mounts",
     "scanFiles": "/^(\\.claudinite\\/shared\\/)?packs\\/.*\\.md$/",
@@ -69,7 +69,7 @@
   },
   {
     "id": "named-import-of-new-engine-export",
-    "severity": "blocking",
+    "on_fail": "block",
     "scope": "work",
     "since": "2026-09-06",
     "failureMessage": "the pack and engine lanes deliver on separate cadences, so a named import of an export the member's engine lacks is a link-time SyntaxError faulting the whole pack",
@@ -95,7 +95,7 @@
   },
   {
     "id": "tasks-stage-barriers",
-    "severity": "blocking",
+    "on_fail": "block",
     "since": "2026-09-07",
     "failureMessage": "the tasks pack's roles are folders and the graph between them is one-directional — a stage reaching sideways or upwards is how the flat tree it replaced became unreadable",
     "fix": "move the shared thing down into contract/ or items/, or reach the other stage through the queue rather than through an import",
@@ -247,7 +247,7 @@
   },
   {
     "id": "tasks-world-edges-live-in-world",
-    "severity": "blocking",
+    "on_fail": "block",
     "since": "2026-09-07",
     "failureMessage": "everything outside the run — GitHub, the Actions environment, subprocesses, the clock — is reached through packs/claudinite-tasks/src/world/, so a run can be driven at a chosen instant against a fake world",
     "fix": "call the port: makeGh and the named operation from src/world/github.mjs, actionsEnv/actionRepoContext from src/world/actions.mjs, runGit/startProcess from src/world/processes.mjs, now/nowMs/nowIso from src/world/clock.mjs",

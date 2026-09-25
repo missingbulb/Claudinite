@@ -1,7 +1,7 @@
 [
   {
     "id": "firebase/functions-node-pin",
-    "severity": "blocking",
+    "on_fail": "block",
     "failureMessage": "without a pin the deployed runtime is whatever Firebase defaults to today, and a skew between build and runtime surfaces as a deploy-time module crash rather than a test failure",
     "scanFiles": {
       "inParsedFilesMatching": "/^([^/]+\\/)?firebase\\.json$/",

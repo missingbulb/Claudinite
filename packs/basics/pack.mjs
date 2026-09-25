@@ -13,7 +13,7 @@ export default {
   // stamped is this manifest's number — so a record declaring a version above it would
   // re-apply every cycle, forever, draining never.
   version: '60925.1',
-  minEngineVersion: '60822.1',
+  minEngineVersion: '60925.1',
   ruleRoutingGuidance: {
     belongs: 'cross-project working discipline, issue-branch-PR lifecycle, repo hygiene, doc/reference integrity and the baseline engineering, testing and debugging skills',
     excludes: 'technology-specific content — its own tech pack; git procedure and GitHub Actions workflow or platform behaviour — git-github',

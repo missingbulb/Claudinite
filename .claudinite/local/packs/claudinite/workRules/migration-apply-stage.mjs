@@ -92,7 +92,7 @@ export function recordsMissingApplyStage(changed, read, readBase = () => null) {
 
 const rule = {
   id: 'migration-apply-stage',
-  severity: 'blocking',
+  on_fail: 'block',
   scope: 'work',
   description: 'A migration record that rewrites a member\'s task declarations carries an apply stage',
   doc: 'consumer-safe-changes.md',

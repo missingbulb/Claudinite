@@ -32,7 +32,7 @@ const canRead = () => typeof frontmatter.usageOf === 'function' && typeof frontm
 
 const rule = {
   id: 'skill-usage-declared',
-  severity: 'blocking',
+  on_fail: 'block',
   since: '2026-09-21',
   description: `A corpus SKILL.md declares metadata.usage.expect (${EXPECTS.join(' | ')}), and a skill expecting "triggered" carries a force-load declaration for its loads to be judged against`,
   doc: 'packs/claudinite-canon-curation/skills/writing-claudinite-skills/SKILL.md',

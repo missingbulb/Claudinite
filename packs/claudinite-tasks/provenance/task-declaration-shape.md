@@ -153,3 +153,8 @@
 - **Model:** Claude Opus 5
 - **Retire when:** `code_work` is gone and the raw form has no callers left, at which point the
   either-or branches collapse to one.
+
+## 2026-09-25 · reworded · `severity: blocking|advisory` is spelled `on_fail: block|advise`
+- **Reason:** owner decision, 2026-09-25: the field names what happens when the check fails, and
+  *severity* keeps its impact sense; what this element enforces is unchanged.
+- **Actor:** @missingbulb (owner).

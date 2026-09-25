@@ -64,3 +64,9 @@
 - **Model:** Claude Fable 5.1, per the commit trailer.
 - **Mechanism:** three path-forced skills beside a five-rule prose file.
 - **Landed:** #1667 (Closes #1662) · pack version 60903.2.
+
+## 2026-09-25 · scope-changed · `minEngineVersion` rises to 60925.1
+- **Reason:** this pack's checks declare `on_fail`, which an older engine does not read; the pack
+  update holds this version until the member's engine is at 60925.1.
+- **Actor:** @missingbulb (owner).
+- **Mechanism:** the manifest's `minEngineVersion`, which the pack update enforces.

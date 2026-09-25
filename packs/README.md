@@ -313,7 +313,7 @@ manifest.
 ## Corpus size — checks vs prose
 
 Counted, never quoted: `check_the_world.mjs --list` prints the check catalog a rule at a time (id,
-severity, description, doc pointer), and each pack README's rule index carries that pack's prose rules
+on_fail, description, doc pointer), and each pack README's rule index carries that pack's prose rules
 with their size bands. Ask those two, in the tree in front of you. A total transcribed into this file
 is a copy of derived data that every pack change falsifies — it drifted to 41 against a real 65 once,
 and the ratio it fed was wrong by a third.

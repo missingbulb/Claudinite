@@ -1,7 +1,7 @@
 [
   {
     "id": "jwt-hardcoded-secret",
-    "severity": "blocking",
+    "on_fail": "block",
     "failureMessage": "a secret in source ships with every clone and survives in git history forever, and an HMAC secret grants full token-MINTING power to anyone who reads it",
     "scanFileClasses": ["javascriptFiles", "pythonFiles"],
     "excludeFileClasses": ["testFiles"],
@@ -22,7 +22,7 @@
   },
   {
     "id": "jwt-sign-sets-expiry",
-    "severity": "advisory",
+    "on_fail": "advise",
     "failureMessage": "a token with no exp never stops being valid, and stateless validation has no revocation — a leak becomes a permanent credential",
     "scanFileClasses": ["javascriptFiles", "pythonFiles"],
     "excludeFileClasses": ["testFiles"],

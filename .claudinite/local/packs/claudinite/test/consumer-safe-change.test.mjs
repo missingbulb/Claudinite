@@ -12,13 +12,13 @@ const FIXTURES = 'vendoring/rehearsal/fixtures.mjs';
 const BLOCKING_RULE = `import { finding } from '../x.mjs';
 const rule = {
   id: 'demo',
-  severity: 'blocking',
+  on_fail: 'block',
   run() { return []; },
 };
 export default rule;
 `;
 
-const ADVISORY_RULE = BLOCKING_RULE.replace("'blocking'", "'advisory'");
+const ADVISORY_RULE = BLOCKING_RULE.replace("'block'", "'advise'");
 
 // The work context a work rule receives — only the three members this rule reads.
 // `base` defaults to empty, so a fixture file reads as newly added unless a test
@@ -49,6 +49,13 @@ test('a rule promoted from advisory to blocking is a contract surface', () => {
   const out = contractChanges(['packs/acme-pack/demo.mjs'], () => BLOCKING_RULE, () => ADVISORY_RULE);
   assert.equal(out.length, 1);
   assert.match(out[0].what, /became blocking/);
+});
+
+test('renaming a blocking rule\'s severity to on_fail is not a promotion', () => {
+  const legacy = BLOCKING_RULE.replace("on_fail: 'block'", "severity: 'blocking'");
+  assert.deepEqual(contractChanges(['packs/acme-pack/demo.mjs'], () => BLOCKING_RULE, () => legacy), []);
+  assert.equal(contractChanges(['packs/acme-pack/demo.mjs'], () => BLOCKING_RULE,
+    () => legacy.replace("'blocking'", "'advisory'")).length, 1, 'an advisory legacy rule becoming block still is');
 });
 
 test('a brand-new blocking rule is a contract surface — it has no base to have asked for', () => {

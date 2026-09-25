@@ -8,7 +8,7 @@ const run = (root) => declaredCheckSince.run(buildContext({ root, mode: 'all' })
 
 const spec = (over) => ({
   id: 'fx',
-  severity: 'blocking',
+  on_fail: 'block',
   scope: 'action',
   failureMessage: 'one consequence clause',
   guardToolCalls: [{ tool: 'Bash', inputField: 'command', match: '/x/', what: 'w', fix: 'f' }],
@@ -40,8 +40,8 @@ test('declared-check-since: a since the grace window cannot read buys nothing, s
 test('declared-check-since: a dated blocking action check, and undated checks of every other shape, are silent', () => {
   const root = repoWith([
     spec({ id: 'fx-dated', since: '2026-09-06' }),
-    spec({ id: 'fx-advisory', severity: 'advisory' }),
-    { id: 'fx-work', severity: 'blocking', scope: 'work', failureMessage: 'c', scanFiles: '/x/', matchLines: [{ match: '/a/', what: 'w', fix: 'f' }] },
+    spec({ id: 'fx-advisory', on_fail: 'advise' }),
+    { id: 'fx-work', on_fail: 'block', scope: 'work', failureMessage: 'c', scanFiles: '/x/', matchLines: [{ match: '/a/', what: 'w', fix: 'f' }] },
   ]);
   try {
     assert.deepEqual(run(root), []);

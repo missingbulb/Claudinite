@@ -68,7 +68,7 @@ function importedTree(ctx, entry) {
 
 const rule = {
   id: 'claude-md-length',
-  severity: 'advisory',
+  on_fail: 'advise',
   description: 'Everything CLAUDE.md pulls into the window, counted together, stays under the context budget',
   why: 'every session in the repo pays for the whole import tree before it reads a line of the work, and the file that names it is often one line long',
 

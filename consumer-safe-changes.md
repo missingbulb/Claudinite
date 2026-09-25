@@ -136,7 +136,7 @@ Adding a shape is the cheap way to cover a case the fixtures don't: a new entry 
 `consumer-safe-change` check.
 
 **2. The `consumer-safe-change` check — automatic, work scope.** A change touching a contract
-consumers hold a copy of (the manifest vocabulary, a blocking rule's severity, the scheduler stub)
+consumers hold a copy of (the manifest vocabulary, a rule's `on_fail` becoming `block`, the scheduler stub)
 must ship **either** a migration record **or** a rehearsal fixture. They answer different
 questions — *members are moved across* versus *members are unharmed* — and both are legitimate.
 A genuinely additive change needs only the fixture; anything that renames or requires something

@@ -22,3 +22,8 @@
 - **Mechanism:** a declaration in the web-speech-io skill's `declared-checks.json`, replacing the
   coded module. Severity and findings unchanged.
 - **Landed:** #827 (Closes #826) · pack version 2.
+
+## 2026-09-25 · reworded · `severity: blocking|advisory` is spelled `on_fail: block|advise`
+- **Reason:** owner decision, 2026-09-25: the field names what happens when the check fails, and
+  *severity* keeps its impact sense; what this element enforces is unchanged.
+- **Actor:** @missingbulb (owner).

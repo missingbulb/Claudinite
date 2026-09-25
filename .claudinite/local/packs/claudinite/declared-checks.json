@@ -1,7 +1,7 @@
 [
   {
     "id": "home-seeded-packs-declared",
-    "severity": "blocking",
+    "on_fail": "block",
     "failureMessage": "baselining lands a seeded pack on every member but is gated !isHome, so a newly seeded pack reaches the whole fleet except this repo, invisibly",
     "scanIgnoringComments": true,
     "requireIndexCoverage": [
@@ -23,7 +23,7 @@
   },
   {
     "id": "legacy-tolerance-scheduled",
-    "severity": "blocking",
+    "on_fail": "block",
     "since": "2026-09-03",
     "failureMessage": "a legacy tolerance nobody is scheduled to remove is a permanent feature wearing a temporary name, and its holders are never told to move off it",
     "scanFiles": "/^(engine|packs)\\/.*\\.mjs$/",
@@ -47,7 +47,7 @@
   },
   {
     "id": "rules-append-only",
-    "severity": "advisory",
+    "on_fail": "advise",
     "scope": "work",
     "failureMessage": "a pack's RULES.md is written several times a day, and a whole-file re-apply onto a moved main deletes lessons with nothing going red",
     "forbidRemovedLinesMatching": [
@@ -62,7 +62,7 @@
   },
   {
     "id": "git-pull-on-shallow-clone",
-    "severity": "blocking",
+    "on_fail": "block",
     "since": "2026-09-06",
     "scope": "action",
     "failureMessage": "the clones here are shallow, so git pull finds no common ancestor, and nothing of value is ever on this repo's local main",
@@ -78,7 +78,7 @@
   },
   {
     "id": "merge-main-into-branch",
-    "severity": "blocking",
+    "on_fail": "block",
     "since": "2026-09-06",
     "scope": "action",
     "failureMessage": "a merge commit trips the blocking squash-merge-history check; the branch re-verifies against a moved main by rebasing",
@@ -94,7 +94,7 @@
   },
   {
     "id": "github-api-via-shell",
-    "severity": "blocking",
+    "on_fail": "block",
     "since": "2026-09-06",
     "scope": "action",
     "failureMessage": "there is no gh CLI here, and every repo-scoped api.github.com call 403s (\"GitHub access is not enabled for this session\"), so a shell poll reports \"still running\" until it times out",
@@ -117,7 +117,7 @@
   },
   {
     "id": "bare-sleep-wait",
-    "severity": "advisory",
+    "on_fail": "advise",
     "scope": "action",
     "failureMessage": "a padded sleep waits on nothing nameable; a guard that would not stand as the whole test is sleeping and calling it polling",
     "fix": "name the condition awaited — a run's status, a file's arrival, a deadline — and wait on that",
@@ -138,7 +138,7 @@
   },
   {
     "id": "test-suite-command-form",
-    "severity": "advisory",
+    "on_fail": "advise",
     "scope": "action",
     "failureMessage": "a bash glob without globstar runs green over a subset — packs/*/test/*.test.mjs reaches 125 of 314 files and says nothing; node --test <dir> at least fails outright with Cannot find module",
     "fix": "node --test $(git ls-files '*.test.mjs')",
@@ -160,7 +160,7 @@
   },
   {
     "id": "commit-all-sweeps-edits",
-    "severity": "advisory",
+    "on_fail": "advise",
     "scope": "action",
     "failureMessage": "git commit -a stages every modified file, and a later branch -D discards the in-progress edits it swept up",
     "guardToolCalls": [
@@ -175,7 +175,7 @@
   },
   {
     "id": "hook-judges-never-exit",
-    "severity": "blocking",
+    "on_fail": "block",
     "since": "2026-09-05",
     "failureMessage": "a hook is a guest in the harness: the runner alone exits or writes, and a judge that does prints an error on every call",
     "fix": "return the verdict — { block, reason } or { context } — and let hook-runner.mjs write it",
@@ -190,7 +190,7 @@
   },
   {
     "id": "migration-record-in-docs",
-    "severity": "blocking",
+    "on_fail": "block",
     "since": "2026-09-06",
     "failureMessage": "a migration's plan, status and remaining work live in its tracking issue, never a MIGRATION.md beside the design",
     "forbidTrackedPathsMatching": [
@@ -203,7 +203,7 @@
   },
   {
     "id": "cross-repo-verify-line",
-    "severity": "advisory",
+    "on_fail": "advise",
     "scope": "action",
     "since": "2026-09-06",
     "failureMessage": "the executor reads only this repository: its sessions carry no member's scope and its probes fetch anonymously, so this verification can never pass",
@@ -226,7 +226,7 @@
   },
   {
     "id": "add-repo-for-a-public-clone",
-    "severity": "advisory",
+    "on_fail": "advise",
     "scope": "action",
     "since": "2026-09-06",
     "failureMessage": "add_repo attaches nothing the git proxy does not already serve for a public repository",
@@ -242,7 +242,7 @@
   },
   {
     "id": "scratch-screenshot-caption",
-    "severity": "advisory",
+    "on_fail": "advise",
     "scope": "action",
     "since": "2026-09-06",
     "failureMessage": "an image rendered from a scratch harness reads as the product unless its caption says otherwise",
@@ -258,7 +258,7 @@
   },
   {
     "id": "author-association-as-permission",
-    "severity": "blocking",
+    "on_fail": "block",
     "since": "2026-09-06",
     "failureMessage": "MEMBER covers any org member and COLLABORATOR includes read-only ones, both broader than push access",
     "scanFiles": "/\\.mjs$/",
@@ -274,7 +274,7 @@
   },
   {
     "id": "updates-export-removed",
-    "severity": "blocking",
+    "on_fail": "block",
     "scope": "work",
     "since": "2026-09-06",
     "failureMessage": "fielded workers are stale callers of an instantly-current flow module, so a removed export wedges every member on its next run",
@@ -290,7 +290,7 @@
   },
   {
     "id": "year-last-digit-rollover",
-    "severity": "blocking",
+    "on_fail": "block",
     "since": "2026-09-06",
     "failureMessage": "a year's last digit wraps to 0 in 2030, so an identifier anchored on it collides four years out",
     "scanFiles": "/\\.mjs$/",
@@ -306,7 +306,7 @@
   },
   {
     "id": "checkout-restores-index",
-    "severity": "advisory",
+    "on_fail": "advise",
     "scope": "action",
     "since": "2026-09-06",
     "failureMessage": "git checkout -- restores from the index, destroying uncommitted work as thoroughly as the mutation it undoes",
@@ -322,7 +322,7 @@
   },
   {
     "id": "settings-json-reserialized",
-    "severity": "advisory",
+    "on_fail": "advise",
     "scope": "action",
     "since": "2026-09-06",
     "failureMessage": "a JSON round trip rewrites indent, key order and escapes while nothing fails and tests stay green",
@@ -338,7 +338,7 @@
   },
   {
     "id": "design-doc-status-banner",
-    "severity": "advisory",
+    "on_fail": "advise",
     "since": "2026-09-08",
     "failureMessage": "an initiative's DESIGN.md reads as a description of how the system works; without a status on its first screen a reader takes an unbuilt proposal for the current state",
     "scanFiles": "/(^|\\/)docs\\/[^/]+\\/DESIGN\\.md$/",
@@ -353,7 +353,7 @@
   },
   {
     "id": "busy-wait-loop",
-    "severity": "blocking",
+    "on_fail": "block",
     "since": "2026-09-11",
     "scope": "action",
     "failureMessage": "a loop body of `:` yields nothing, so the shell spins at full tilt and the session answers nobody until a person interrupts it",
@@ -369,7 +369,7 @@
   },
   {
     "id": "mount-path-in-the-canon-home",
-    "severity": "blocking",
+    "on_fail": "block",
     "since": "2026-09-13",
     "scope": "action",
     "failureMessage": "the canon home carries no .claudinite/shared/ at all, so a module invoked through that path is Cannot find module and the sweep the session believed it ran never ran",
@@ -386,7 +386,7 @@
   },
   {
     "id": "shell-write-to-skill-scoped-path",
-    "severity": "advisory",
+    "on_fail": "advise",
     "since": "2026-09-14",
     "scope": "action",
     "failureMessage": "the pre-edit skill guard reads Edit, Write and NotebookEdit only, so a shell write carries its skill requirement to Stop, after the work the skill was there to shape",
@@ -402,7 +402,7 @@
   },
   {
     "id": "check-sweep-read-blocking-only",
-    "severity": "advisory",
+    "on_fail": "advise",
     "since": "2026-09-15",
     "scope": "action",
     "failureMessage": "a check inside its two-week since grace reports ADVISORY, so a BLOCKING-only filter reads your own new check as silent and the violations it found as none",
@@ -418,7 +418,7 @@
   },
   {
     "id": "subagent-branch-named-git",
-    "severity": "blocking",
+    "on_fail": "block",
     "since": "2026-09-16",
     "scope": "action",
     "failureMessage": "a worktree-isolated agent's shell guard refuses a command over the word git, so a branch carrying it in its own name cannot be created there under any spelling",
@@ -435,7 +435,7 @@
   },
   {
     "id": "transcript-found-by-mtime",
-    "severity": "blocking",
+    "on_fail": "block",
     "since": "2026-09-18",
     "scope": "action",
     "failureMessage": "the newest .jsonl under ~/.claude/projects is always the transcript of the session running the scan, so the script reads its own run rather than the one asked about",
@@ -451,7 +451,7 @@
   },
   {
     "id": "migration-record-paths-resolve",
-    "severity": "blocking",
+    "on_fail": "block",
     "since": "2026-09-20",
     "failureMessage": "a canon path in a migration record fails open \u2014 an unreadable probe reads as \"not capable\", a missing template is skipped \u2014 so a move leaves the record silently inert",
     "scanIgnoringComments": true,
@@ -474,7 +474,7 @@
   },
   {
     "id": "no-new-long-dashes",
-    "severity": "blocking",
+    "on_fail": "block",
     "scope": "work",
     "since": "2026-09-20",
     "failureMessage": "the owner writes with hyphens; a long dash is a model's habit, and a JSON round trip turns the ones already there into escapes nobody meant to write",
@@ -493,7 +493,7 @@
   },
   {
     "id": "fixture-git-housekeeping",
-    "severity": "blocking",
+    "on_fail": "block",
     "since": "2026-09-21",
     "failureMessage": "git's auto-gc detaches and keeps writing under .git after the command returns, so the fixture's removal races it: the suite passes locally and CI fails with ENOTEMPTY",
     "scanFiles": "/\\.test\\.mjs$/",
@@ -513,7 +513,7 @@
   },
   {
     "id": "pack-prose-paths-resolve",
-    "severity": "blocking",
+    "on_fail": "block",
     "since": "2026-09-22",
     "failureMessage": "reference-integrity is work-scoped and sees only a path the same branch deletes, so a citation an earlier move stranded sends every later session into nothing",
     "scanIgnoringMarkdownFences": true,
@@ -536,7 +536,7 @@
   },
   {
     "id": "print-then-exit",
-    "severity": "blocking",
+    "on_fail": "block",
     "since": "2026-09-22",
     "scope": "work",
     "failureMessage": "a pipe write is asynchronous and process.exit() drops what is still queued, so a caller capturing the output reads a truncated answer under a clean status",
@@ -555,7 +555,7 @@
   },
   {
     "id": "history-search-on-shallow-clone",
-    "severity": "blocking",
+    "on_fail": "block",
     "since": "2026-09-23",
     "failureMessage": "a pickaxe or --reverse walk answers with the earliest commit the CHECKOUT reaches, so on a shallow clone it hands back the clone's own horizon as the repository's history",
     "scanFiles": "/\\.mjs$/",
@@ -573,7 +573,7 @@
   },
   {
     "id": "timed-phase-named-in-vocabulary",
-    "severity": "blocking",
+    "on_fail": "block",
     "since": "2026-09-24",
     "failureMessage": "renderRunCost prints only the words RUN_PHASES names, so a phase timed under any other word is measured and then dropped, and the fold never sees what it cost",
     "scanIgnoringComments": true,

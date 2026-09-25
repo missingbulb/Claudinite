@@ -4,7 +4,7 @@
 // teaching in their failure messages.
 export default {
   version: '60922.1',
-  minEngineVersion: '60822.1',
+  minEngineVersion: '60925.1',
   ruleRoutingGuidance: {
     belongs: 'server-side Google Sign-In ID token validation: audience pinning, issuer and email_verified checks, JWT authorizer/OIDC verifier config',
     excludes: 'obtaining the token in a browser or extension client — chrome-extension; Firebase Auth usage — firebase',

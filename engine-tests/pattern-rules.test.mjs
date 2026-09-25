@@ -12,7 +12,7 @@ import { removeTree } from '../engine/remove-tree.mjs';
 // The declarative engine's own contract, proven over fixture rules — the pack
 // declarations built on it are proven by their packs' existing tests.
 const ctxOf = (root) => buildContext({ root, mode: 'all' });
-const meta = (id) => ({ id, severity: 'blocking', failureMessage: `fixture ${id} matters` });
+const meta = (id) => ({ id, on_fail: 'block', failureMessage: `fixture ${id} matters` });
 
 test('matchLines: match + unlessLineMatches, {match} templating, 1-indexed anchor', () => {
   const rule = patternRule({
@@ -633,7 +633,7 @@ test('relevantWhen.scanningWholeRepo: the rule is inert under a --changed run', 
 
 test('a declaration is JSON: /pattern/flags strings compile, other strings stay literal', () => {
   const rule = patternRule(JSON.parse(JSON.stringify({
-    id: 'fx-json', severity: 'blocking', failureMessage: 'json rules load',
+    id: 'fx-json', on_fail: 'block', failureMessage: 'json rules load',
     scanFiles: 'a.txt',
     matchLines: [{ match: '/^\\s*BAD/m', what: 'saw {match}', fix: 'f' }],
   })));
@@ -864,8 +864,8 @@ test('a key the engine DOES place still fails loudly on a broken value', () => {
     /"since" is the date this check was added/,
   );
   assert.throws(
-    () => patternRule({ id: 'fx-bad-severity', severity: 'fatal', failureMessage: 'm', scanFiles: /\.txt$/ }),
-    /severity/,
+    () => patternRule({ id: 'fx-bad-on-fail', on_fail: 'fatal', failureMessage: 'm', scanFiles: /\.txt$/ }),
+    /on_fail/,
   );
 });
 
@@ -930,7 +930,7 @@ test('a skill\'s declared checks never scan the skill\'s own content, wherever i
     const skillDir = join(dir, 'skills', 'my-skill');
     mkdirSync(skillDir, { recursive: true });
     writeFileSync(join(skillDir, 'declared-checks.json'), JSON.stringify([
-      { id: 'fx-self-exclude', severity: 'blocking', failureMessage: 'm',
+      { id: 'fx-self-exclude', on_fail: 'block', failureMessage: 'm',
         scanFiles: '/\\.md$/', matchLines: [{ match: '/badToken/', what: 'w', fix: 'f' }] },
     ]));
     const [rule] = loadDeclaredChecks(skillDir);
@@ -950,12 +950,12 @@ test('loadDeclaredChecks: a directory\'s declarations, compiled once; none where
   try {
     assert.deepEqual(loadDeclaredChecks(join(dir, 'empty')), []);
     writeFileSync(join(dir, 'declared-checks.json'), JSON.stringify([
-      { id: 'fx-declared-a', severity: 'advisory', failureMessage: 'a', scanFiles: '/\\.txt$/', matchLines: [{ match: '/bad/', what: 'w', fix: 'f' }] },
-      { id: 'fx-declared-b', severity: 'blocking', failureMessage: 'b', scanFiles: 'CLAUDE.md', maxLines: { limit: 1, what: '{lines}', fix: 'f' } },
+      { id: 'fx-declared-a', on_fail: 'advise', failureMessage: 'a', scanFiles: '/\\.txt$/', matchLines: [{ match: '/bad/', what: 'w', fix: 'f' }] },
+      { id: 'fx-declared-b', on_fail: 'block', failureMessage: 'b', scanFiles: 'CLAUDE.md', maxLines: { limit: 1, what: '{lines}', fix: 'f' } },
     ]));
     const rules = loadDeclaredChecks(dir);
     assert.deepEqual(rules.map((r) => r.id), ['fx-declared-a', 'fx-declared-b']);
-    assert.deepEqual(rules.map((r) => r.severity), ['advisory', 'blocking']);
+    assert.deepEqual(rules.map((r) => r.on_fail), ['advise', 'block']);
     // Compiled once: a second read hands back the same rule objects, so the
     // registry and a test asking for the same declaration share one scan.
     assert.equal(loadDeclaredChecks(dir)[0], rules[0]);
@@ -2064,10 +2064,10 @@ test('every guard finding is advisory at Stop — denied or ran, no block is lef
   const root = makeRepo({ changed: { 'a.txt': 'x\n' } });
   try {
     const findings = runRule(rule, buildContext({ root, mode: 'all', transcriptPath: session.path }));
-    assert.deepEqual(findings.map((f) => [f.file, f.severity, f.what]), [
-      ['(session) Bash call #1', 'advisory', 'sleep 5 (denied at the hook)'],
-      ['(session) Bash call #2', 'advisory', 'sleep 6'],
-      ['(session) Bash call #3', 'advisory', 'sleep 7'],
+    assert.deepEqual(findings.map((f) => [f.file, f.on_fail, f.what]), [
+      ['(session) Bash call #1', 'advise', 'sleep 5 (denied at the hook)'],
+      ['(session) Bash call #2', 'advise', 'sleep 6'],
+      ['(session) Bash call #3', 'advise', 'sleep 7'],
     ]);
   } finally { cleanup(root); session.cleanup(); }
 });

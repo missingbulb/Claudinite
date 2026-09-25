@@ -93,3 +93,9 @@
 - **Mechanism:** declared checks in the pack's `declared-checks.json`, both forbidden patterns so
   neither pins a call site in place.
 - **Landed:** #2164 (work item #2142) · pack version 60920.1.
+
+## 2026-09-25 · scope-changed · `minEngineVersion` rises to 60925.1
+- **Reason:** this pack's checks declare `on_fail`, which an older engine does not read; the pack
+  update holds this version until the member's engine is at 60925.1.
+- **Actor:** @missingbulb (owner).
+- **Mechanism:** the manifest's `minEngineVersion`, which the pack update enforces.

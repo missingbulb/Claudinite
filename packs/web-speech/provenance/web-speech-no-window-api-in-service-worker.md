@@ -21,3 +21,8 @@
   manifest's own directory. Authored red-first against the coded rule's own fixtures, the module
   deleted in the same commit.
 - **Landed:** #908 (Refs #880) · pack version 2.
+
+## 2026-09-25 · reworded · `severity: blocking|advisory` is spelled `on_fail: block|advise`
+- **Reason:** owner decision, 2026-09-25: the field names what happens when the check fails, and
+  *severity* keeps its impact sense; what this element enforces is unchanged.
+- **Actor:** @missingbulb (owner).

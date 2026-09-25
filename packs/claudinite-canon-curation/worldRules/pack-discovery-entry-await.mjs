@@ -102,7 +102,7 @@ function entryBlock(code) {
 
 const rule = {
   id: 'pack-discovery-entry-await',
-  severity: 'blocking',
+  on_fail: 'block',
   description: 'No module a pack manifest or skill checks.mjs imports awaits at the top level of its CLI-entry block',
   doc: 'packs/claudinite-canon-curation/RULES.md',
   why: 'pack discovery imports every pack.mjs and skills/*/checks.mjs on disk before activation is consulted, so such a module is re-imported mid-evaluation when it is also the entry point — the top-level await then never settles and Node exits 13 having run nothing, silently (#581)',

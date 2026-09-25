@@ -32,7 +32,7 @@ const BLOCK_RUN = /^\s*-?\s*run:\s*[|>][-+0-9]*\s*$/;
 
 const rule = {
   id: 'scheduler-workflows-are-thin',
-  severity: 'blocking',
+  on_fail: 'block',
   scope: 'world',
   description: 'The scheduler and executor workflows carry no inline program — every decision lives in an engine module they name',
   doc: 'packs/claudinite-tasks/stubs/claudinite-scheduler.yml',

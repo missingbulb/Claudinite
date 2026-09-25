@@ -1,7 +1,7 @@
 [
   {
     "id": "product-wiki-layout",
-    "severity": "blocking",
+    "on_fail": "block",
     "failureMessage": "a declared standard with no scaffold silently enforces nothing — the isolation wall and the wiki discipline both hang off these fixed paths",
     "fix": "scaffold it per the template in packs/product-wiki/README.md, or remove the product-wiki declaration if this repo doesn't adopt the standard",
     "requirePaths": [
@@ -11,7 +11,7 @@
   },
   {
     "id": "product-wiki-isolation",
-    "severity": "blocking",
+    "on_fail": "block",
     "failureMessage": "the wikis are agent-rewritten, loosely-sourced research — code, tests and docs that silently depend on them inherit unreviewed churn",
     "fix": "depend on product-wiki/product-requirements (the one reviewed crossing point), remove the reference, or accept it with a reason in .claudinite-settings.json (rule \"product-wiki-isolation\")",
     "forbidReferences": [
@@ -27,7 +27,7 @@
   },
   {
     "id": "product-wiki-page-sections",
-    "severity": "blocking",
+    "on_fail": "block",
     "failureMessage": "the sections are the page's reader header plus the wiki's audit trail and backlog — without them compile-once/refine-in-place degrades to unsourced, unreviewable rewrites nobody can read at a glance",
     "scanFiles": "/^product-wiki\\/.+\\/README\\.md$/",
     "excludeFiles": "/^product-wiki\\/(product-requirements|sample-data)\\//",
@@ -43,7 +43,7 @@
   },
   {
     "id": "product-wiki-key-insights",
-    "severity": "blocking",
+    "on_fail": "block",
     "failureMessage": "a research page whose findings can only be recovered by reading it end to end does not get read — the header is what makes a compiled wiki usable to a human",
     "scanFiles": "/^product-wiki\\/.+\\/README\\.md$/",
     "excludeFiles": "/^product-wiki\\/(product-requirements|sample-data)\\//",
@@ -78,7 +78,7 @@
   },
   {
     "id": "product-wiki-growth-log",
-    "severity": "blocking",
+    "on_fail": "block",
     "failureMessage": "undated or absent log entries break the audit trail and the freshness signal every other growth mechanism keys on",
     "fix": "lead every growth-log bullet with the run date, e.g. \"- **2026-07-15** — what changed\"; append the seed entry when the page is first committed",
     "scanFiles": "/^product-wiki\\/.+\\/README\\.md$/",
@@ -103,7 +103,7 @@
   },
   {
     "id": "product-wiki-sources",
-    "severity": "blocking",
+    "on_fail": "block",
     "failureMessage": "a named source without its URL is an uncited citation — unverifiable by the next pass and by review",
     "scanFiles": "/^product-wiki\\/.+\\/README\\.md$/",
     "excludeFiles": "/^product-wiki\\/(product-requirements|sample-data)\\//",
@@ -120,7 +120,7 @@
   },
   {
     "id": "product-wiki-freshness",
-    "severity": "advisory",
+    "on_fail": "advise",
     "failureMessage": "a wiki that stopped growing silently stops being true — staleness must reach a human even when the unattended growth channel isn't firing",
     "relevantWhen": { "scanningWholeRepo": true },
     "scanFiles": "/^product-wiki\\/.+\\/README\\.md$/",

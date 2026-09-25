@@ -13,7 +13,7 @@ const SHELF = {
   'packs/alpha-pack/pack.mjs': "export default { id: 'alpha-pack' };\n",
   'packs/alpha-pack/tasks/sweep-up/task.json': '{ "id": "sweep-up" }\n',
   'packs/alpha-pack/skills/tidying-up/SKILL.md': '---\nname: tidying-up\n---\nbody\n',
-  'packs/alpha-pack/declared-checks.json': '[{ "id": "no-shouting-here", "severity": "advisory" }]\n',
+  'packs/alpha-pack/declared-checks.json': '[{ "id": "no-shouting-here", "on_fail": "advise" }]\n',
   'packs/alpha-pack/worldRules/coded-rule.mjs': 'export default {};\n',
   'packs/beta-pack/pack.mjs': "export default { id: 'beta-pack' };\n",
   'packs/beta-pack/tasks/sweep-up/task.json': '{ "id": "sweep-up" }\n',

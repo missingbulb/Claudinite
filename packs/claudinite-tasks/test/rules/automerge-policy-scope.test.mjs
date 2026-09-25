@@ -43,7 +43,7 @@ test('an armed diff outside its policy blocks, naming the file', () => {
   try {
     const findings = gate(root);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].severity, 'blocking');
+    assert.equal(findings[0].on_fail, 'block');
     assert.equal(findings[0].file, 'src/a.mjs');
     assert.match(findings[0].what, /armed auto-merge/);
   } finally { cleanup(root); }

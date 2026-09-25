@@ -89,7 +89,7 @@ test('engine code, a configuration key and a repo source file each surface', () 
   // The same file the stamp rides in — what makes this one visible is that a key a
   // record ADDED moved with it, which is a change to what this repo's checks run.
   put('.claudinite-settings.json', `${JSON.stringify({
-    packs: [{ id: 'acme-pack', version: 4 }], engineVersion: 10, rules: { 'some-rule': 'blocking' },
+    packs: [{ id: 'acme-pack', version: 4 }], engineVersion: 10, rules: { 'some-rule': 'block' },
   }, null, 2)}\n`);
   put('src/app.mjs', 'rewritten by a migration\n');
   assert.deepEqual(changesTestsCouldSee(root), [

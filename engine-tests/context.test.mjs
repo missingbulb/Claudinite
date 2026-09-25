@@ -33,7 +33,7 @@ test('loadConfig: a pack entry object normalizes — id into packs, config into 
       'acme-pack',
       { id: 'acme-pack-b',
         config: { rules: [{ from: 'a', to: 'b' }] },
-        rules: { 'acme-check': 'advisory' },
+        rules: { 'acme-check': 'advise' },
         accept: [{ rule: 'reference-integrity', path: 'x.md', reason: 'why' }] },
       { id: 'acme-pack-e', via: ['acme-pack-f'] },
     ],
@@ -43,7 +43,7 @@ test('loadConfig: a pack entry object normalizes — id into packs, config into 
     assert.deepEqual(cfg.errors, []);
     assert.deepEqual(cfg.packs, ['acme-pack', 'acme-pack-b', 'acme-pack-e']);
     assert.deepEqual(cfg.packConfig, { 'acme-pack-b': { rules: [{ from: 'a', to: 'b' }] } });
-    assert.deepEqual(cfg.rules, { 'acme-check': 'advisory' });
+    assert.deepEqual(cfg.rules, { 'acme-check': 'advise' });
     // The entry-sourced acceptance carries its provenance: the pack that motivated it.
     assert.deepEqual(cfg.accept, [{ rule: 'reference-integrity', path: 'x.md', reason: 'why', pack: 'acme-pack-b' }]);
   } finally { cleanup(root); }
@@ -119,9 +119,9 @@ test('loadConfig: a malformed pack entry is a settings error — no id, unknown 
   } finally { cleanup(root); }
 });
 
-test('loadConfig: conflicting severity overrides are a settings error, agreeing ones are not', () => {
+test('loadConfig: conflicting on_fail overrides are a settings error, agreeing ones are not', () => {
   const conflicted = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({
-    packs: [{ id: 'acme-pack', rules: { 'acme-check': 'advisory' } }],
+    packs: [{ id: 'acme-pack', rules: { 'acme-check': 'advise' } }],
     rules: { 'acme-check': 'off' },
   }) } });
   const agreeing = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({
@@ -131,7 +131,7 @@ test('loadConfig: conflicting severity overrides are a settings error, agreeing 
   try {
     const bad = loadConfig(conflicted);
     assert.equal(bad.errors.length, 1);
-    assert.match(bad.errors[0].what, /rule "acme-check" is set to "off" by the top-level "rules" and "advisory" by the "acme-pack" pack entry/);
+    assert.match(bad.errors[0].what, /rule "acme-check" is set to "off" by the top-level "rules" and "advise" by the "acme-pack" pack entry/);
     assert.deepEqual(loadConfig(agreeing).errors, []);
     assert.deepEqual(loadConfig(agreeing).rules, { 'acme-check': 'off' });
   } finally { cleanup(conflicted); cleanup(agreeing); }
@@ -472,7 +472,7 @@ test('every key in CONFIG_KEYS survives loadConfig — declarable implies readab
     writeFiles(root, {
       '.claudinite-settings.json': JSON.stringify({
         packs: ['acme-pack'],
-        rules: { 'some-rule': 'advisory' },
+        rules: { 'some-rule': 'advise' },
         accept: [{ rule: 'some-rule', path: 'x.md', reason: 'because' }],
         sharedConstants: [{ what: 'v', value: '1', counts: { 'a.json': 1 } }],
         dailyClaudiniteUpdatesRequirePrReview: true,

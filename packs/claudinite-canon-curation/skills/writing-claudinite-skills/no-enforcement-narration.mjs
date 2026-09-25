@@ -24,7 +24,7 @@ const SKILL_DOC = /(^|\/)packs\/[^/]+\/skills\/[^/]+\/SKILL\.md$/;
 
 const rule = {
   id: 'skill-no-enforcement-narration',
-  severity: 'blocking',
+  on_fail: 'block',
   description: 'A corpus SKILL.md neither tells the reader to run the checks runner nor names the rules its own checks enforce',
   doc: 'packs/claudinite-canon-curation/skills/writing-claudinite-skills/SKILL.md',
   why: 'checks run automatically at every Stop and in CI, and each failure message carries its rule — a skill narrating its own enforcement duplicates the mechanism and drifts from it',

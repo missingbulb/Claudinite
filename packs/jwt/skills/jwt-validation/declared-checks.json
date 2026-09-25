@@ -1,7 +1,7 @@
 [
   {
     "id": "jwt-none-not-accepted",
-    "severity": "blocking",
+    "on_fail": "block",
     "failureMessage": "a token whose header claims alg \"none\" carries no signature at all, so a verifier that accepts it treats attacker-written claims as authenticated — the classic signature-stripping bypass",
     "scanFileClasses": ["javascriptFiles", "pythonFiles"],
     "excludeFileClasses": ["testFiles"],
@@ -16,7 +16,7 @@
   },
   {
     "id": "jwt-verify-pins-algorithms",
-    "severity": "blocking",
+    "on_fail": "block",
     "failureMessage": "without an allowlist the verification algorithm comes from the token's own header — the attacker writes that header, so they pick the algorithm",
     "scanFileClasses": ["javascriptFiles"],
     "excludeFileClasses": ["testFiles"],
@@ -32,7 +32,7 @@
   },
   {
     "id": "jwt-verify-binds-audience",
-    "severity": "advisory",
+    "on_fail": "advise",
     "failureMessage": "the signature proves who signed the token, not who it was for — without an audience/issuer check, a valid token minted for a different service or purpose is accepted here (substitution attack)",
     "scanFileClasses": ["javascriptFiles"],
     "excludeFileClasses": ["testFiles"],

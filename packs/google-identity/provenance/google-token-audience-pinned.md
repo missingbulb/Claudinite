@@ -23,3 +23,8 @@
 - **Mechanism:** the declaration's scope keys, with the hand-written exclusion of the skill's own
   directory dropped in favour of the engine's structural one.
 - **Landed:** #839 (Refs #838) · pack version 2.
+
+## 2026-09-25 · reworded · `severity: blocking|advisory` is spelled `on_fail: block|advise`
+- **Reason:** owner decision, 2026-09-25: the field names what happens when the check fails, and
+  *severity* keeps its impact sense; what this element enforces is unchanged.
+- **Actor:** @missingbulb (owner).

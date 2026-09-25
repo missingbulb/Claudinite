@@ -136,7 +136,7 @@ test('discoverPacks: a pack\'s rules come from its rule directories, scoped by w
   const dir = join(root, '.claudinite', 'local', 'packs', 'ruled');
   mkdirSync(join(dir, 'worldRules'), { recursive: true });
   mkdirSync(join(dir, 'workRules'), { recursive: true });
-  const rule = (id) => `export default { id: '${id}', severity: 'advisory', description: 'd', doc: 'x.md', why: 'w', run: () => [] };\n`;
+  const rule = (id) => `export default { id: '${id}', on_fail: 'advise', description: 'd', doc: 'x.md', why: 'w', run: () => [] };\n`;
   writeFileSync(join(dir, 'worldRules', 'audits.mjs'), rule('audits'));
   writeFileSync(join(dir, 'workRules', 'judges.mjs'), rule('judges'));
   writeFileSync(join(dir, 'pack.mjs'),

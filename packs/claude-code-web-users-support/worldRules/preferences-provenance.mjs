@@ -27,7 +27,7 @@ export const provenanceDirOf = (store) => `${store.path}-provenance`;
 
 const rule = {
   id: 'preferences-provenance',
-  severity: 'advisory',
+  on_fail: 'advise',
   description: 'Every rule in a personal pack this repo stores ends with a marker naming its provenance file in that pack',
   doc: 'packs/claude-code-web-users-support/RULES.md',
   why: 'a rule with no file has no record of when it was set or what prompted it, and the session that changes it next is the only reader who could have written that down',

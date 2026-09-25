@@ -226,7 +226,7 @@ export default {
 
 const DEMO_RULE = `const rule = {
   id: 'fixture-demo',
-  severity: 'advisory',
+  on_fail: 'advise',
   description: 'A rehearsal fixture rule that never fires',
   doc: 'RULES.md',
   why: 'it exists so the rehearsal can tell a pack that loaded from one that did not',
@@ -271,7 +271,7 @@ import { isActive } from '../../../shared/engine/pack_loader/pack-registry.mjs';
 // converge's self-test, down in exactly the way a real member's would.
 const rule = {
   id: 'fixture-mount-import',
-  severity: 'advisory',
+  on_fail: 'advise',
   description: 'A rehearsal fixture rule that never fires',
   doc: 'RULES.md',
   why: 'it exists so a name dropped from the mount fails a rehearsal instead of a member',
@@ -311,7 +311,7 @@ import { deliverGenerated, landDelivery } from '../../../shared/packs/claudinite
 
 const rule = {
   id: 'fixture-mount-reach',
-  severity: 'advisory',
+  on_fail: 'advise',
   description: 'A rehearsal fixture rule that imports the mount by name and never fires',
   doc: 'RULES.md',
   why: 'it exists so a canon that drops a name a member imports cannot converge green',
@@ -573,7 +573,7 @@ const REFERENCES_DOC = `# References
 `;
 
 const REFERENCES_DECLARED_CHECK = `[
-  { "id": "fixture-declared-check", "severity": "advisory",
+  { "id": "fixture-declared-check", "on_fail": "advise",
     "failureMessage": "a rehearsal fixture check that never fires",
     "scanFiles": "/(^|\\\\/)no-such-file-ever$/", "maxLines": 100000 }
 ]
@@ -1525,7 +1525,7 @@ fi
       '.claudinite/local/packs/fixture-declared/declared-checks.json': `${JSON.stringify([
         {
           id: 'fixture-declared-manifest',
-          severity: 'advisory',
+          on_fail: 'advise',
           failureMessage: 'a fixture declaration a member wrote for itself',
           checkParsedFiles: [{
             file: 'package.json',
@@ -1540,7 +1540,7 @@ fi
         // case has to hold on a real converge rather than only in the canon's tree.
         {
           id: 'fixture-declared-action',
-          severity: 'blocking',
+          on_fail: 'block',
           since: '2026-09-06',
           scope: 'action',
           failureMessage: 'a fixture declaration that guards a tool call it never sees',

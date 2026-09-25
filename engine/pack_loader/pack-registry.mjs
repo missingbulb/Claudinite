@@ -158,7 +158,7 @@ async function ruleModulesIn(packDir, scope, label, errors) {
     if (rule === null || typeof rule !== 'object' || typeof rule.id !== 'string' || typeof rule.run !== 'function') {
       errors.push({
         what: `${label}/${name} sits in a rule directory but default-exports no rule`,
-        fix: `default-export { id, severity, description, doc, why, run(ctx) } from ${name}, or move the module out of ${scope}/`,
+        fix: `default-export { id, on_fail, description, doc, why, run(ctx) } from ${name}, or move the module out of ${scope}/`,
         dir: packDir,
       });
       continue;

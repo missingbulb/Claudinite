@@ -126,7 +126,7 @@ function literalNames(literal, name) {
 
 const rule = {
   id: 'test-fixtures-use-fake-entities',
-  severity: 'blocking',
+  on_fail: 'block',
   scope: 'world',
   description: 'A test names a real pack, task, skill or check only where that thing is its subject; every other fixture uses a fake name',
   doc: '.claudinite/local/packs/claudinite/RULES.md',

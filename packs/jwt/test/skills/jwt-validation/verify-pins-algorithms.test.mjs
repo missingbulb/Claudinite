@@ -19,7 +19,7 @@ test('jwt-verify-pins-algorithms: flags a jsonwebtoken verify with no allowlist 
   try {
     const findings = run(root);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].severity, 'blocking');
+    assert.equal(findings[0].on_fail, 'block');
     assert.equal(findings[0].line, 2);
     assert.match(findings[0].what, /no algorithms allowlist/);
   } finally { cleanup(root); }

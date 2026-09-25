@@ -21,7 +21,7 @@ const TOKEN = /["']?token["']?\s*:\s*["']([0-9a-f]{16,})["']/gi;
 
 const rule = {
   id: 'cloudflare-site/beacon-token-is-not-committed',
-  severity: 'blocking',
+  on_fail: 'block',
   since: '2026-09-13',
   description: 'A published file carries the beacon placeholder, never a real token',
   doc: 'packs/cloudflare-site/RULES.md',

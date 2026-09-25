@@ -20,7 +20,7 @@ test('jwt-none-not-accepted: flags "none" in a jsonwebtoken algorithms allowlist
   try {
     const findings = run(root);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].severity, 'blocking');
+    assert.equal(findings[0].on_fail, 'block');
     assert.equal(findings[0].line, 2);
     assert.match(findings[0].what, /"none"/);
   } finally { cleanup(root); }

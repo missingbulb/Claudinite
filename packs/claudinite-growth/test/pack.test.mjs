@@ -423,7 +423,7 @@ test('dedup-prune-integrity: flags a dedup run that restates the canon and grows
     // Two restatement fingerprints ("is portable (canon)", "pack owns") + the growth signal.
     assert.ok(findings.some((f) => /re-imports a canon rule/.test(f.what)), 'restatement flagged');
     assert.ok(findings.some((f) => /grew .* lines/.test(f.what)), 'growth flagged');
-    assert.ok(findings.every((f) => f.severity === 'blocking'));
+    assert.ok(findings.every((f) => f.on_fail === 'block'));
   } finally { cleanup(root); }
 });
 
@@ -545,7 +545,7 @@ test('growth-write-scope: a capture run touching outside the local packs is flag
   try {
     const findings = runScope(root);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].severity, 'blocking');
+    assert.equal(findings[0].on_fail, 'block');
     assert.match(findings[0].what, /outside \.claudinite\/local\/packs\//);
   } finally { cleanup(root); }
 });
@@ -626,7 +626,7 @@ test('growth-write-scope: the prose-to-checks sweep writing the canon shelf is f
     const findings = runScope(root);
     assert.equal(findings.length, 1);
     assert.equal(findings[0].file, 'packs/acme-pack-g/RULES.md');
-    assert.equal(findings[0].severity, 'blocking');
+    assert.equal(findings[0].on_fail, 'block');
   } finally { cleanup(root); }
 });
 

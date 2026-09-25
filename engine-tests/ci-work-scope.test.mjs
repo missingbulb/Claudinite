@@ -22,8 +22,8 @@ const ENTRY = 'engine/checks/ci-work-scope.mjs';
 // A repo whose branch carries a change, and (optionally) a local pack whose work
 // rule always fires — the only way to prove the runner's verdict reaches the exit
 // code rather than being swallowed.
-const FAILING_PACK = "export default { id: 'demo', prose: null, workRules: [{ id: 'always-fails', severity: 'blocking', "
-  + "scope: 'work', description: 'd', why: 'w', run: () => [{ rule: 'always-fails', severity: 'blocking', file: 'a.txt', "
+const FAILING_PACK = "export default { id: 'demo', prose: null, workRules: [{ id: 'always-fails', on_fail: 'block', "
+  + "scope: 'work', description: 'd', why: 'w', run: () => [{ rule: 'always-fails', on_fail: 'block', file: 'a.txt', "
   + "line: null, what: 'deliberate', why: 'w', fix: 'f', doc: null }] }] };\n";
 
 const repoWithChange = ({ failing = false } = {}) => makeRepo({

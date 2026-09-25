@@ -19,7 +19,7 @@ test('a directory not named for an identity is found — and really is unaddress
   const found = rule.run(ctx(['preferences/README.md', 'preferences/Ariel/RULES.md']));
   assert.equal(found.length, 1);
   assert.equal(found[0].file, 'preferences/Ariel');
-  assert.equal(found[0].severity, 'advisory');
+  assert.equal(found[0].on_fail, 'advise');
   assert.match(found[0].what, /not an identity the reader can address/);
   // the defect the finding claims, demonstrated against the real reader
   const store = resolveStore(STORE);

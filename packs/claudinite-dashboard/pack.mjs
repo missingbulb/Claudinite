@@ -10,7 +10,7 @@
 // four-step workflow `seedOps` writes below; what a repo does with the pack is its README.
 export default {
   version: '60922.3',
-  minEngineVersion: '60822.1',
+  minEngineVersion: '60925.1',
   ruleRoutingGuidance: {
     belongs: 'the browser dashboard over Claudinite scheduler state and the site that publishes it',
     excludes: 'how the scheduler behaves — core; workflow practice — git-github; product sites — public-website',

@@ -9,3 +9,8 @@
 - **Mechanism:** an action-scoped guard, blocking, declared in the pack's `declared-checks.json`,
   and dated `since` the day it landed so it judges no call made before it existed.
 - **Landed:** #1671 (Refs #1202, #1308, #1408, #1435, #1657, #1672) · pack version 60906.2.
+
+## 2026-09-25 · reworded · `severity: blocking|advisory` is spelled `on_fail: block|advise`
+- **Reason:** owner decision, 2026-09-25: the field names what happens when the check fails, and
+  *severity* keeps its impact sense; what this element enforces is unchanged.
+- **Actor:** @missingbulb (owner).
