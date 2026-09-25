@@ -48,3 +48,9 @@
   lines above defines it as the carrier and why. A probe run wrote the why-clause and was right to.
 - **Actor:** @missingbulb (owner), whose probe surfaced it.
 - **Model:** Claude Opus 5.
+
+## 2026-09-25 · reworded · the backfill lane replaces the placeholder with a same-day born too (#2317)
+- **Reason:** a birth verified on the conversion's own date had no way in, since the tool refuses
+  two borns.
+- **Actor:** @missingbulb (owner).
+- **Landed:** #2317

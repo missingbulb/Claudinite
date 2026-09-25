@@ -116,3 +116,10 @@
 - **Reason:** the brief gained a section for rules followed through an in-place rewording, and the
   claimed version rows moved into one section; the skill names both.
 - **Actor:** @missingbulb (owner).
+
+## 2026-09-25 · reworded · a conversion entry git dates at the birth is settled, and a same-day born replaces it (#2317)
+- **Reason:** `check` called all 110 conversion-filled files pending and nothing could clear it,
+  though 90 were dated at their real birth; it now reads the birth from git, and `apply --backfill`
+  takes a born verified on the placeholder's own day, which two-borns refused.
+- **Actor:** @missingbulb (owner).
+- **Landed:** #2317

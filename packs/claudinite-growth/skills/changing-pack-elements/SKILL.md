@@ -102,12 +102,13 @@ entries are dated in the past by definition, and under that flag the file is re-
 date order rather than appended to. Two things only it may do:
 
 - **Replace what the references conversion wrote.** A file the conversion filled carries a
-  `born` dated by the conversion write rather than by the element. Where the derived birth
-  is earlier, that placeholder is what is being corrected and the tool drops it, naming it
-  in the run's output; where the placeholder's date *is* the birth, no earlier born arrives
-  and it stands. The dates decide, so neither truncating these files as a class nor leaving
-  them is the rule. Only the conversion's own entry is ever replaced - an entry somebody
-  wrote is never dropped, whatever its date.
+  `born` dated by the conversion write rather than by the element. Where the batch brings a
+  born dated on or before it - an earlier birth, or the same day verified with the commit
+  behind it - that placeholder is what is being corrected and the tool drops it, naming it
+  in the run's output; a batch bringing no born leaves it standing. The dates decide, so
+  neither truncating these files as a class nor leaving them is the rule. Only the
+  conversion's own entry is ever replaced - an entry somebody wrote is never dropped,
+  whatever its date.
 - **Open a file the marking pass could not.** An element retired *before* that pass is named
   by no carrier, so nothing will ever create its file. A `--backfill` batch that opens with
   `born` creates it; its whole history, birth through `retired`, arrives at once or not at

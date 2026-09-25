@@ -64,7 +64,7 @@ test('mark --dry-run reports the whole pass and the empty-file count, and writes
   const root = repo(FILES);
   try {
     const { code, out } = await capture(['mark', 'mine', '--dry-run'], root);
-    assert.equal(code, 0);
+    assert.equal(code, 0, out);
     assert.match(out, /"Local rule" marked \(local-rule\)/);
     assert.match(out, /2 empty provenance files under \.claudinite\/local\/packs\/mine \(dry run: nothing written\)/);
     assert.equal(readFileSync(join(root, '.claudinite/local/packs/mine/RULES.md'), 'utf8'), FILES['.claudinite/local/packs/mine/RULES.md']);
@@ -113,7 +113,7 @@ test('convert-references dates an entry by the commit that added its key', async
     assert.equal(referenceDateOf(root, 'packs/alpha/references.md')('RULES-3'), date);
     assert.equal(referenceDateOf(root, 'packs/alpha/references.md')('RULES-9'), null);
     const { code, out } = await capture(['convert-references', 'alpha'], root);
-    assert.equal(code, 0);
+    assert.equal(code, 0, out);
     assert.match(out, /references\.md: converted and deleted/);
     const text = readFileSync(join(root, 'packs/alpha/provenance/doing-another.md'), 'utf8');
     assert.match(text, new RegExp(`^## ${date} · born · converted from references\\.md \\(RULES-3\\)\\n`));
@@ -164,7 +164,7 @@ test('history prints the commits, the pull requests they name, and the README se
   const root = repo(FILES);
   try {
     const { code, out } = await capture(['history', 'alpha', 'doing-thing'], root);
-    assert.equal(code, 0);
+    assert.equal(code, 0, out);
     assert.match(out, /## commits touching packs\/alpha\/RULES\.md/);
     assert.match(out, /seed \(#7\)/);
     assert.match(out, /## pull requests those commits name\n#7/);
@@ -192,9 +192,10 @@ test('reduce prints the reduced file; an unknown command prints the usage and ex
 // history (born where it first appears, reworded where its text changed), a commit that
 // touched many packs is a sweep - listed, never drafted onto an element - and apply
 // appends every drafted entry once, refusing the whole brief on one bad entry.
-const commitAs = (root, message, { email = 't@t' } = {}) => {
+const commitAs = (root, message, { email = 't@t', date = null } = {}) => {
   git(root, 'add', '-A');
-  execFileSync('git', ['-c', `user.email=${email}`, '-c', 'user.name=t', 'commit', '-q', '-m', message], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+  const env = date ? { ...process.env, GIT_AUTHOR_DATE: `${date}T12:00:00Z`, GIT_COMMITTER_DATE: `${date}T12:00:00Z` } : process.env;
+  execFileSync('git', ['-c', `user.email=${email}`, '-c', 'user.name=t', 'commit', '-q', '-m', message], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], env });
 };
 const briefRepo = () => {
   const root = repo({
@@ -229,7 +230,7 @@ test('brief reads each element\'s events from its carrier\'s history, sets a swe
   const root = briefRepo();
   try {
     const { code, out } = await capture(['brief', 'alpha'], root);
-    assert.equal(code, 0);
+    assert.equal(code, 0, out);
     assert.match(out, /5 pending files · 4 pack-local commits · 1 sweep/);
     assert.match(out, /```entry born-in-sweep\n## 2026-\d{2}-\d{2} · born · Hyphens everywhere \(#9\)/, 'the element a sweep bore is born there all the same');
     assert.match(out, /- #9 [^\n]* · sweep · /, 'the five-pack commit is marked a sweep on its row');
@@ -253,7 +254,7 @@ test('brief inventories every commit that touched the pack, so one it drafts not
   const root = briefRepo();
   try {
     const { code, out } = await capture(['brief', 'alpha'], root);
-    assert.equal(code, 0);
+    assert.equal(code, 0, out);
     assert.match(out, /## every commit that touched this pack/);
     assert.match(out, /- #12 \d{4}-\d{2}-\d{2} Hide alpha · pack\.mjs · NOTHING DRAFTED/, 'a commit no element drafts is named, not silently dropped');
     assert.match(out, /- #9 \d{4}-\d{2}-\d{2} Hyphens everywhere · RULES\.md, [^·]*· sweep · born-in-sweep \(born\), doing-another \(set aside\)/, 'a sweep is a row of the same table, carrying the files it touched under this pack and the elements it was set aside for');
@@ -350,7 +351,7 @@ test('apply --backfill writes a conversion-filled file in date order and replace
 
     const done = await capture(['apply', 'alpha', path, '--backfill'], root);
     assert.equal(done.code, 0, done.err);
-    assert.match(done.out, /placeholder replaced by an earlier born/);
+    assert.match(done.out, /placeholder replaced by the batch's born/);
     const { entries } = parseEntries(readFileSync(join(root, 'packs/alpha/provenance/doing-thing.md'), 'utf8'));
     assert.deepEqual(entries.map((e) => [e.date, e.kind]), [['2026-07-01', 'born']], 'the conversion\'s placeholder is the thing being corrected');
     assert.equal(entries[0].fields['Retire when'], undefined, 'what the doc carried moves by hand onto the entry it evidences, never automatically');
@@ -475,6 +476,41 @@ test('check lists the declined log and marks a conversion-filled file, so the pa
     assert.match(out, /doing-thing\.md ← rule "Doing a thing" \(conversion only, history pending\)/);
     assert.match(out, /_declined\.md ← 1 candidate turned down/);
   } finally { removeTree(root); }
+});
+
+// A converted entry dated on the day git shows the element born IS its birth, and a
+// listing that calls it pending sends every pass back to re-read a settled file.
+const convertedOn = (date) => CONVERTED_FILE.replace('2026-09-14', date);
+test('check settles a conversion-filled file whose date git shows as the birth, and keeps an earlier or unverified birth pending', async () => {
+  const root = briefRepo();
+  try {
+    writeFileSync(join(root, 'packs/alpha/README.md'), '# alpha\n\n| Rule | Words |\n|---|---|\n| Doing a guessed thing | 12 |\n');
+    commitAs(root, 'Index every pack\'s rules (#60)', { date: '2026-07-01' });
+    const rules = readFileSync(join(root, 'packs/alpha/RULES.md'), 'utf8');
+    writeFileSync(join(root, 'packs/alpha/RULES.md'), `${rules}\n- **Doing a settled thing** - so. (doing-settled)\n\n- **Doing an older thing** - so. (doing-older)\n\n- **Doing a guessed thing** - so. (doing-guessed)\n`);
+    commitAs(root, 'Three rules (#61)', { date: '2026-07-02' });
+    writeFileSync(join(root, 'packs/alpha/provenance/doing-settled.md'), convertedOn('2026-07-02'));
+    writeFileSync(join(root, 'packs/alpha/provenance/doing-older.md'), convertedOn('2026-09-14'));
+    writeFileSync(join(root, 'packs/alpha/provenance/doing-guessed.md'), convertedOn('2026-07-02'));
+    commitAs(root, 'Convert references (#62)', { date: '2026-09-14' });
+    const { out } = await capture(['check', 'alpha'], root);
+    assert.match(out, /doing-settled\.md ← rule "Doing a settled thing" \(conversion entry, dated at its birth\)/);
+    assert.match(out, /doing-older\.md ← rule "Doing an older thing" \(conversion only, history pending\)/, 'git shows the element before the entry, so the entry is a placeholder');
+    assert.match(out, /doing-guessed\.md ← rule "Doing a guessed thing" \(conversion only, its birth unverified\)/, 'the derived birth is itself an assumption, so a matching date settles nothing');
+  } finally { removeTree(root); }
+});
+
+test('check fails loudly on a shallow clone rather than settle a conversion-filled file on history it cannot read', async () => {
+  const root = briefRepo();
+  const clone = mkdtempSync(join(tmpdir(), 'claudinite-prov-shallow-'));
+  try {
+    writeFileSync(join(root, 'packs/alpha/provenance/doing-thing.md'), CONVERTED_FILE);
+    commitAs(root, 'Convert references (#62)');
+    execFileSync('git', ['clone', '-q', '--depth', '1', `file://${root}`, clone], { stdio: 'ignore' });
+    const { out, code } = await capture(['check', 'alpha'], clone);
+    assert.notEqual(code, 0);
+    assert.match(out, /doing-thing\.md: [^\n]*shallow/);
+  } finally { removeTree(root); removeTree(clone); }
 });
 
 // The carrier follow's two blind spots, both live when macos was backfilled (#2253): an

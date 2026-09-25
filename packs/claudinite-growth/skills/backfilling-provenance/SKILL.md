@@ -23,8 +23,9 @@ so the sections it prints without a draft under them are the run's work, not its
    nothing holds the run until the Stop hook, with every file already written.
 1. **Take one pack** and list what is owed: `node packs/claudinite-growth/provenance.mjs
    check <pack>` prints what each file is named by, which are empty, which hold only the
-   conversion's entry and so owe history too, and how many candidates `_declined.md` already
-   holds. The listing is the whole pass: nothing owed is left off it (in a member the tool is
+   conversion's entry - owing history where git shows the element earlier or its derived
+   birth is an assumption, settled where git dates the birth on that entry's own day - and
+   how many candidates `_declined.md` already holds. The listing is the whole pass: nothing owed is left off it (in a member the tool is
    `.claudinite/shared/packs/claudinite-growth/provenance.mjs`).
 2. **Write the brief**, source-first: `provenance.mjs brief <pack> > brief.md` (an element
    list after the pack narrows it to those files) reads every empty file's history out of
@@ -76,8 +77,10 @@ so the sections it prints without a draft under them are the run's work, not its
    conversion filled from `references.md` is written the same way, its converted entry read as
    evidence: the `Reason` and `Retire when` move by hand onto the entries they actually
    evidence. The placeholder `born` itself is the tool's to resolve - `apply --backfill`
-   drops it where the derived birth is earlier and keeps it where its date *is* the birth -
-   so read each such file's own evidence rather than truncating them as a class.
+   drops it wherever the batch brings a born dated on or before it, and keeps it where the
+   batch brings none - so read each such file's own evidence rather than truncating them as
+   a class. A birth the listing calls unverified is settled only by a born the run checked
+   against the old carrier, even on the placeholder's own day.
 5. **Write only what the evidence carries.** A field with nothing behind it is omitted,
    never filled with a placeholder or a plausible guess: a fabricated rationale lets a
    future review reaffirm a rule on false grounds, which is worse than no rationale. An
