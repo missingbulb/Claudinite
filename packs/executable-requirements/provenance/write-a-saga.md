@@ -29,3 +29,9 @@
 - **Mechanism:** the `write-a-saga` skill, forced for `dev/requirements/saga/**`; the bar the move
   was judged against is on the `deterministic-expecteds` file.
 - **Landed:** #1667 (Closes #1662) · pack version 60903.1.
+
+## 2026-09-25 · trigger-changed · description cut to the 30-word cap
+- **Reason:** the description summarised the method the body already carries; every session paid for
+  it.
+- **Mechanism:** the description, as before.
+- **Actor:** @missingbulb (owner).

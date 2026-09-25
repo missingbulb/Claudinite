@@ -16,3 +16,9 @@
 - **Retire when:** the step-1 breakdown grows a mechanised classifier that routes the two shapes
   itself.
 - **Landed:** #2022 · pack version 60913.3.
+
+## 2026-09-25 · trigger-changed · description cut to the 30-word cap
+- **Reason:** the description summarised the method the body already carries; every session paid for
+  it.
+- **Mechanism:** the description, as before.
+- **Actor:** @missingbulb (owner).

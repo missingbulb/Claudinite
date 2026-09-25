@@ -22,3 +22,9 @@
 - **Reason:** owner decision, 2026-09-25: the field names what happens when the check fails, and
   *severity* keeps its impact sense; what this element enforces is unchanged.
 - **Actor:** @missingbulb (owner).
+
+## 2026-09-25 · severity-changed · the cap drops from 60 words to 30
+- **Reason:** the owner asked again what session start costs beyond the rules; at 60 the mounted
+  descriptions still averaged 41 words, the method summaries the bodies already carry.
+- **Mechanism:** the same declared advisory, matching 31 words.
+- **Actor:** @missingbulb (owner).

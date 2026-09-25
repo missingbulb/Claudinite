@@ -1,6 +1,7 @@
 ---
 name: growth-dedup
-description: Prune a repo's local packs of items the mounted Claudinite canon now covers — remove, strip to residue, or track a wording drift, never grow an entry. Use when the growth dedup task runs, or when asked to reconcile or dedup local packs against the canon.
+description: Prune a repo's local packs of items the mounted canon now covers. Use when asked to reconcile or dedup local packs against the canon.
+disable-model-invocation: true
 metadata:
   body: workflow
   usage:

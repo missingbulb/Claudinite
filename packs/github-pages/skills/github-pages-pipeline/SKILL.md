@@ -1,6 +1,6 @@
 ---
 name: github-pages-pipeline
-description: Wiring, operating or debugging the GitHub Pages release of a site repo. Use when setting a Pages repo up, when a gp/ check fires, when a release parks, or when asked to deploy a Pages site now.
+description: Wiring, operating or debugging a site repo's GitHub Pages release. Use when setting one up, when a gp/ check fires, when a release parks, or to deploy now.
 metadata:
   body: workflow
   usage:

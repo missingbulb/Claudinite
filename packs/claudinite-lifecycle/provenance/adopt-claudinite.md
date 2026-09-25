@@ -18,3 +18,9 @@
   is called update.
 - **Actor:** @missingbulb (owner).
 - **Mechanism:** the skill description, re-vendoring kept as a trigger.
+
+## 2026-09-25 · trigger-changed · description cut to the 30-word cap
+- **Reason:** the description summarised the method the body already carries; every session paid for
+  it.
+- **Mechanism:** the description, as before.
+- **Actor:** @missingbulb (owner).

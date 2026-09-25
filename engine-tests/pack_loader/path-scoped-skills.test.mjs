@@ -46,7 +46,7 @@ test('pathScopedSkills reads each active pack\'s bundled skills\' forced scope; 
     skill('a', 's1', '---\nname: s1\ndescription: d\nmetadata:\n  force-load-on-file-edits-paths: wiki/**, wiki/*.md\n---\n');
     skill('a', 'plain', '---\nname: plain\ndescription: unscoped\n---\n');
     skill('b', 's2', '---\nname: s2\ndescription: d\nmetadata:\n  force-load-on-file-edits-paths:\n    - wiki/**\n---\n');
-    assert.deepEqual(skillMetadata(join(root, 'a', 'skills', 's1')), { name: 's1', description: 'd', body: null, usage: null, forceLoadPaths: ['wiki/**', 'wiki/*.md'], toolCallTriggers: [], promptTriggers: [], toolResultTriggers: [] });
+    assert.deepEqual(skillMetadata(join(root, 'a', 'skills', 's1')), { name: 's1', description: 'd', modelInvocable: true, body: null, usage: null, forceLoadPaths: ['wiki/**', 'wiki/*.md'], toolCallTriggers: [], promptTriggers: [], toolResultTriggers: [] });
     const decls = pathScopedSkills([
       { id: 'a', dir: join(root, 'a'), skills: ['s1', 'plain'] },
       { id: 'b', dir: join(root, 'b'), skills: ['s2'] },

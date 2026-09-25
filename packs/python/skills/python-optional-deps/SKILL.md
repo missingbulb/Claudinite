@@ -1,6 +1,6 @@
 ---
 name: python-optional-deps
-description: Wiring a Python package's optional heavy/native dependency — declaring the extra, importing the selected backend lazily, and guarding that import. Use when adding or changing an optional dependency or a heavy backend behind an interface.
+description: Wiring a Python package's optional heavy or native dependency behind a lazy, guarded import. Use when adding or changing an optional dependency or backend.
 metadata:
   body: guidelines
   usage:

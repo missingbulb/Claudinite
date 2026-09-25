@@ -1,6 +1,6 @@
 ---
 name: flutter-pubspec
-description: Telling a real dependency change from lockfile churn in a Flutter app — a pubspec.lock that moved without pubspec.yaml is SDK version skew to revert, not a change to commit. Use when pubspec.lock shows up in a diff, or when editing pubspec.yaml or pubspec.lock.
+description: Telling a real Flutter dependency change from lockfile churn. Use when pubspec.lock shows up in a diff, or when editing pubspec.yaml or pubspec.lock.
 metadata:
   body: guidelines
   usage:

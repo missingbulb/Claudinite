@@ -7,3 +7,9 @@
 - **Rejected:** leaving the two rules in `RULES.md` (paid by every session while relevant only when the manifest's permissions move); a description-only skill (a description is matched by the model reading the skill listing, which is not a predictable load - the owner's call on #1662, recorded on claudinite-growth's `writing-pack-prose` element: "unless we have a force-load-on-file-edits-paths that covers all the relevant times those instructions are needed, let's move them back to RULES.md").
 - **Retire when:** the harness offers a deterministic skill trigger finer than a file edit, and the corpus adopts it.
 - **Landed:** #1667 (Refs #1662) · pack version 60903.6.
+
+## 2026-09-25 · trigger-changed · description cut to the 30-word cap
+- **Reason:** the description summarised the method the body already carries; every session paid for
+  it.
+- **Mechanism:** the description, as before.
+- **Actor:** @missingbulb (owner).

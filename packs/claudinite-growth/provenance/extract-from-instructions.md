@@ -40,3 +40,9 @@
   loads deterministically is untouched and only the model's judgment call reads different text.
 - **Actor:** @missingbulb (owner).
 - **Model:** claude-opus-5
+
+## 2026-09-25 · trigger-changed · description cut to the 30-word cap
+- **Reason:** the description summarised the method the body already carries; every session paid for
+  it.
+- **Mechanism:** the description, as before.
+- **Actor:** @missingbulb (owner).

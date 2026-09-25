@@ -29,3 +29,9 @@
   glob that matches a subset - 125 of 314 - and that is what the rule now names.
 - **Actor:** @missingbulb (owner).
 - **Landed:** #2161 (Refs #2150).
+
+## 2026-09-25 · trigger-changed · description cut to the 30-word cap
+- **Reason:** the description summarised the method the body already carries; every session paid for
+  it.
+- **Mechanism:** the description, as before.
+- **Actor:** @missingbulb (owner).

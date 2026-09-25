@@ -1,6 +1,6 @@
 ---
 name: firestore-security-rules
-description: Writing and testing Firestore and Storage security rules — default-deny, merge semantics, absent-field guards, server-owned fields, request.time pins, bounded strings, empirical rules tests. Use when editing firestore.rules or storage.rules, or reviewing what a ruleset allows.
+description: Writing and testing Firestore and Storage security rules. Use when editing firestore.rules or storage.rules, or reviewing what a ruleset allows.
 metadata:
   body: guidelines
   usage:

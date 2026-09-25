@@ -21,3 +21,9 @@
 - **Mechanism:** the `deterministic-expecteds` skill, forced for `dev/requirements/**/cases/**` and
   `dev/requirements/shared/**`, so the guard holds an edit there until the session has loaded it.
 - **Landed:** #1667 (Closes #1662) · pack version 60903.1.
+
+## 2026-09-25 · trigger-changed · description cut to the 30-word cap
+- **Reason:** the description summarised the method the body already carries; every session paid for
+  it.
+- **Mechanism:** the description, as before.
+- **Actor:** @missingbulb (owner).

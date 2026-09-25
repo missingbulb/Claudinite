@@ -1,6 +1,6 @@
 ---
 name: writing-wiki-pages
-description: How a product-wiki page is written and grown — the Key insights header, citation, what a source actually supports (attribution, independent voices, public proxies), correction without deletion, the growth log, sample-data, when a pass writes nothing. Loaded for any edit under product-wiki/.
+description: How a product-wiki page is written and grown: key insights, citation, what a source supports, correction without deletion. Loaded for any edit under product-wiki/.
 metadata:
   body: guidelines
   usage:

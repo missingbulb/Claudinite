@@ -36,3 +36,10 @@
 - **Reason:** owner decision: the mechanism that re-vendors a mount is called update; "converge"
   stays only for a work item reaching its end state.
 - **Actor:** @missingbulb (owner).
+
+## 2026-09-25 · trigger-changed · hidden from the model, description cut to 30 words
+- **Reason:** only a task's worker or a person's `/name` reaches this skill, yet its description sat
+  in every session's context.
+- **Mechanism:** the harness's `disable-model-invocation: true`; the worker reads the SKILL.md by
+  path.
+- **Actor:** @missingbulb (owner).
