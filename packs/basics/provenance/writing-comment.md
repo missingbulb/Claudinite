@@ -9,3 +9,9 @@
 - **Actor:** @missingbulb (owner).
 - **Mechanism:** a RULES.md rule, triggered on "Writing a comment".
 - **Landed:** #760, closing #759 · pack version 1.
+
+## 2026-09-25 · reworded · the owner replaced the rule with six explicit prohibitions
+- **Reason:** the owner set the list directly; it forbids restating code, explaining a callee's
+  workings or return, narrating history, naming paths, and comments an unrelated change would stale.
+- **Actor:** @missingbulb (owner).
+- **Model:** claude-opus-5-5
