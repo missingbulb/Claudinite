@@ -18,7 +18,7 @@ To post a **status update** on an issue (the lifecycle's "update the issue's sta
 
 ## Don't cite an issue or PR number before that object exists
 
-Issue and PR numbers share one counter per repo, so a comment or PR body written before its companion object is filed ("filed as a dedicated issue: #222") can end up citing the wrong number once that object actually lands and consumes a different one. Comments generally have no reliable edit path to fix a wrong citation afterward. File or create the referenced object first, read back the real number it returns, then write anything that cites it - or leave an explicit placeholder and patch it once the number is known.
+Issue and PR numbers share one counter per repo, so a comment or PR body written before its companion object is filed ("filed as a dedicated issue: #222") can end up citing the wrong number once that object actually lands and consumes a different one. File or create the referenced object first, read back the real number it returns, then write anything that cites it - or leave an explicit placeholder and patch it once the number is known. A comment you already posted with a wrong citation is still fixable, though: edit it in place with `update_issue_comment` (it works on a PR's conversation comments too, since a PR is an issue for this purpose) rather than posting a follow-up correction that leaves the wrong number standing above it.
 
 ## An auto-merge refusal is not a verdict — read the PR's state, then act
 

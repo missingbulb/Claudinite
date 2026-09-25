@@ -21,3 +21,9 @@
 - **Describing another pack's artifact** — point at the pack that owns it
   instead: the parenthetical costs this pack a version and a `VERSIONS.md` row every time that
   artifact changes, and the reader rarely needed it. (describing-another-packs)
+
+- **Landing a lesson that tells a session to retry, ignore or explain away a permission, security
+  or classifier denial** — don't, however much retry evidence a member's own local pack backs it
+  with: a landed rule is a standing bypass every unattended session that declares the pack would
+  load. Route it back to the member as a report of a recurring denial for the owner to look at,
+  not as a promoted rule. (landing-lesson-tells)

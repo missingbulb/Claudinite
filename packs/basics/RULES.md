@@ -121,6 +121,19 @@
 - **Writing anything** — size it to its idea: "open one issue" takes a sentence, not three
   paragraphs. (writing-anything)
 
+- **Applying a bulk terminology rename the owner approved in free text** — check each occurrence's
+  actual referent before renaming it; a free-text approval read as covering everything can still
+  leave some occurrences carrying the term's other, valid sense. (applying-bulk-terminology)
+
+- **Asking how to fix a structural or architectural complaint via `AskUserQuestion`** — offer
+  restructuring itself as one option, not only mechanism-level tweaks to the existing shape; an
+  owner's free-text answer naming the restructure nobody offered is the tell it was missing.
+  (asking-how-fix)
+
+- **Writing a duration or before/after number into a commit or PR body** — compute it from real
+  timestamps, never a felt sense of elapsed time around an unconsumed background wait.
+  (writing-duration-beforeafter)
+
 - **The primary source for a fact about a named, real person is blocked** (a profile behind a
   `403` or a paywall) — never substitute a data-broker or aggregator listing, and never publish
   the substitute under a caveat. Ask whoever is present instead: one question costs less than
@@ -153,6 +166,12 @@
   `# comment` on any line: interactive zsh treats `#` as a comment only under
   `interactive_comments`, off by default, so the pasted line fails. Put the explanation in the
   prose around the block. (handing-owner-command)
+
+- **A Bash command naming `git` (or a computed argument) refused as "too complex to verify"
+  inside a worktree-isolated agent** — drop straight to the plain, literal, unsubstituted single
+  command. The guard reads syntax, not intent, so a loop, a heredoc, or the same call chained with
+  `&&` or piped keeps failing exactly the same way; split it apart before running rather than
+  retrying a differently-phrased compound form. (worktree-isolated-git-refused)
 
 
 ## Warnings and findings
