@@ -26,3 +26,8 @@
 - **Reason:** owner decision, 2026-09-25: the field names what happens when the check fails, and
   *severity* keeps its impact sense; what this element enforces is unchanged.
 - **Actor:** @missingbulb (owner).
+
+## 2026-09-25 · reworded · "baseline" / "baselining" vocabulary retired
+- **Reason:** owner decision: the mechanism that re-vendors a mount is called update, and the pack
+  every repo declares is basics; the baseline wording named a retired mechanism.
+- **Actor:** @missingbulb (owner).

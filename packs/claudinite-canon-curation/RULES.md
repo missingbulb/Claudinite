@@ -2,7 +2,7 @@
 
 ## Naming and placing content on the shelf
 
-- **Wanting a rule about what the `packs/` tree may reference** — configure the baseline pack's
+- **Wanting a rule about what the `packs/` tree may reference** — configure the basics pack's
   `config.barriers`, extending the mechanism generically if a capability is missing. Never
   standalone segregation-checking code. (wanting-rule-packs)
 

@@ -385,7 +385,7 @@ test('chrome-release-vendoring migration: gate, telemetry, and the vendoring rou
   const read = (p) => repo.get(p) ?? null;
   const write = (p, c) => repo.set(p, c);
   // Five of this record's ten materializations are WORKFLOW files, so the caller has to
-  // be one that can deliver them — the same handshake baselining's worker makes. Run it
+  // be one that can deliver them — the same handshake the pack update makes. Run it
   // without the announcement and those five are skipped instead of wedging the push, which
   // is the hazard a workflow materialization carries for a caller that cannot push one.
   const capable = { [WITHHOLD_CAPABLE_ENV]: '1' };

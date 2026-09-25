@@ -26,7 +26,7 @@
 // made it, in this repo's config), so an issue asking someone to copy it into every
 // member would be ceremony around a mechanical edit. The write is one PUT to the
 // member's default branch, guarded by the blob sha the read returned. It is not a
-// content migration and does not ride the maintenance-branch lane baselining
+// content migration and does not ride the maintenance-branch lane the update
 // delivers on: there is no code in it, nothing to review, and it is
 // idempotent — a member already declaring the seed is read and left alone. It does
 // REFORMAT the declaration it edits to canonical 2-space JSON (the shape `--init`
@@ -37,7 +37,7 @@
 // `config` error there ("declares unknown pack"), and a member's mount carries only what
 // that member declared as of its last converge. So a seed is written only where the
 // pack's code is already ON DISK — for a pack arriving with canon, that is what the
-// baseline migration arranges (it declares and re-converges in one transactional
+// migration record arranges (it declares and re-converges in one transactional
 // commit). `not-vendored` is a WAIT, not a finding: members converge nightly, and each
 // is written the first run after its own mount carries the pack.
 //

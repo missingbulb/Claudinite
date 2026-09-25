@@ -29,7 +29,7 @@ only to extend the *mechanism*, never to add one project's rule or task:
 | Pack discovery + rules index | `engine/pack_loader/pack-registry.mjs`, `engine/pack_loader/generate-rules-index.mjs` | structural scan of `packs/*/pack.mjs`; the generated `@`-import index the repo's CLAUDE.md loads the active packs' prose through (#807) |
 | Skill mounting | `engine/pack_loader/mount-skills.mjs` | per-session symlink of the active packs' bundled-skill union (`<pack>/skills/<name>/`) |
 | Adoption interviews | `packs/claudinite-lifecycle/skills/adopt-claudinite/interview.mjs` | the gap computation (a pack's declared questions minus the entry's stored answers) and the SessionStart nudge; owns no question itself — bundled in the adoption skill, resolved fail-soft by the engine |
-| Baseline-migration mechanism | [`engine/migrations/`](engine/migrations/README.md) | the read-side resolver and write-side rename for a relocation; a record lives under the flow that owns it (the engine's, or `packs/<pack>/migrations/`), records are kept forever, and vendoring's 7-day recency window decides what ships to consumers |
+| Migration-record mechanism | [`engine/migrations/`](engine/migrations/README.md) | the read-side resolver and write-side rename for a relocation; a record lives under the flow that owns it (the engine's, or `packs/<pack>/migrations/`), records are kept forever, and vendoring's 7-day recency window decides what ships to consumers |
 | Bootstrap / update | [`bootstrap.md`](bootstrap.md), [`bootstrap.mjs`](bootstrap.mjs) | adoption — the doc's fast path, mechanized by the one-shot script — and the idempotent per-repo re-run |
 | The update flows | [`packs/claudinite-lifecycle/updates/`](packs/claudinite-lifecycle/updates/README.md) | the `update` task's own machinery, beside the pack that owns it. Canon-internal, never vendored — the `updates/` directory name is excluded from every mount, like a pack's `test/` — so a flow runs from the canon tree the runner just fetched and is always current |
 
@@ -64,9 +64,9 @@ bespoke checking code**: the `pack-independence` barrier is contributed as manif
 vendor writer's coherence guard holding the same invariant at vendoring time on consumers' behalf.
 
 Activation is the project's declaration in `.claudinite-settings.json` — **no pack runs undeclared,
-the baseline included.** A technology pack carries a `detect` fingerprint so `--init` seeds it into a
+basics included.** A technology pack carries a `detect` fingerprint so `--init` seeds it into a
 fresh declaration when the technology is present; the marker only *suspects* a pack is wanted,
-never forcing or forbidding its declaration afterward. A declared-by-policy pack (the baseline and
+never forcing or forbidding its declaration afterward. A declared-by-policy pack (basics and
 the default-on maintenance packs) sets `detect: null` and is seeded by `--init`
 and/or a one-time migration.
 

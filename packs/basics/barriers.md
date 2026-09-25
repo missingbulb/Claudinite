@@ -2,7 +2,7 @@
 
 Enforce a **directed folder-access graph** in a repo: declare that the files under one set of folders may not reference another, and the `barrier` check finds every crossing reference — across all languages and file types. The mechanism other packs compose their separation rules on.
 
-It rides in with the baseline pack rather than being adopted: wanting structural segregation is a project's own call, and a repo that declares no graph is silent. Check-only, no prose — the finding is the instruction.
+It rides in with the basics pack rather than being adopted: wanting structural segregation is a project's own call, and a repo that declares no graph is silent. Check-only, no prose — the finding is the instruction.
 
 ## Declaring barriers
 
@@ -131,7 +131,7 @@ On a whole-repo sweep with a clean config, an exception that matched **nothing**
 
 ## Composing a barrier from another pack
 
-A pack ships a *fixed* barrier — no project config needed — by **declaring** the baseline pack and **contributing** the barrier as data on its manifest, never by importing its code (`pack-independence`): name `basics` in the pack's `requires` and carry the barrier under `contributes`:
+A pack ships a *fixed* barrier — no project config needed — by **declaring** the basics pack and **contributing** the barrier as data on its manifest, never by importing its code (`pack-independence`): name `basics` in the pack's `requires` and carry the barrier under `contributes`:
 
 ```js
 // packs/<somepack>/pack.mjs

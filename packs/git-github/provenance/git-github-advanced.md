@@ -60,3 +60,10 @@
   session.
 - **Model:** claude-opus-5
 - **Landed:** #2032
+
+## 2026-09-25 · trigger-changed · "the baseline lifecycle" reads "the basics task lifecycle"
+- **Reason:** owner decision retiring the baseline vocabulary; the pack every repo declares is
+  basics.
+- **Actor:** @missingbulb (owner).
+- **Model:** claude-opus-5-5
+- **Mechanism:** the skill description, triggering on what it did before.

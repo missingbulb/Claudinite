@@ -25,7 +25,7 @@ export { MIGRATION_FILE, migrationActive, recordName };
 // <flow>/migrations/<landed-date>-<slug>/migration.mjs is a spec. ALL records
 // present load — the apply/backfill path is unconditional, and FETCHING decides
 // relevance: a vendored consumer mount carries only the recent records
-// (vendoring's recency window), while a dormant project baselining out of a
+// (vendoring's recency window), while a dormant project updating out of a
 // fresh canon clone sees every record ever landed and applies what it needs.
 // Each object carries its `dir` — the record's CORPUS-RELATIVE path, which both
 // names the record and says which flow owns it.
@@ -193,7 +193,7 @@ async function declarationFile(read) {
 //
 // ORDER MATTERS AROUND IT. Declaring a pack whose code is not in the member's mount
 // is a blocking `config` error there, so the caller must re-converge the mount after
-// applying (baselining does; see its worker). This module only writes the file.
+// applying (the update task does; see its worker). This module only writes the file.
 //
 // It round-trips the file through JSON rather than editing settings as text, so the
 // result is canonical 2-space settings with a trailing newline (what `--init` writes,

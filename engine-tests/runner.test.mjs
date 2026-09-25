@@ -359,7 +359,7 @@ test('a declared forbidReferences wall runs via the runner, under its own id', a
 });
 
 test('no pack runs undeclared — basics included', async () => {
-  // Same blocking violation as above, but nothing declared: the baseline is
+  // Same blocking violation as above, but nothing declared: basics is
   // explicit opt-in, so the run stays silent and green.
   const bare = makeRepo({ changed: { 'doc.md': '[gone](missing.md)\n' } });
   const empty = makeRepo({ changed: {

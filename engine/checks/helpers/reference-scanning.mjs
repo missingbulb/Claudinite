@@ -6,7 +6,7 @@ import { normPrefix, under } from './path-containment.mjs';
 // folders (`from`) from referencing another (`to`); the engine finds every
 // crossing reference. Mechanism only, like every helper here: the edges are
 // POLICY and arrive as data — a declared check's `forbidReferences` entries
-// (pattern-rules.mjs), or the baseline pack's per-repo config rule and its
+// (pattern-rules.mjs), or the basics pack's per-repo config rule and its
 // pack-manifest contribution seam — and every failure text beyond the
 // composed crossing message stays with the declaration.
 //
@@ -15,7 +15,7 @@ import { normPrefix, under } from './path-containment.mjs';
 // bare filename) only counts when it *resolves to a real tracked path* inside the
 // barred folder. An English word that merely happens to be a folder's name never
 // resolves, so it never fires — no per-language parser, no allowlist of file
-// types, and near-zero false positives. The baseline pack's barrier guide documents
+// types, and near-zero false positives. The basics pack's barrier guide documents
 // the edge vocabulary, including the reference forms this does not resolve.
 // (One deliberate exception: with `matchNames: true` an edge opts into matching
 // the bare *names* of its barred folders — restricted to distinctive names so

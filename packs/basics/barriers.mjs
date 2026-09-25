@@ -26,7 +26,7 @@ export const DEFAULT_DOC = 'packs/basics/barriers.md';
 // they addressed the formerly code-composed rule. `gateDir` is the one
 // declarative gate a contribution may carry: the rule stays inert until that
 // directory exists in the repo under test (the vendored-mount gate the
-// baseline's isolation barrier rides).
+// basics isolation barrier rides).
 function contributedRule({ id, edges, on_fail = 'block', doc = DEFAULT_DOC, description, why, crossingRemedy, crossingExcuse, gateDir }) {
   const norm = normalizeEdges(edges);
   const rule = {

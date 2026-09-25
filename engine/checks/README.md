@@ -13,7 +13,7 @@ node engine/checks/check_the_work.mjs              # work scope: rules judging t
                                                    # the two are independent runners; each accepts --changed (transitional
                                                    # adoption-backlog scoping) and --base REF
 node engine/checks/check_the_world.mjs --list      # machine-readable catalog of every rule, both scopes
-node engine/checks/check_the_world.mjs --init      # write .claudinite-settings.json — the baseline plus the fingerprinted packs
+node engine/checks/check_the_world.mjs --init      # write .claudinite-settings.json — basics plus the fingerprinted packs
 
 node --test $(git ls-files '*.test.mjs')   # the test suite; CI sweeps the same files from its declared roots
 ```
@@ -57,7 +57,7 @@ carrying that pack's own settings — its parameters, and the overrides/exemptio
 ```json
 {
   "packs": [
-    "baseline",
+    "basics",
     { "id": "an-edge-graph-pack",
       "config": { "rules": [ { "from": "src", "to": "tests" } ] },
       "rules": { "some-rule": "advise" },
@@ -73,15 +73,15 @@ carrying that pack's own settings — its parameters, and the overrides/exemptio
 ```
 
 - **packs** — the declared packs; the closed set that executes. **No pack runs undeclared** —
-  the baseline too is declared explicitly (`--init` seeds it; the nightly
-  the update flows backfill a missing declaration). A declared id may name a **canon** pack (mounted from
+  basics too is declared explicitly (`--init` seeds it; the nightly
+  update flows backfill a missing declaration). A declared id may name a **canon** pack (mounted from
   `.claudinite/packs/`) or one of the repo's **own local packs** (`.claudinite/local/packs/<id>/` —
   discovered from the repo's own tree, `local: true`); both are declared and gated identically. A
   local pack's canonical declaration token is **namespaced**: `"local/<id>"` (string entry, or
   an entry object's `id`) — self-documenting, and a canon id can never be claimed by accident. The
   engine resolves both forms to the bare id ([`packEntryId`](../pack_loader/pack-registry.mjs)), so a bare local
   id still activates while the fleet migrates (the update flows rewrite it; the `local-pack-namespace`
-  baseline migration tracks convergence). An
+  migration record tracks convergence). An
   **unknown** pack name — one that matches neither a canon nor a local pack — is a settings error,
   caught at load (see below); a broken or id-colliding local pack.mjs is likewise surfaced as a
   blocking `config` finding, never a silent drop. A pack's fingerprint only *suspects* it is wanted
@@ -90,7 +90,7 @@ carrying that pack's own settings — its parameters, and the overrides/exemptio
   - **id** — the pack name (required; a bare string entry is shorthand for `{ "id": ... }`).
   - **config** — the pack's parameters (e.g. the dirs a technology pack's `npm ci` runs in, an
     edge-graph pack's edge list). This is the home of what a retired top-level `packConfig` key
-    used to hold; the `pack-entry-config` baseline migration
+    used to hold; the `pack-entry-config` migration record
     ([engine/migrations/](../migrations/README.md)) folded it, and the key stopped being a valid
     setting on #1640 - a repo still carrying one now collects the unknown-setting error.
   - **answers** — the pack's adoption-interview answers, **verbatim**, keyed by question id

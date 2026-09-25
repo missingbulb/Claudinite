@@ -484,7 +484,7 @@ export function bundledSkillSources(packs) {
 // that set plus every pack reachable through `requires` (transitively).
 // Declared entries keep their order; each pack's pulled-in dependencies land
 // right after it, deterministically. This runs when the declaration is
-// WRITTEN — bootstrap's `--init` and the baselining backfill — so a pack's
+// WRITTEN — bootstrap's `--init` and the update's backfill — so a pack's
 // prerequisites are materialized into .claudinite-settings.json, visible and
 // droppable like every other entry (the same reason a seeded pack is written
 // explicitly rather than defaulted), never resolved implicitly at run time.

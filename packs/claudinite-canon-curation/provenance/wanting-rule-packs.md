@@ -11,3 +11,9 @@
   which no path-keyed exception list should have to chase.
 - **Mechanism:** prose
 - **Retire when:** Reaffirm while a canon distributes discovered content its engine must not name.
+
+## 2026-09-25 · reworded · "baseline" / "baselining" vocabulary retired
+- **Reason:** owner decision: the mechanism that re-vendors a mount is called update, and the pack
+  every repo declares is basics; the baseline wording named a retired mechanism.
+- **Actor:** @missingbulb (owner).
+- **Model:** claude-opus-5-5

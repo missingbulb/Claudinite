@@ -2,7 +2,7 @@
   {
     "id": "home-seeded-packs-declared",
     "on_fail": "block",
-    "failureMessage": "baselining lands a seeded pack on every member but is gated !isHome, so a newly seeded pack reaches the whole fleet except this repo, invisibly",
+    "failureMessage": "the update lands a seeded pack on every member but skips the home, so a newly seeded pack reaches the whole fleet except this repo, invisibly",
     "scanIgnoringComments": true,
     "requireIndexCoverage": [
       {
@@ -17,7 +17,7 @@
         "whenIndexFileAbsent": "assertNothing",
         "anchorFindingsAt": "indexFile",
         "what": "the \"{pack}\" pack flags seededByDefault (packs/{pack}/pack.mjs) but is not declared here",
-        "fix": "add \"{pack}\" to the \"packs\" array — baselining skips the home, so this repo's declaration is hand-maintained; a deliberate opt-out is an acceptance with a reason instead"
+        "fix": "add \"{pack}\" to the \"packs\" array — the update skips the home, so this repo's declaration is hand-maintained; a deliberate opt-out is an acceptance with a reason instead"
       }
     ]
   },

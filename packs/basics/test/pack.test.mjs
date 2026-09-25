@@ -123,7 +123,7 @@ test('reference-integrity: does not flag a renamed file whose new path shares th
   } finally { cleanup(root); }
 });
 
-test('reference-integrity: does not flag a deleted path already governed by an active baseline migration', () => {
+test('reference-integrity: does not flag a deleted path already governed by an active migration record', () => {
   const root = makeRepo({
     base: {
       'old.sh': 'x\n',

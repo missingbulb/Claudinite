@@ -15,7 +15,7 @@ import { removeTree } from '../../engine/remove-tree.mjs';
 import { A_CANON_PACK } from '../helpers.mjs';
 
 // The import closure the declaration is written through (bootstrap `--init` and
-// the baselining backfill): declaring a pack materializes its `requires`.
+// the update's backfill): declaring a pack materializes its `requires`.
 const PACKS = [
   { id: 'acme-pack' },
   { id: 'acme-pack-b' },

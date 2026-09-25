@@ -53,7 +53,7 @@ function mount(corpus, project) {
   return r;
 }
 
-// No pack is active by default — the fake baseline is declared like any other.
+// No pack is active by default — the fake basics pack is declared like any other.
 const CORPUS = {
   packs: {
     basics: { skills: ['base-skill'] },

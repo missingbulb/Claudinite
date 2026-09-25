@@ -57,7 +57,7 @@ checks, in one Claudinite-only change:
    not-yet-migrated repo and seeds the pack.
 
 Fleet-wide "everyone has migrated" telemetry exists — declare the rename as a
-[baseline migration](engine/migrations/README.md), **in the same change that introduces the tolerance**: a
+[migration record](engine/migrations/README.md), **in the same change that introduces the tolerance**: a
 tolerance that lands without its record has no signal that will ever retire it. Any legacy shape a
 tolerance keeps readable (an old path, a stub's old form, a legacy key *inside* a consumer's config
 file) is trackable the same way, `legacyPresent` reading whatever expresses the old shape. The

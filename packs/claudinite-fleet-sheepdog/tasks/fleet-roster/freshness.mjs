@@ -9,10 +9,10 @@
 // import each other.
 //
 // WHY THE QUESTION EXISTS. Under per-project scheduling every member maintains ITSELF:
-// its own vendored `claudinite-scheduler.yml` fires hourly, and its `baselining` task
+// its own vendored `claudinite-scheduler.yml` fires hourly, and its `update` task
 // re-vendors the mount from canon. That is the right architecture — and it removed the
 // last thing that ever looked at a member from the outside. A member whose scheduler
-// was never vendored, whose workflow was deleted, or whose baselining has been failing
+// was never vendored, whose workflow was deleted, or whose update has been failing
 // for a fortnight is otherwise invisible: it still carries a declaration, so the
 // coverage half calls it covered, and it files no failure issue because nothing runs
 // there to fail. Self-maintenance cannot detect its own absence.

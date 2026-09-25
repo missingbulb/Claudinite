@@ -25,7 +25,7 @@ What is still split is the two **issue families**, which close on unrelated
 conditions, and not the walk.
 
 **Missing-packs** exists because a pack's `detect` fingerprint is consulted **once**, at
-bootstrap's `--init`: baselining backfills the seeded packs and each declared pack's `requires`
+bootstrap's `--init`: the update backfills the seeded packs and each declared pack's `requires`
 closure, but never re-fingerprints, so a member that grows into a pack after adoption is never told
 the pack exists and the owner has to already know what to ask for. **Pack-seeds** is the only one that **writes** to a
 member: some packs need a parameter no member can derive, because the answer is a fact about the
@@ -47,7 +47,7 @@ a decision the sweep cannot second-guess.
 That is also why the enforcer states a seeded pack's config **twice** — in `packSeeds`, and in its
 own entry for that pack, and why `seeds-agree` holds the two to each other.
 
-A pack arriving *with* canon reaches the fleet that already exists through a **baseline migration**
+A pack arriving *with* canon reaches the fleet that already exists through a **migration record**
 instead — a `declarePacks` op applied by each member's own update run, in the same transactional
 commit that vendors the pack's code. The sweep is the **standing** half: a migration record is dated
 and retires, while the sweep keeps converging every member the fleet acquires after it is gone.

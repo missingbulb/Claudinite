@@ -150,7 +150,7 @@ export async function worker({ root, repo, defaultBranch, token, target }) {
   const targetPr = target.pr;
   if (!rehearsalRef && !branch) {
     console.error('claudinite-needs-human: action — this mount is too far behind to converge itself;'
-      + ' re-baseline it against the canon');
+      + ' re-vendor it from the canon');
     throw new Error('no CLAUDINITE_TARGET_BRANCH — this repo\'s executor predates the target hand-off (#1695)');
   }
 

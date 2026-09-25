@@ -158,7 +158,7 @@ function vendoredSet(root, files) {
 // outside this set is a typo or a stale name — a settings error as real as invalid
 // JSON, caught at load so it can't silently change nothing. Per-pack parameters
 // live on that pack's own `packs` entry as `config`; the top-level `packConfig` key
-// they came from was folded by the `pack-entry-config` baseline migration
+// they came from was folded by the `pack-entry-config` migration record
 // (engine/migrations/) and stopped being read on #1640's window, so a straggler now
 // gets that unknown-setting error.
 // `engineVersion` is the engine version this repo's mount holds, written by the
