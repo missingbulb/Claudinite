@@ -20,7 +20,7 @@
 // says what the repo actually does rather than what a declaration hoped.
 //
 // THE TOLERANCE THIS RECORD RETIRES. Until every member's stamp carries a
-// `claudinite-tasks` version, `vendoring/compute-vendor-set.mjs` ships the pack whether
+// `claudinite-tasks` version, the vendor set ships the pack whether
 // or not it is declared, because a mount that dropped the modules its live workflows
 // name could not be repaired by any later converge. That tolerance comes out when this
 // record has converged fleet-wide — read off the stamps, not off a date.

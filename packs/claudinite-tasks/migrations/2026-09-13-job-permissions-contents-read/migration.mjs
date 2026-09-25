@@ -11,7 +11,7 @@
 // ready item waited for a label event or a hand dispatch, and the failing run filed a
 // failure escalation whose own job could not check out either.
 //
-// A REWRITE, NOT A MATERIALIZE, for the reason `executor-vars-bag` gives: the two
+// A REWRITE, NOT A MATERIALIZE: the two
 // workflows are not identical across members — the scheduler carries each repo's own
 // cron, the executor its own stamped `required_secrets` — and copying the stub over
 // either would take those with it. A rewrite preserves everything it does not name.

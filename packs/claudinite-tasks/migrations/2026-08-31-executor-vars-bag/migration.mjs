@@ -1,25 +1,18 @@
 // Put the repository-variable bag into every member's live executor workflow (#1509).
 //
-// WHAT IT DELIVERS. #1494 added `CLAUDINITE_VARS: ${{ toJSON(vars) }}` to the executor
-// STUB and shipped the reader (queue/vars-bag.mjs). A stub is scaffolded once at
-// adoption, so every member already running the queue holds the reader and no line for
-// it to read — `varsEnv` finds no bag and contributes nothing, which is safe but inert.
-// This record is what closes that gap on a member that adopted before #1494.
+// A stub is scaffolded once at adoption, so a member that adopted before #1494 holds the
+// bag's reader and no `CLAUDINITE_VARS` line for it to read: safe, but inert.
 //
 // A REWRITE, NOT A MATERIALIZE. The executor is not identical across members: the wiring
 // converge stamps each one's own `required_secrets` beneath the `# claudinite:secrets`
 // marker. Copying the stub over it would deliver the line and take every member's
-// secrets with it, which is a far worse outcome than the gap this closes. A rewrite
-// preserves everything it does not name.
+// secrets with it. A rewrite preserves everything it does not name.
 //
-// IDEMPOTENCY LIVES IN `appliesTo`, not in the replacement. `applyRewrites` uses
-// split/join, so running this twice against an already-rewritten file would insert a
-// SECOND copy of the block; the version gate makes that unlikely and `appliesTo` makes
-// it impossible. Both halves are load-bearing.
+// IDEMPOTENCY LIVES IN `appliesTo`, not in the replacement: rewriting an already-rewritten
+// file would insert a SECOND copy of the block.
 //
-// THE ANCHOR is the operator hold, which every member's executor carries — the stub
-// guard in converge-workflows.test.mjs pins it in both stubs, and it has been in the
-// file since the hold shipped. Anchoring to the `# claudinite:secrets` marker instead
+// THE ANCHOR is the operator hold, which every member's executor carries. Anchoring to the
+// `# claudinite:secrets` marker instead
 // would put the bag inside the converge's stamped region, where the next wiring
 // converge would regenerate over it.
 const EXECUTOR = '.github/workflows/claudinite-executor.yml';
@@ -39,9 +32,6 @@ export default {
   version: '60831.6',
   summary: 'the live executor workflow carries CLAUDINITE_VARS, so a task can read a repo variable the workflow never names (#1492, #1494)',
 
-  // Two conditions, both required: the member runs the queue (it has an executor with
-  // the hold to anchor to), and it does not already carry the bag. The second is what
-  // makes a re-run a no-op rather than a doubled block.
   appliesTo: async (read) => {
     const text = await read(EXECUTOR);
     if (!text) return false;
@@ -50,8 +40,6 @@ export default {
 
   rewrite: [{ file: EXECUTOR, replace: [{ from: HOLD, to: HOLD + BAG }] }],
 
-  // The old shape is an executor with no bag — exactly what `appliesTo` tests, so a
-  // member is "still legacy" on the same condition that makes this record apply.
   legacyPresent: async (_exists, read) => {
     const text = await read(EXECUTOR);
     return Boolean(text) && text.includes(HOLD) && !text.includes('CLAUDINITE_VARS:');

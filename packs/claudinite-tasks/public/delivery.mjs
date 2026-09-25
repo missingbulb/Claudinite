@@ -3,18 +3,14 @@
 //
 // TWO HALVES. `deliverGenerated` and its helpers are DEFINED here — the write half of
 // an agentless task whose whole output is a regenerated file, which this pack's own
-// fold workers and any other pack's use alike. The five landing names below it are
-// the executor's own lane (`src/deliver/land-pr.mjs`), re-exported for a worker that
-// lands its own pull request the way the executor would.
+// fold workers and any other pack's use alike. The landing names below it are the
+// executor's own lane, re-exported for a worker that lands its own pull request the
+// way the executor would.
 //
-// Deliver GENERATED files on a pull request that lands itself. It exists because two tasks need exactly this and must not each grow their own
-// copy: the per-repo skill-usage fold and the fleet-enforcer's cross-repo aggregate both
-// recompute a `*.GENERATED.json` from scratch and want it landed without a human in
-// the loop. (the update runner's own delivery is deliberately NOT folded in here: it
-// commits a whole working tree from a checkout it converged in place — a
-// different job that happens to end in a PR too. What the two DO share — every
-// nuance of actually landing the PR under the member's `maintenance.delivery` and
-// the repo's own shape — lives in land-pr.mjs, and both call it.)
+// The update runner's own delivery is deliberately NOT folded in here: it commits a
+// whole working tree from a checkout it converged in place, a different job that
+// happens to end in a PR too. What the two share, landing the PR, both take from the
+// executor's lane.
 //
 // Two properties everything here is shaped around:
 //
@@ -33,7 +29,7 @@
 //   member's delivery preference is read from the base too, for the same reason.
 //
 // Idempotence is the caller's to keep: pass files whose content is a pure function of
-// the inputs, and compare against `readAtBase` before calling — an identical
+// the inputs, and compare against `readAt` the `baseTip` before calling - an identical
 // recompute should open nothing at all.
 
 import { rmSync } from 'node:fs';
@@ -47,9 +43,6 @@ import { runGit } from '../src/world/processes.mjs';
 import { nowMs } from '../src/world/clock.mjs';
 import { actionsEnv } from '../src/world/actions.mjs';
 
-// This lane runs git in the checkout and calls GitHub with the run's own token;
-// both go through the world's ports, which is what keeps the REST paths and the
-// subprocess in one place.
 const git = (root, args, opts = {}) => runGit(['-C', root, ...args], opts);
 
 const gh = (token, path, opts) => restCall(token, path, opts);
@@ -91,18 +84,14 @@ export function pushGenerated(root, { remote, baseSha, branch, files, message })
 }
 
 // Which branch the regenerate lands on and which pull request it updates — THE
-// EXECUTOR'S DECISION, handed in (docs/PRINCIPLES.md): `branch` is the
-// one it resolved, `pr` the open pull request it said to amend, or null for a fresh
-// one on that branch. A named pull request the open list no longer carries was
+// EXECUTOR'S DECISION, handed in: `branch` is the one it resolved, `pr` the open pull
+// request it said to amend, or null for a fresh one on that branch. A named pull request the open list no longer carries was
 // closed under the run; the branch is still the one to push to, and a new pull
 // request opens on it.
 //
-// The branch is REQUIRED. The lane used to reuse an open pull request whose head
-// carried a prefix and mint `<prefix>/<stamp>` where it found none — a second
-// decision site beside the executor's, held only while a member's vendored executor
-// could predate the hand-off (#1698). An outcome that opens a pull request always
-// resolves one, so an absent branch is a caller the executor is not driving, and
-// delivering on a branch nothing is watching is worse than saying so.
+// The branch is REQUIRED: an outcome that opens a pull request always resolves one, so
+// an absent branch is a caller the executor is not driving, and delivering on a branch
+// nothing is watching is worse than saying so.
 export function generatedTarget({ pulls, branch = null, pr = null }) {
   if (!branch) {
     throw new Error('no branch to deliver on — the executor resolves it and hands it in as CLAUDINITE_TARGET_BRANCH');
@@ -117,11 +106,9 @@ export function generatedTarget({ pulls, branch = null, pr = null }) {
 // `generatedTarget`): amending an open pull request updates it in place, so a
 // daily regenerate that runs before yesterday's merged does not stack a second one.
 //
-// How the PR lands is land-pr.mjs's business, not the calling task's: the member's
-// `dailyClaudiniteUpdatesRequirePrReview` (read from the BASE tip — a repo that
-// declares it gets its PR opened and left for the owner), then the repo's own shape (no PR CI → direct merge; ungated base → verify-then-
-// land; a gate → arm auto-merge, landing poll as fallback). A PR this run could not
-// land stays open — the next run rebuilds it from the base, so nothing is lost.
+// How the PR lands is the landing lane's business, not the calling task's. A PR this
+// run could not land stays open - the next run rebuilds it from the base, so nothing
+// is lost.
 //
 // Returns { branch, number, reused, delivery, merged }.
 export async function deliverGenerated({ root, repo, base, token, branch: targetBranch = null, pr: targetPr = null, files, title, body, message, task = null, log = console.log }) {
@@ -151,9 +138,8 @@ export async function deliverGenerated({ root, repo, base, token, branch: target
 
   let merged = false;
   if (pr?.number) {
-    // Runs for review members too: landDelivery still starts the PR's checks
-    // (#565 — the GITHUB_TOKEN push emitted no pull_request run, and the owner
-    // reviews against a green), then does nothing further for `review`.
+    // Runs for review members too: a GITHUB_TOKEN push emits no pull_request run,
+    // and the owner reviews against a green (#565).
     // The head sha must be THIS run's commit: a reused PR's listing still carries
     // the previous push, and polling a stale sha waits on runs that never come.
     const landed = await landDelivery({

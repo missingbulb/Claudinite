@@ -1,13 +1,9 @@
 // Move a member's `dormant` declaration onto the pack that owns the mechanism it stops.
 //
-// WHAT CHANGED. `dormant` was a top-level key of `.claudinite-settings.json`, validated
-// by the engine and normalized onto the loaded config. It never belonged there: every
-// effect it has is an effect on the work-item queue — nothing is instantiated, nothing
-// is picked up, and nothing outside expects movement — and a repo that declares no
-// `claudinite-tasks` has no scheduler for the word to mean anything about. So the
-// setting is now one of this pack's parameters and this pack's predicate answers for it
-// (dormancy.mjs), which is also what let the fleet sweeps stop treating a stopped
-// scheduler as a sick repository (#1845).
+// WHY IT BELONGS TO THE PACK. Every effect `dormant` has is an effect on the work-item
+// queue - nothing is instantiated, nothing is picked up, and nothing outside expects
+// movement - and a repo that declares no `claudinite-tasks` has no scheduler for the
+// word to mean anything about (#1845).
 //
 // WHY A RECORD RATHER THAN A TOLERANCE ALONE. The reader resolves both spellings, so a
 // member that never runs this record still reads correctly — the tolerance is what makes

@@ -1,6 +1,6 @@
 // The ON-DISK SHAPE of `.claudinite/local/tasks-usage.GENERATED.json` — what the
 // machinery cost and how well it ran, as opposed to what the repo's SESSIONS did,
-// which is `usage-format.mjs`'s file beside it.
+// which is the session usage file's.
 //
 // TWO FILES, NOT ONE, and the split is by SOURCE rather than by subject. The session
 // fold's numbers come out of captured transcripts and a handful of listings; these

@@ -1,6 +1,6 @@
 # Usage fold — the repo's own past-data plane
 
-**This task runs no agent.** It is `agent_model: none` with `code-work: node worker.mjs`, so the whole pass is the deterministic [`worker.mjs`](worker.mjs) the executor runs as code-work, which calls its sibling in this folder, the counting and folding core ([`fold-usage.mjs`](fold-usage.mjs)). This file is the human-facing record of what that worker does; there is no agent phase.
+**This task runs no agent.** It declares `code_worker_mjs: worker.mjs` and no agent, so the whole pass is the deterministic [`worker.mjs`](worker.mjs) the executor runs as code-work, which calls its sibling in this folder, the counting and folding core ([`fold-usage.mjs`](fold-usage.mjs)). This file is the human-facing record of what that worker does; there is no agent phase.
 
 ## What it does
 
@@ -69,13 +69,13 @@ The `tasks` rows used to answer that from the other side: the slot scheduler pri
 
 What replaced it is the **`queue`** rows (#994), and they are a better record: every occurrence *is* a work item, and a converged one closes wearing an `outcome:*` label. That survives Actions retention, it is clickable, and it names its own task. [`read-queue.mjs`](read-queue.mjs) reads the items that closed since the last fold and counts them per task per outcome.
 
-Two families here are **appended once rather than recomputed**, each past its own watermark:
+Three families here are **appended once rather than recomputed**, each past its own watermark:
 
 - the **hour rows'** run counts, past `runsFoldedThrough` ([`read-runs.mjs`](read-runs.mjs));
 - the **`queue`** and **`parks`** rows, past `queueFoldedThrough` ([`read-queue.mjs`](read-queue.mjs));
 - the **`prs`** rows, past `prsFoldedThrough` ([`read-prs.mjs`](read-prs.mjs)).
 
-The reason is the source, not taste: the capture files are a local git branch this fold re-reads for free, while both of these are rate-limited REST listings, and re-reading a month of them every hour would cost orders of magnitude more calls for the same answer. Appending is safe because each is settled once seen — a completed run's conclusion does not change, a closed item's outcome label is written at convergence and never moved, and a merge date never moves at all. The merged-PR read is bounded on `merged_at` for the same reason. The queue read is bounded on `closed_at` rather than `updated_at` for exactly that reason: the listing is asked for everything *touched* since the mark (a comment counts as a touch), and only items that closed past it are counted, so nothing is ever counted twice.
+The reason is the source, not taste: the capture files are a local git branch this fold re-reads for free, while all three are rate-limited REST listings, and re-reading a month of them every run would cost orders of magnitude more calls for the same answer. Appending is safe because each is settled once seen - a completed run's conclusion does not change, a closed item's outcome label is written at convergence and never moved, and a merge date never moves at all. The merged-PR read is bounded on `merged_at` for the same reason. The queue read is bounded on `closed_at` rather than `updated_at` for exactly that reason: the listing is asked for everything *touched* since the mark (a comment counts as a touch), and only items that closed past it are counted, so nothing is ever counted twice.
 
 The price is stated rather than hidden: a counting bug fixed later applies from the fix forward and does not heal these rows.
 
@@ -101,16 +101,13 @@ And the same rule runs through every field: **an absent source leaves no key, ne
 
 ## The freshness stamp
 
-The file carries `generated`, the time of the fold that last confirmed its numbers. That is **not** the same as when the file last landed: a quiet repo recomputes to the same numbers and opens no PR, so the commit date can be days older. The unchanged-compare deliberately ignores that one line — a stamp that forced a PR every hour would be a stamp nobody could afford.
+The file carries `generated`, the time of the fold that last confirmed its numbers. That is **not** the same as when the file last landed: a quiet repo recomputes to the same numbers and opens no PR, so the commit date can be days older. The unchanged-compare deliberately ignores that one line - a stamp that forced a PR every run would be a stamp nobody could afford.
 
 ## Why the declaration reads as it does
 
-Carried over from the declaration's comments when it became `task.json`.
-
-claudinite-growth task: usage-fold - the per-repo usage aggregate.
-`agent_model: 'none'` with
-`code_work: 'node worker.mjs'`: the whole pass is deterministic code the
-executor runs as code-work — no agent phase, seconds of runtime.
+usage-fold - the per-repo usage aggregate. `code_worker_mjs: 'worker.mjs'` and no
+agent: the whole pass is deterministic code the executor runs as code-work - no
+agent phase, seconds of runtime.
 
 WHY: a skill is MOUNTED per repo, but mounting only puts a name and a one-line
 description into the session prompt — actually LOADING it is model discretion, and
@@ -128,21 +125,18 @@ unattended and captured nothing at all.
 
 WHY DAILY. The file is the whole past-data plane the dashboard renders from
 (claudinite-dashboard) — every panel that reaches further back than one page of live reads
-comes from here. It folded hourly until the scheduler's cron went to two ticks a day
-(docs/PRINCIPLES.md): a cadence finer than the cron cannot be honoured, since the
-anchor is only ever seen when a tick comes. Nothing about the DATA changes — hour rows are
-still recomputed from source across a three-day window, so only the newest rows' freshness
-moves, and the dashboard already tops up the freshest hours from the live run listing it
-fetches anyway. The precondition is what keeps a quiet repo quiet.
+comes from here. A cadence finer than the scheduler's cron cannot be honoured, since the
+anchor is only ever seen when a tick comes. Hour rows are recomputed from source across a
+three-day window, so only the newest rows' freshness depends on the cadence, and the
+dashboard tops up the freshest hours from the live run listing it fetches anyway. The precondition is what keeps a quiet repo quiet.
 
 `any-commit`, not `substantive-change`: this task measures the MACHINERY, so a
 task's own output is exactly what the aggregate folds rather than something to
 be blind to.
 The regenerated aggregate is the whole delivery — scoped to the tree it
 lands in, so a GENERATED file elsewhere in the repo is some other task's.
-Its merge=ours line is seeded at adoption.
 One tree read plus one blob read per capture file in the ~10-day window, all
 local git, then four REST reads and one PR. A busy repo captures a few files a
 day, so this is seconds; 600s is ~100x that, generous enough that a huge backlog
-on a first fold still completes while a hung run is killed well inside the hourly
+on a first fold still completes while a hung run is killed well inside the daily
 cadence.

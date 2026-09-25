@@ -5,17 +5,14 @@
 // cadence boundaries off the UTC calendar and picked the scheduler workflow's two cron
 // hours. Both jobs are gone: a cadence term now measures whole UTC periods, and the
 // cron's minute and hours are derived from the repo name and written once when the
-// workflow is scaffolded. The knob's stated purpose was to order members an hour ahead
-// of the canon, and this repo's own record showed Actions firing up to 78 minutes off
-// schedule across a single week, wider than the stagger it was meant to guarantee.
+// workflow is scaffolded.
 //
 // TWO REWRITES, both over files the MEMBER owns. The three keys come out of
 // `.claudinite-settings.json`, and every
 // `.claudinite/local/packs/<pack>/tasks/<name>/task.json` has its `due:<cadence>`
 // restated as `schedule:at-most-<cadence>`, as anchored text so the file's own layout
-// survives. The engine reads the old spelling permanently
-// (packs/claudinite-tasks/src/contract/calendar.mjs, DUE_TERM), so that second rewrite repairs
-// nothing: it is what stops the fleet carrying two spellings of one term forever.
+// survives. The engine reads the old spelling permanently, so that second rewrite
+// repairs nothing: it is what stops the fleet carrying two spellings of one term forever.
 //
 // GATED ON THE MOUNT, BY CONTENT. Dropping the keys is safe on an older engine, whose
 // reader fills an absent key with the documented default that every repo which never
@@ -45,8 +42,7 @@ export default {
   // member's installed version, so the gap holds the record, and never above the number
   // cut, so a converged member does not re-apply it. RE-CHECK IT AGAINST `pack.mjs` ON
   // EVERY REBASE: main cuts versions while a branch waits, and a record that falls at or
-  // below the installed version is silently already done. It has happened once on this
-  // branch already, main cutting 60920.3 while it sat.
+  // below the installed version is silently already done.
   version: '60920.4',
   summary: 'the retired taskScheduler anchor keys come out of a member\'s declaration, and its own task files restate `due:<cadence>` as `schedule:at-most-<cadence>` (#1995)',
 

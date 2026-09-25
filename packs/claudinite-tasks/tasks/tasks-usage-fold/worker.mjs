@@ -1,10 +1,7 @@
-// The tasks-usage-fold work step - the module the runner calls `worker` on
-// (cwd = this task dir, bounded by code_work_timeout). The whole
-// task: no agent phase.
+// The tasks-usage-fold work step, and the whole task: no agent phase.
 //
-// It holds NO counting logic. The counting and folding are `fold-tasks-usage.mjs`,
-// its sibling; the reads are `read-run-costs.mjs` and `read-items.mjs` beside it.
-// This file is the I/O shell:
+// It holds NO counting logic: the counting, the folding and the reads live in its
+// siblings. This file is the I/O shell:
 //
 //   1. read the prior file from the BASE TIP — never the working tree, which may be
 //      sitting on another task's branch;
@@ -16,7 +13,7 @@
 //      events answer, and the executor's cost record riding its comments;
 //   4. fold: hour rows over the last three days, day rows over the last month, week
 //      rows advanced past `foldedThrough`;
-//   5. deliver the regenerated `.claudinite/local/tasks-usage.GENERATED.json`, and
+//   5. deliver the regenerated usage file, and
 //      open NOTHING when the recompute is byte-identical apart from its stamp.
 //
 // THE API BUDGET, which is the reason the reads are shaped as they are. Per fold:
@@ -24,12 +21,11 @@
 // four job-log reads (two scheduler ticks a day, at most two jobs each); one issues
 // listing page; and one timeline read per item closing for the first time. On this
 // repo's own cadence — two ticks a day, a quiet queue — the run half of that is
-// under ten calls a day, which `test/tasks/tasks-usage-fold/read-run-costs.test.mjs`
-// asserts by counting the fetches a representative day makes.
+// under ten calls a day, which a test asserts by counting the fetches a
+// representative day makes.
 //
 // The aggregate lives under `.claudinite/local/` because that is the repo-owned area
-// the vendoring refresh never touches; `merge=ours` reaches it through the mount's
-// own `.gitattributes`, whose `*GENERATED*` pattern the engine converges.
+// the vendoring refresh never touches.
 
 import { readFileSync } from 'node:fs';
 import { baseTip, readAt, remoteUrl } from '../../public/delivery.mjs';
