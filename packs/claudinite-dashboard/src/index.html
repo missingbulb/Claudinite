@@ -1075,7 +1075,7 @@
       </p>
       <p class="info-body" id="info-fleet-machine-2" hidden>
         Every figure comes from each member's own
-        <code>.claudinite/local/tasks-usage.GENERATED.json</code>, read at its head sha alongside the
+        <code>.claudinite/usage/task-runs-and-costs.json</code>, read at its head sha alongside the
         usage file above. A member that does <strong>not</strong> fold it is named in the table and
         counted in <strong>no</strong> figure — that census is the denominator each number is read
         against, and it is why nothing here is shown as a rate. Latency quantiles are taken over
@@ -1136,7 +1136,7 @@
     <p class="info-body" id="info-outcomes" hidden>
       Every occurrence is a work item, and a converged one closes wearing its outcome. Today is
       counted from the live issue page; the days before it come from this repo's own
-      <code>usage.GENERATED.json</code>, folded hourly. A day neither source reached is left
+      <code>sessions-and-elements.json</code>, folded hourly. A day neither source reached is left
       <strong>blank</strong> rather than drawn at the floor — "not read" and "nothing happened" are
       different facts and this chart keeps them apart.
     </p>
@@ -1187,9 +1187,9 @@
       week, so none is drawn.
     </p>
     <p class="info-body" id="info-machine-2" hidden>
-      It all comes from <code>.claudinite/local/tasks-usage.GENERATED.json</code>, a
+      It all comes from <code>.claudinite/usage/task-runs-and-costs.json</code>, a
       <em>second</em> past-data file written by the claudinite-tasks pack's own fold on its own
-      watermark — not the <code>usage.GENERATED.json</code> the panels above read. A repo that folds
+      watermark — not the <code>sessions-and-elements.json</code> the panels above read. A repo that folds
       one and not the other is ordinary, and this panel says so rather than borrowing the other
       file's numbers. A counter no day recorded reads <strong>not recorded</strong>, never zero, and
       a day the fold has not reached is left <strong>blank</strong> rather than drawn at the floor.

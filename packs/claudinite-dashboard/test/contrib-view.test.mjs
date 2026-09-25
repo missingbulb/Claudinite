@@ -92,7 +92,7 @@ test('a withheld read renders as withheld, not as a pack with nothing to say', (
 // question a reader has.
 test('a pack whose values file does not exist names the file', () => {
   const card = packCard({ pack: 'demo', descriptor: descriptor(), values: null, live: { stars: 4 } }, NOW);
-  assert.match(card.text, /\.claudinite\/local\/dashboard\/demo\.GENERATED\.json/);
+  assert.match(card.text, /\.claudinite\/usage\/demo-dashboard-values\.json/);
   // …and the widget that did have a live source still renders its number.
   assert.match(card.text, /4/);
 });

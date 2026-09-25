@@ -5,7 +5,7 @@
 // TWO KINDS OF DATA, AND THEY ARE READ DIFFERENTLY. What is true RIGHT NOW comes from
 // live reads, and they are kept to a handful: the repo, its head commit, one page of
 // issues and one page of runs, all ETag-revalidated so a warm load spends nothing. What
-// happened BEFORE comes from one file — the repo's own `usage.GENERATED.json`, keyed by
+// happened BEFORE comes from one file — the repo's own `.claudinite/usage/sessions-and-elements.json`, keyed by
 // the head sha, so it is not re-read at all while the branch has not moved. Reaching a
 // month back over the API instead would be a paginated crawl per load.
 //
@@ -15,7 +15,7 @@
 
 import * as gh from '../read/github.mjs';
 import {
-  buildRoster, describeItem, isWorkItem, parseDeclaration, taskDeclarationPaths,
+  buildRoster, describeItem, isWorkItem, parseDeclaration, taskDeclarationPaths, declaredPackDirs,
   PARKED,
 } from '../derive/model.mjs';
 import {
@@ -26,6 +26,7 @@ import { workRows, rowsFor, viewCounts, defaultView, VIEWS } from '../derive/wor
 import { repoCandidates } from '../derive/next-work.mjs';
 import { readUsage, readTasksUsage, growthSeries, queueSeries, hourSeries } from '../read/usage.mjs';
 import { readContributions, liveSourcesNeeded } from '../read/contributions.mjs';
+import { readFlat, flatTaskRows, FLAT_TASKS_PATH } from '../read/flat.mjs';
 import { packCard } from '../render/contrib-view.mjs';
 import {
   $, el, ago, until, stamp, duration, chip, head, emptyRow, issueLink, refNodes, queueUrl, segmentBar,
@@ -569,8 +570,8 @@ function renderGrowth(growth) {
       el('div', { className: 'k', textContent: 'no usage fold in this repo' }),
       el('p', {
         className: 'sub',
-        textContent: 'These figures come from `../../.claudinite/local/usage.GENERATED.json`, which the '
-          + 'claudinite-growth pack\'s usage-fold task writes. Declare that pack and the panel fills in from '
+        textContent: 'These figures come from `.claudinite/usage/sessions-and-elements.json`, which the '
+          + 'claudinite-tasks pack\'s usage-fold task writes. Declare that pack and the panel fills in from '
           + 'its first run; nothing else on this page depends on it.',
       }),
     ]));
@@ -615,7 +616,7 @@ const fmt = (n) => (n === null || n === undefined ? '—' : n.toLocaleString());
 
 // --- how the machinery itself ran, and what it cost ----------------------------------
 
-// The second past-data plane: `tasks-usage.GENERATED.json`, folded by its own task on
+// The second past-data plane: `task-runs-and-costs.json`, folded by its own task on
 // its own watermark. A repo folding the sessions' file and not this one is an ordinary
 // state, so the panel says which plane is missing rather than falling back to the other.
 export function renderMachine(machine) {
@@ -669,11 +670,23 @@ export async function loadRepo({ repo, token, config = null, onError }) {
   ]);
   if (truncated) onError?.('GitHub truncated the tree listing — some tasks may be missing from the roster.');
 
-  const declPaths = declaration ? taskDeclarationPaths(paths, declaration) : [];
-  const tasks = await Promise.all(declPaths.map(async (t) => ({
-    ...t,
-    declaration: parseDeclaration(await gh.getTextAtSha(repo, sha, t.path, token)),
-  })));
+  // The member's flat task file where its converge writes one: a single read for the
+  // whole roster.
+  const flatTasks = declaration
+    ? await readFlat({ repo, sha, token, paths, gh }, FLAT_TASKS_PATH, 'tasks').catch(() => null)
+    : null;
+  const tasks = flatTasks
+    ? flatTaskRows(flatTasks, declaredPackDirs(declaration)).map(({ text, ...t }) => ({ ...t, declaration: parseDeclaration(text) }))
+    : await readEachDeclaration();
+  // A member whose converge predates the flat directory: every task.json, one read each.
+  // @legacy-tolerance advisory:legacy-shape-in-use retire:#2323
+  async function readEachDeclaration() {
+    const declPaths = declaration ? taskDeclarationPaths(paths, declaration) : [];
+    return Promise.all(declPaths.map(async (t) => ({
+      ...t,
+      declaration: parseDeclaration(await gh.getTextAtSha(repo, sha, t.path, token)),
+    })));
+  }
 
   const items = issuePage.issues.filter(isWorkItem);
   // Whether a Blocked-by issue is still open, from the page already fetched. A

@@ -3,9 +3,10 @@
 // A pack contributes DATA, NEVER CODE. Two JSON files, both lifted as text over the
 // API exactly as task declarations are, because there is no `import` when reading
 // another repo: a DESCRIPTOR shipped with the pack (`packs/<id>/dashboard.json`,
-// found by path convention — nothing registers it) declaring what the pack has to
-// say, and a VALUES file in the member's own tree
-// (`.claudinite/local/dashboard/<pack>.GENERATED.json`) written by that pack's own
+// found by path convention — nothing registers it, and the member's converge copies
+// every declared pack's into `.claudinite/flat/dashboard.GENERATED.json`) declaring
+// what the pack has to say, and a VALUES file in the member's own tree
+// (`.claudinite/usage/<pack>-dashboard-values.json`) written by that pack's own
 // machinery. The page executes nothing from either. The fleet view renders repos the
 // viewer merely has read access to, so importing a member's modules would run twelve
 // strangers' code in the viewer's browser with the viewer's token in scope.
@@ -20,6 +21,7 @@
 // and neither renders as a number.
 import { duration } from '../render/ui.mjs';
 import { settingsTextAtSha } from './settings-read.mjs';
+import { readFlat, entryText, FLAT_DASHBOARD_PATH } from './flat.mjs';
 
 // The closed vocabulary. A descriptor naming anything outside it is not guessed at:
 // the widget renders as one saying this dashboard predates its descriptor, which is
@@ -41,8 +43,13 @@ export const MAX_TEXT = 46;
 export const MAX_NOUN = 16;
 
 export const DESCRIPTOR_FILE = 'dashboard.json';
-export const VALUES_DIR = '.claudinite/local/dashboard';
-export const valuesPath = (pack) => `${VALUES_DIR}/${pack}.GENERATED.json`;
+// The values roll forward from one run to the next, so they sit with the member's other
+// rolling records and carry no GENERATED.
+export const VALUES_DIR = '.claudinite/usage';
+export const valuesPath = (pack) => `${VALUES_DIR}/${pack}-dashboard-values.json`;
+// Where a pack wrote them before `.claudinite/usage/`, read until its writer has moved them.
+// @legacy-tolerance advisory:legacy-shape-in-use retire:#2323
+export const legacyValuesPath = (pack) => `.claudinite/local/dashboard/${pack}.GENERATED.json`;
 
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -270,13 +277,24 @@ export function windowDelta(value) {
 export async function readContributions({ repo, sha, token, declaration, paths, gh }) {
   if (!paths || !declaration) return [];
 
+  // The member's flat descriptor file where its converge writes one: every pack's
+  // descriptor in a single read, and the packs it names are exactly the ones that
+  // contribute.
+  let flat = null;
+  try { flat = await readFlat({ repo, sha, token, paths, gh }, FLAT_DASHBOARD_PATH, 'dashboards'); } catch { flat = null; }
+
   const found = declaredPackIds(declaration)
-    .map((pack) => ({ pack, path: descriptorPathIn(paths, pack) }))
+    .map((pack) => ({ pack, path: flat ? (flat[pack] ? FLAT_DASHBOARD_PATH : null) : descriptorPathIn(paths, pack) }))
     .filter((f) => f.path);
 
   return (await Promise.all(found.map(async ({ pack, path }) => {
     let text;
-    try { text = await gh.getTextAtSha(repo, sha, path, token); } catch { return { pack, withheld: true }; }
+    if (flat) text = entryText(flat[pack]);
+    else {
+      // A member whose converge predates the flat directory: one read per descriptor.
+      // @legacy-tolerance advisory:legacy-shape-in-use retire:#2323
+      try { text = await gh.getTextAtSha(repo, sha, path, token); } catch { return { pack, withheld: true }; }
+    }
     // The listing said it was there, so a null here means the tree and the contents
     // API disagree — which is a fault about this pack, not about the page.
     if (text === null) return { pack, fault: 'its dashboard.json is in the tree but could not be fetched' };
@@ -286,10 +304,17 @@ export async function readContributions({ repo, sha, token, declaration, paths, 
 
     let values;
     if (descriptor.needsGenerated) {
-      try { values = parseValues(await gh.getTextAtSha(repo, sha, valuesPath(pack), token)); } catch { values = undefined; }
+      try { values = parseValues(await readValuesText({ repo, sha, token, paths, gh }, pack)); } catch { values = undefined; }
     }
     return { pack, descriptor, values };
   }))).filter(Boolean);
+}
+
+// A pack's values text, at its path or, until its writer has moved it, the old one.
+// The listing says which is there, so a member that has moved spends no second read.
+async function readValuesText({ repo, sha, token, paths, gh }, pack) {
+  const at = paths.includes(valuesPath(pack)) || !paths.includes(legacyValuesPath(pack)) ? valuesPath(pack) : legacyValuesPath(pack);
+  return gh.getTextAtSha(repo, sha, at, token);
 }
 
 // Which live sources a repo's contributions need at all, so a view reads none it has

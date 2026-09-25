@@ -6,7 +6,7 @@
 // crawl per repo, per load, against the viewer's own rate limit.
 //
 // So the depth comes from a file the repo already folds for itself:
-// `.claudinite/local/usage.GENERATED.json`, written hourly by claudinite-growth's
+// `.claudinite/usage/sessions-and-elements.json`, written by claudinite-tasks'
 // usage-fold task. It is content at a sha, so it is cached like every other content
 // read here — ZERO requests while the default branch has not moved — and one read
 // answers every panel that looks further back than the live window.
@@ -25,7 +25,18 @@
 
 import * as gh from './github.mjs';
 
-export const USAGE_PATH = '.claudinite/local/usage.GENERATED.json';
+export const USAGE_PATH = '.claudinite/usage/sessions-and-elements.json';
+// Where the fold wrote it before `.claudinite/usage/`, read until the fold has moved it.
+// @legacy-tolerance advisory:legacy-shape-in-use retire:#2323
+export const LEGACY_USAGE_PATH = '.claudinite/local/usage.GENERATED.json';
+
+// A rolling file's text at a sha, at its path or, where the member's fold has not moved
+// it yet, the old one. The second read is spent only on a member that has not moved,
+// and like the first it is cached under the sha.
+export const readRollingText = async (getText, path, legacy) => (await getText(path)) ?? getText(legacy);
+const textAtEither = (repo, sha, token, path, legacy) => readRollingText(
+  (at) => gh.getTextAtSha(repo, sha, at, token), path, legacy,
+);
 
 const ms = (t) => (t == null ? null : new Date(t).getTime());
 
@@ -84,7 +95,7 @@ export function decodeUsage(doc) {
 
 // --- the machinery's own plane, beside the sessions' -------------------------------
 //
-// A SECOND FILE, read exactly the same way. `tasks-usage.GENERATED.json` carries what
+// A SECOND FILE, read exactly the same way. `task-runs-and-costs.json` carries what
 // this repo's scheduled machinery cost and how well it ran — runs, jobs, billed
 // minutes and spend per workflow, API calls and wall time per run, and per task the
 // outcomes, parks and latency samples its closed work items answer.
@@ -100,7 +111,9 @@ export function decodeUsage(doc) {
 // file gets — which is what lets a field added or retired on the writing side read
 // correctly here with no change and no coordinated release. Rendering is not this
 // module's business and is not here yet.
-export const TASKS_USAGE_PATH = '.claudinite/local/tasks-usage.GENERATED.json';
+export const TASKS_USAGE_PATH = '.claudinite/usage/task-runs-and-costs.json';
+// @legacy-tolerance advisory:legacy-shape-in-use retire:#2323
+export const LEGACY_TASKS_USAGE_PATH = '.claudinite/local/tasks-usage.GENERATED.json';
 
 export function decodeTasksUsage(doc) {
   if (!doc || typeof doc !== 'object') return null;
@@ -126,7 +139,7 @@ export function decodeTasksUsage(doc) {
 // does not fold this file — and it is cached as one.
 export async function readTasksUsage(repo, sha, token) {
   try {
-    const text = await gh.getTextAtSha(repo, sha, TASKS_USAGE_PATH, token);
+    const text = await textAtEither(repo, sha, token, TASKS_USAGE_PATH, LEGACY_TASKS_USAGE_PATH);
     if (!text) return null;
     return decodeTasksUsage(JSON.parse(text));
   } catch {
@@ -138,7 +151,7 @@ export async function readTasksUsage(repo, sha, token) {
 // and it is cached as one, so a fleet sweep does not re-ask every member every load.
 export async function readUsage(repo, sha, token) {
   try {
-    const text = await gh.getTextAtSha(repo, sha, USAGE_PATH, token);
+    const text = await textAtEither(repo, sha, token, USAGE_PATH, LEGACY_USAGE_PATH);
     if (!text) return null;
     return decodeUsage(JSON.parse(text));
   } catch {
