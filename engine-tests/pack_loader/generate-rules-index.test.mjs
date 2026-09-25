@@ -92,14 +92,12 @@ test('a pack with no prose, or whose prose is not vendored yet, is skipped', () 
   assert.doesNotMatch(out, /quiet/);
 });
 
-test('the file holds nothing but imports and one stripped comment', () => {
-  // "ONLY the hard imports" (owner, #807). The banner is an HTML comment on purpose:
-  // block comments are stripped before a memory file enters context, so it costs
-  // nothing every session while staying visible to anything that Reads the file.
+test('the file holds nothing but imports', () => {
+  // "ONLY the hard imports" (owner, #807), and no banner either: the file's name
+  // already says GENERATED.
   const root = makeMember({ canon: ['acme-pack', 'other'] });
   const lines = renderRulesIndex(imports(root, [pack('acme-pack'), pack('other')])).trim().split('\n');
-  assert.match(lines[0], /^<!-- GENERATED/);
-  assert.deepEqual(lines.slice(1), ['@shared/packs/acme-pack/RULES.md', '@shared/packs/other/RULES.md']);
+  assert.deepEqual(lines, ['@shared/packs/acme-pack/RULES.md', '@shared/packs/other/RULES.md']);
   // No routing table, no prose, no per-pack labels — those duplicated
   // packs/directory.GENERATED.md, which every mount already carries.
   const text = renderRulesIndex(imports(root, [pack('acme-pack')]));

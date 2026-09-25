@@ -121,13 +121,9 @@ export function ruleImports(active, { indexDir, corpusRoot }) {
   return imports;
 }
 
-// The index as text: a generated-file banner and the imports, nothing else. The banner
-// is an HTML comment on purpose — block comments are stripped before a memory file
-// enters context, so it costs nothing every session while staying visible to anything
-// that opens the file with Read.
+// The index as text: the imports and nothing else. Its name says it is generated.
 export const renderRulesIndex = (imports) => (imports.length
-  ? `<!-- GENERATED — do not hand-edit; every update rewrites it. Edit a pack's RULES.md. -->\n${
-    imports.map((i) => `@${i.path}`).join('\n')}\n`
+  ? `${imports.map((i) => `@${i.path}`).join('\n')}\n`
   : null);
 
 // The imports for a repo on disk: discover its packs (canon mount + its own local

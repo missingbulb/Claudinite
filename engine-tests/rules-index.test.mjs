@@ -113,7 +113,7 @@ test('the index carries imports and nothing else', async () => {
   // "ONLY the hard imports" (owner, #807). Anything else here is duplicated context
   // paid for by every session in every repo.
   const lines = (await rulesIndexContent(ROOT)).trim().split('\n');
-  const stray = lines.filter((l) => !l.startsWith('@') && !l.startsWith('<!--'));
-  assert.deepEqual(stray, [], 'the index must hold only import lines and the generated-file comment');
+  const stray = lines.filter((l) => !l.startsWith('@'));
+  assert.deepEqual(stray, [], 'the index must hold only import lines');
   assert.equal(lines.filter((l) => l.startsWith('@')).length, (await rulesIndexImports(ROOT)).length);
 });
