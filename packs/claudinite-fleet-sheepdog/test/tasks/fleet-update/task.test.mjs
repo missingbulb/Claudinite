@@ -1,11 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import declJson from '../../../tasks/fleet-baseline/task.json' with { type: 'json' };
+import declJson from '../../../tasks/fleet-update/task.json' with { type: 'json' };
 import { normalizeTaskDeclaration } from '../../../../claudinite-tasks/public/task-declaration.mjs';
 // The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
 const decl = normalizeTaskDeclaration(declJson);
 
-// fleet-baseline as a MANUAL task (#749) — the first task on the non-cadence
+// fleet-update as a MANUAL task (#749) — the first task on the non-cadence
 // frequency, replacing the pack's standalone workflow (and the `.github/` managed
 // copy only the slow agent path could sync). Everything asserted here is a property
 // whose drift would let the lever fire on a schedule nobody set, or run past the
@@ -17,8 +17,8 @@ const decl = normalizeTaskDeclaration(declJson);
 // old rule was guarding against is real, though — code-work runs inside the executor —
 // so the follow must give up well inside the bound the platform kills the run at,
 // or the report it spent all that time earning is never printed.
-test('fleet-baseline: the follow gives up before the platform kills the run', async () => {
-  const { DEFAULT_FOLLOW_MINUTES } = await import('../../../tasks/fleet-baseline/force-fleet-baseline.mjs');
+test('fleet-update: the follow gives up before the platform kills the run', async () => {
+  const { DEFAULT_FOLLOW_MINUTES } = await import('../../../tasks/fleet-update/force-fleet-update.mjs');
   assert.ok(DEFAULT_FOLLOW_MINUTES * 60 < decl.code_work_timeout,
     `a ${DEFAULT_FOLLOW_MINUTES}min follow must finish inside code_work_timeout (${decl.code_work_timeout}s)`);
   // And with real room to spare: the dispatch walk runs before the follow starts, and

@@ -196,7 +196,7 @@ export async function isCovered(gh, fullName) {
 // --- firing a member's own scheduler -------------------------------------------
 
 // The member-side workflow every fan-out fires, and the shape of the firing. Two of
-// this pack's tasks press this button — fleet-baseline (each member baselines itself)
+// this pack's tasks press this button — fleet-update (each member updates itself)
 // and fleet-add-missing-packs (each member adopts the packs its work-list issue names)
 // — so the primitive lives here on the shared floor rather than in either task. The
 // fan-out model is the point (#749): the enforcer DISPATCHES, the member EXECUTES —

@@ -25,3 +25,8 @@
 - **Reason:** the rule ships the literal command, so the command has to be the one that exists.
 - **Actor:** @missingbulb (owner).
 - **Landed:** #1890 · pack version 60914.1.
+
+## 2026-09-25 · reworded · the lever's id is now fleet-update
+- **Reason:** the task was renamed; the rule names the id it creates an item for.
+- **Actor:** @missingbulb (owner).
+- **Model:** claude-opus-5-5

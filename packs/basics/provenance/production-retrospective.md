@@ -19,3 +19,8 @@
   loads deterministically is untouched and only the model's judgment call reads different text.
 - **Actor:** @missingbulb (owner).
 - **Model:** claude-opus-5
+
+## 2026-09-25 · reworded · the fleet-rollout row names the lever fleet-update
+- **Reason:** the sheepdog lever was renamed from fleet-baseline.
+- **Actor:** @missingbulb (owner).
+- **Model:** claude-opus-5-5

@@ -175,7 +175,7 @@ the `checkParsedFiles` keys a row names carry only what a schema cannot state.
 | 11 | Member platform setting — last resort | G | — | — |
 | 12 | Credential nothing weaker replaces — report missing | G | — | — |
 | 13 | Change to what members receive — force delivery when | F | merge of a PR touching `engine/**` | tool-call-triggered skill |
-| 14 | Forcing fleet delivery — follow, report | F | `actions_run_trigger` of `fleet-baseline` | tool-call-triggered guidance |
+| 14 | Forcing fleet delivery — follow, report | F | `actions_run_trigger` of `fleet-update` | tool-call-triggered guidance |
 | 15 | Retiring a field — `@deprecated` | G | — | — |
 | 16 | Config validation — JSON Schema | G | — | — |
 | 17 | Sharing logic between sibling packs | X | `pack-independence`, `claudinite-isolation` | none |

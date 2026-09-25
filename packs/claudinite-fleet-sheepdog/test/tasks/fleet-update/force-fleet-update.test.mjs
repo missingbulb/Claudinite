@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseRepoFilter, classifyScope, FORCED_TASK } from '../../../tasks/fleet-baseline/force-fleet-baseline.mjs';
+import { parseRepoFilter, classifyScope, FORCED_TASK } from '../../../tasks/fleet-update/force-fleet-update.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../../../../..');
 import { classifyDispatch } from '../../../fleet-api.mjs';
@@ -142,7 +142,7 @@ test('the member-side scheduler run resolves the very id this lever sends', asyn
     title: `[claudinite-work] claudinite-lifecycle/${FORCED_TASK}`,
   }];
   const { wake, unmatched } = planWake(FORCED_TASK, tasks, items);
-  assert.deepEqual(unmatched, [], `the scheduler run must resolve "${FORCED_TASK}" — this is the exact string fleet-baseline dispatches`);
+  assert.deepEqual(unmatched, [], `the scheduler run must resolve "${FORCED_TASK}" — this is the exact string fleet-update dispatches`);
   assert.deepEqual(wake, [{ id: `claudinite-lifecycle/${FORCED_TASK}`, issue: 1 }]); // @real-entity the real stub and task this forces
 });
 

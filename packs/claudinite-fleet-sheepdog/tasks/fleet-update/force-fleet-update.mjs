@@ -1,8 +1,8 @@
-// The fleet-baseline DISPATCH — the enforcer's manual lever over the whole fleet:
-// force every covered member to baseline NOW, instead of waiting for each one's next
+// The fleet-update DISPATCH — the enforcer's manual lever over the whole fleet:
+// force every covered member to update NOW, instead of waiting for each one's next
 // anchor. It dispatches each member's OWN scheduler with `wake: update` —
 // the same button the owner would press in that repo's Actions tab, pressed across
-// the fleet in one run. Nothing is baselined here: each member converges its own
+// the fleet in one run. Nothing is updated here: each member updates its own
 // mount, with its own token, under its own scheduler and its own delivery policy.
 // This is a dispatcher, not a maintainer — the fan-out model this pack runs both its
 // write-shaped operations on (#749).
@@ -20,12 +20,12 @@
 // member leaves the loop the moment it reads current — an already-current fleet
 // finishes on the first pass, in seconds, and the lever stays an ordinary manual task.
 //
-// WHY IT EXISTS. Under per-project scheduling every member baselines itself hourly,
+// WHY IT EXISTS. Under per-project scheduling every member updates itself hourly,
 // so the fleet needs no push in the ordinary case. The cases it is FOR are the
 // un-ordinary ones: a canon change the fleet should pick up now rather than over the
 // next day, and the tail of members whose next anchor is hours away. A wake clears
 // the item's wait and re-readies it; the executor still evaluates the task's own
-// precondition at pick, so a member with nothing to do converges to a cheap no-op —
+// precondition at pick, so a member with nothing to do closes its item as a cheap no-op —
 // safe to over-use, only wasteful.
 //
 // THE TOKEN. FLEET_GITHUB_TOKEN, the same account-spanning PAT the sweeps use, plus
@@ -48,7 +48,7 @@ import { missingFleetTokenError } from '../../fleet-token.mjs';
 import { classifyFreshness, probeMount, FRESH } from '../fleet-roster/freshness.mjs';
 import {
   canonVersions, followToCurrent, isSuccess,
-  ALREADY_CURRENT, CONVERGED, NEVER_STARTED, DID_NOT_CONVERGE, UNKNOWN,
+  ALREADY_CURRENT, UPDATED, NEVER_STARTED, DID_NOT_UPDATE, UNKNOWN,
 } from './follow-to-current.mjs';
 
 // The exact member-side task this lever forces — the id the member's scheduler run resolves
@@ -86,8 +86,8 @@ export function parseRepoFilter(raw, owner) {
 // or null when it is in scope. Every branch lands in the report's skipped list,
 // never a silent `continue`: the report enumerates the full fleet, and a fleet-wide
 // force whose report names only the dispatched members reads as fleet-wide coverage
-// when it was not. (Canon is skipped because its baselining self-skips — but the
-// enforcer repo is NOT exempt: it is an ordinary member with a mount to converge,
+// when it was not. (Canon is skipped because its update self-skips — but the
+// enforcer repo is NOT exempt: it is an ordinary member with a mount to update,
 // and leaving it out would make the one repo the owner is looking at the one repo
 // that did not move.) Kept free of I/O so every branch is testable directly.
 export function classifyScope(r, { canonRepo, exclude, filter }) {
@@ -107,7 +107,7 @@ export async function main() {
   const token = process.env.FLEET_GITHUB_TOKEN;
   const home = process.env.GITHUB_REPOSITORY;
   if (!token) {
-    throw missingFleetTokenError('fleet-baseline',
+    throw missingFleetTokenError('fleet-update',
       'The default GITHUB_TOKEN sees only this repo and cannot dispatch another repo\'s workflow.');
   }
   if (!home || !home.includes('/')) throw new Error('GITHUB_REPOSITORY is not set (owner/repo)');
@@ -156,7 +156,7 @@ export async function main() {
       continue;
     }
     if (decl === null) {
-      skipped.push({ fullName, state: 'uncovered', detail: `no tracked ${DECLARATION} — adoption is the census's business, and there is nothing there to baseline` });
+      skipped.push({ fullName, state: 'uncovered', detail: `no tracked ${DECLARATION} — adoption is the census's business, and there is nothing there to update` });
       continue;
     }
     if (isDormant(decl) && !includeDormant) {
@@ -183,14 +183,14 @@ export async function main() {
     }
     // BEFORE firing, not after: a member already at canon's versions declines its own
     // update and never does any work, and only a reading taken before the dispatch can
-    // tell that success apart from a member that converged because of it. The
+    // tell that success apart from a member that updated because of it. The
     // declaration is already in hand, so this costs the mount probe alone.
     let wasFresh = false;
     try {
       wasFresh = classifyFreshness(await probeMount(gh, r.full_name, decl, { canon })).state === FRESH;
     } catch {
       // Unreadable here is not a failure to dispatch. It only means this member's
-      // success will be reported as `converged` rather than `already-current`, which
+      // success will be reported as `updated` rather than `already-current`, which
       // is the conservative way round: it claims no more than was observed.
       wasFresh = false;
     }
@@ -211,7 +211,7 @@ export async function main() {
     log: (line) => console.log(line),
   });
 
-  const summary = renderBaselineReport({ owner, dryRun, filter, fired, followed, skipped, failed });
+  const summary = renderUpdateReport({ owner, dryRun, filter, fired, followed, skipped, failed });
   console.log(summary);
   if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${summary}\n`);
 
@@ -227,9 +227,9 @@ const runsUrl = (n) => `https://github.com/${n}/actions/workflows/${SCHEDULER}`;
 // nothing. Ordered as the reader wants them: what moved, what was fine, then what to
 // go and fix.
 export const OUTCOME_SECTIONS = [
-  [CONVERGED, 'Converged during this run', 'was behind canon and is now at its versions'],
+  [UPDATED, 'Updated during this run', 'was behind canon and is now at its versions'],
   [ALREADY_CURRENT, 'Already current', "was at canon's versions before the dispatch, so its own update correctly declined"],
-  [DID_NOT_CONVERGE, 'Started but did not reach canon', 'its scheduler ran — go and read it'],
+  [DID_NOT_UPDATE, 'Started but did not reach canon', 'its scheduler ran — go and read it'],
   [NEVER_STARTED, 'Never started', 'the dispatch was accepted and no run followed it'],
   [UNKNOWN, 'Could not be determined', 'the member could not be read'],
 ];
@@ -237,7 +237,7 @@ export const OUTCOME_SECTIONS = [
 // The whole report, pure over what the sweep observed — so what it CLAIMS is testable
 // without a fleet. The headline count is `current of dispatched`, never a count of
 // dispatches: a table whose big number is "13 fired" is the thing #1292 caught.
-export function renderBaselineReport({ owner, dryRun, filter, fired, followed, skipped, failed }) {
+export function renderUpdateReport({ owner, dryRun, filter, fired, followed, skipped, failed }) {
   const current = followed.filter((f) => isSuccess(f.outcome));
   const notCurrent = followed.filter((f) => !isSuccess(f.outcome));
   const section = ([state, heading, gloss]) => {
@@ -248,7 +248,7 @@ export function renderBaselineReport({ owner, dryRun, filter, fired, followed, s
   };
 
   return [
-    `# Fleet baseline — ${owner}${dryRun ? ' (DRY RUN — nothing was dispatched)' : ''}`,
+    `# Fleet update — ${owner}${dryRun ? ' (DRY RUN — nothing was dispatched)' : ''}`,
     '',
     dryRun
       ? `Would ask each covered member's own \`${SCHEDULER}\` to wake its \`${FORCED_TASK}\` item.`
@@ -301,5 +301,5 @@ export function runVerdict({ fired, followed, failed }) {
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) {
-  main().catch((e) => { console.error(`fleet-baseline failed: ${e.message}`); process.exitCode = 1; });
+  main().catch((e) => { console.error(`fleet-update failed: ${e.message}`); process.exitCode = 1; });
 }

@@ -17,7 +17,7 @@
 //                                                      the owner named on a forced run?
 //   tasks/fleet-pack-seeds/check-fleet-pack-seeds.mjs  does a member DECLARE what
 //                                                      this fleet standardizes on?
-//   tasks/fleet-baseline/force-fleet-baseline.mjs      make every member baseline NOW
+//   tasks/fleet-update/force-fleet-update.mjs      make every member update NOW
 //                                                      (no preconditions — the
 //                                                      operator's lever, forced only)
 //

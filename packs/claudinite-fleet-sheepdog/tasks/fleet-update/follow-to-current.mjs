@@ -15,13 +15,13 @@
 // long enough for the slowest member, paid by every run whatever the fleet was
 // doing. This polls a real condition and each member LEAVES the loop the moment it
 // reads current: a fleet already at canon terminates on the first pass in seconds,
-// and only a member genuinely mid-converge costs any waiting at all.
+// and only a member genuinely mid-update costs any waiting at all.
 //
 // ALREADY-CURRENT IS A SUCCESS, and a distinct one. A member at canon's versions
 // before the dispatch correctly declines its own update — the precondition says the
-// mount converged in this window and no pack moved — and never "does work". Folding
+// mount updated in this window and no pack moved — and never "does work". Folding
 // that into a failure would report a fault where there is none; folding it into
-// `converged` would claim work that did not happen. It is its own outcome.
+// `updated` would claim work that did not happen. It is its own outcome.
 //
 // WHAT THIS CANNOT SEE. Freshness here is the PUBLISHED VERSION NUMBERS. Engine or
 // pack content that shipped without a version bump is invisible to any version
@@ -38,16 +38,16 @@ export { canonVersions };
 // each name a DIFFERENT thing for the reader to do, which is why this is a state per
 // member and not a count of failures.
 export const ALREADY_CURRENT = 'already-current';
-export const CONVERGED = 'converged';
+export const UPDATED = 'updated';
 export const NEVER_STARTED = 'never-started';
-export const DID_NOT_CONVERGE = 'did-not-converge';
+export const DID_NOT_UPDATE = 'did-not-update';
 export const UNKNOWN = 'unknown';
 
-export const isSuccess = (outcome) => outcome === ALREADY_CURRENT || outcome === CONVERGED;
+export const isSuccess = (outcome) => outcome === ALREADY_CURRENT || outcome === UPDATED;
 
 // The poll cadence: quick at first, because a member that was already current answers
-// on the first pass and a fast converge lands inside a minute or two, then backing off
-// so a long converge is not paid for in API calls. Capped so the loop keeps checking
+// on the first pass and a fast update lands inside a minute or two, then backing off
+// so a long update is not paid for in API calls. Capped so the loop keeps checking
 // at a useful rate right up to the budget.
 export const POLL_MS = [15_000, 30_000, 45_000, 60_000];
 export const pollDelay = (round) => POLL_MS[Math.min(round, POLL_MS.length - 1)];
@@ -55,7 +55,7 @@ export const pollDelay = (round) => POLL_MS[Math.min(round, POLL_MS.length - 1)]
 // Did this member's scheduler actually START on our dispatch? A `workflow_dispatch`
 // run created at or after the instant we fired. Distinguishing "never started" from
 // "started and did not finish" matters: the first is a dispatch that vanished — a
-// disabled workflow, a revoked grant — and the second is a converge to go and read.
+// disabled workflow, a revoked grant — and the second is an update run to go and read.
 //
 // Judged by STATUS: a listing that does not answer is not evidence of absence, so it
 // throws rather than reporting the member as never-started.
@@ -101,7 +101,7 @@ export async function followToCurrent(gh, members, {
         verdict = await readFreshness(gh, fullName, readDeclaration, { canon });
       } catch (e) {
         // Indeterminate, not terminal: a transient read failure must not condemn a
-        // member that is converging fine. It is only reported as UNKNOWN if the
+        // member that is updating fine. It is only reported as UNKNOWN if the
         // budget runs out while it is still failing.
         m.lastError = e.message;
         continue;
@@ -110,7 +110,7 @@ export async function followToCurrent(gh, members, {
       if (verdict.state === FRESH) {
         done.set(fullName, {
           ...m,
-          outcome: m.wasFresh ? ALREADY_CURRENT : CONVERGED,
+          outcome: m.wasFresh ? ALREADY_CURRENT : UPDATED,
           detail: verdict.detail,
         });
         pending.delete(fullName);
@@ -129,7 +129,7 @@ export async function followToCurrent(gh, members, {
 
   // Whatever is still pending when the budget is gone: say WHICH kind of not-current
   // it is, because the fix differs. A member that never started is a dispatch that
-  // went nowhere; one that started and is still behind is a converge to go and read.
+  // went nowhere; one that started and is still behind is an update run to go and read.
   for (const [fullName, m] of pending) {
     let started = null;
     try {
@@ -137,7 +137,7 @@ export async function followToCurrent(gh, members, {
     } catch (e) {
       m.lastError = e.message;
     }
-    const outcome = m.lastError ? UNKNOWN : (started ? DID_NOT_CONVERGE : NEVER_STARTED);
+    const outcome = m.lastError ? UNKNOWN : (started ? DID_NOT_UPDATE : NEVER_STARTED);
     done.set(fullName, {
       ...m,
       outcome,

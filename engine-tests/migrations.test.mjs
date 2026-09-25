@@ -338,6 +338,28 @@ test('sheepdog-fleet-baseline migration: gated on declaring the pack, and on not
   assert.equal(await m.legacyPresent(() => false, async () => null), false);
 });
 
+test('fleet-update-rename migration: a disabledTasks entry moves onto the new id, and applying twice changes nothing', async () => {
+  const m = (await loadMigrations()).find((x) => x.id === 'fleet-update-rename');
+  assert.ok(m, 'discovered');
+  const settings = (ids) => `${JSON.stringify({ packs: ['claudinite-fleet-sheepdog'], taskScheduler: { disabledTasks: ids } }, null, 2)}\n`; // @real-entity the record under test names this pack; that is its content
+  const files = new Map([['.claudinite-settings.json', settings(['claudinite-fleet-sheepdog/fleet-baseline', 'acme-pack/acme-task'])]]); // @real-entity the retired task id is what the record rewrites
+  const io = { read: async (p) => files.get(p) ?? null, write: async (p, c) => { files.set(p, c); } };
+
+  assert.equal(await m.legacyPresent(() => false, io.read), true);
+  assert.deepEqual(await applyRewrites(m, io), ['.claudinite-settings.json']);
+  assert.deepEqual(JSON.parse(files.get('.claudinite-settings.json')).taskScheduler.disabledTasks,
+    ['claudinite-fleet-sheepdog/fleet-update', 'acme-pack/acme-task']); // @real-entity the renamed task id is what the record writes
+  assert.equal(await m.legacyPresent(() => false, io.read), false);
+  assert.deepEqual(await applyRewrites(m, io), [], 'a second apply is a no-op');
+
+  // A repo that never named the lever, or has no declaration, is untouched.
+  files.set('.claudinite-settings.json', settings(['acme-pack/acme-task']));
+  assert.deepEqual(await applyRewrites(m, io), []);
+  files.clear();
+  assert.deepEqual(await applyRewrites(m, io), []);
+  assert.equal(await m.legacyPresent(() => false, io.read), false);
+});
+
 test('chrome-release-vendoring migration: gate, telemetry, and the vendoring round-trip', async () => {
   const m = (await loadMigrations()).find((x) => x.id === 'chrome-release-vendoring');
   assert.ok(m, 'discovered');

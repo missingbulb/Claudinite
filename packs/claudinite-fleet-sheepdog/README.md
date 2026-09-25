@@ -15,7 +15,7 @@ member executes:
 | [check-fleet-roster.mjs](tasks/fleet-roster/check-fleet-roster.mjs) → [adoption-issues.mjs](tasks/fleet-roster/adoption-issues.mjs) + [freshness.mjs](tasks/fleet-roster/freshness.mjs) | [fleet-roster](tasks/fleet-roster/README.md) (daily) | is this repo a **member**, and is that membership still **meaning** anything? → adoption issues + the run report's freshness section |
 | [scan-for-needed-packs.mjs](tasks/fleet-add-missing-packs/scan-for-needed-packs.mjs) + [force-add-packs.mjs](tasks/fleet-add-missing-packs/force-add-packs.mjs) | [fleet-add-missing-packs](tasks/fleet-add-missing-packs/README.md) (weekly, and forceable) | which packs is a member missing — the ones its **shape** suspects, or the ones the owner named? → a work-list issue *in* each member + that member's scheduler fired; the member's own agent adopts |
 | [check-fleet-pack-seeds.mjs](tasks/fleet-pack-seeds/check-fleet-pack-seeds.mjs) | [fleet-pack-seeds](tasks/fleet-pack-seeds/README.md) (daily) | does a member declare what this fleet **standardizes on**? → the declaration, written |
-| [force-fleet-baseline.mjs](tasks/fleet-baseline/force-fleet-baseline.mjs) | [fleet-baseline](tasks/fleet-baseline/README.md) (`manual` — forced runs only) | make every member baseline **now**, then follow each to canon's published versions → an outcome table, not a dispatch count |
+| [force-fleet-update.mjs](tasks/fleet-update/force-fleet-update.mjs) | [fleet-update](tasks/fleet-update/README.md) (`manual` — forced runs only) | make every member update **now**, then follow each to canon's published versions → an outcome table, not a dispatch count |
 
 **The roster carries two questions** because they are asked of the same repos from the same walk.
 The freshness half exists because
@@ -80,7 +80,7 @@ upkeep it opted out of; and a mount nothing will ever converge cannot be behind 
 going to fix — a freshness verdict on one is a finding with no owner. It stays a **member**: membership
 is unchanged, because dormancy is about upkeep, not membership, and the coverage census names it under
 `dormant`. The one lever that still reaches one is the hand-typed `INCLUDE_DORMANT=true` on a
-[fleet-baseline](tasks/fleet-baseline/README.md) item — a person asking for it by name.
+[fleet-update](tasks/fleet-update/README.md) item — a person asking for it by name.
 
 A repo the fleet was told to **ignore** (`config.exclude`) is out further still: no sweep reads it at
 all, so none of them learns whether it even carries a declaration, and every report names it once under
@@ -96,7 +96,7 @@ freshness section names its fresh members and its out-of-scope repos with why; t
 back **fitted** as loudly as the ones with findings, and names the fingerprints it could not decide
 from outside rather than counting them as non-matches; the usage sweep's `coverage` section
 accounts for every repo under the owner and its run report flags folding members with no captured
-activity that day; fleet-baseline reports every repo it did *not* dispatch, with the reason, and every repo it DID dispatch that never reached canon's versions.
+activity that day; fleet-update reports every repo it did *not* dispatch, with the reason, and every repo it DID dispatch that never reached canon's versions.
 
 **Undecidable is not a non-match.** Most fingerprints are answerable from a path listing, and the fit
 sweep answers those over one tree call per member; one that reads file *contents* is resolved by a
@@ -115,23 +115,23 @@ a green outcome; and a member the pack-seed sweep cannot reach opens no issue, c
 behalf, and exits non-zero. A non-zero preprocessing subprocess fails the task, and the scheduler
 parks one open issue for it.
 
-**The two operator levers ride the work-item queue, not a workflow.** `fleet-baseline` is the first
+**The two operator levers ride the work-item queue, not a workflow.** `fleet-update` is the first
 task declaring `trigger: request`: not on the schedule, never asked at any tick, it runs only from
-an item the owner creates by hand — `create-work-item claudinite-fleet-sheepdog/fleet-baseline`, with `REPOS=…`, `DRY_RUN=true`,
+an item the owner creates by hand — `create-work-item claudinite-fleet-sheepdog/fleet-update`, with `REPOS=…`, `DRY_RUN=true`,
 `INCLUDE_DORMANT=true`, `FOLLOW_MINUTES=…` as `--context` lines — which wakes every covered member's own
 standing `update` item so the fleet picks canon up now instead of over the next day. A forced
 fleet-add-missing-packs item is the second lever, same command, its own Context.
 
-**`fleet-baseline` reports outcomes, not dispatches.** A dispatch POST returning 204 says a
+**`fleet-update` reports outcomes, not dispatches.** A dispatch POST returning 204 says a
 run was queued and nothing more, and a report built from those 204s describes the sweep's own outgoing
 calls while reading as fleet-wide delivery. So after firing, the sweep
 follows each member until its own declaration stamps the engine and every declared pack at the versions
-canon publishes, and reports each as `converged`, `already-current`, `did-not-converge`, `never-started`
+canon publishes, and reports each as `updated`, `already-current`, `did-not-update`, `never-started`
 or `unknown`. A member already at canon's versions is a success in its own right: its update correctly
 declines, and it does no work. *Current* is a claim about **published version numbers** — canon content
 that shipped without a version bump moves no number and is invisible to it, which the report says itself.
 
-[follow-to-current.mjs](tasks/fleet-baseline/follow-to-current.mjs) polls a real terminal condition:
+[follow-to-current.mjs](tasks/fleet-update/follow-to-current.mjs) polls a real terminal condition:
 each member leaves the loop the moment it reads current, so an already-current fleet finishes
 on the first pass in seconds, and the lever stays an ordinary queue task.
 
@@ -179,7 +179,7 @@ implementation, never in how a task is wired.
 | `fleet-roster` | `due:daily` | none | none |
 | `fleet-add-missing-packs` | `due:weekly` (forceable) | none | none |
 | `fleet-pack-seeds` | `due:daily` | none | none |
-| `fleet-baseline` | never — no `preconditions`; only from an item the owner creates | none | none |
+| `fleet-update` | never — no `preconditions`; only from an item the owner creates | none | none |
 
 The cadences follow what each question can change on. Roster is daily on its coverage question, and
 its freshness half rides along rather than gating on a weekly clock it would have to compute; pack

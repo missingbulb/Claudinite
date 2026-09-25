@@ -5,8 +5,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   followToCurrent, startedSince, pollDelay, isSuccess, POLL_MS,
-  ALREADY_CURRENT, CONVERGED, NEVER_STARTED, DID_NOT_CONVERGE, UNKNOWN,
-} from '../../../tasks/fleet-baseline/follow-to-current.mjs';
+  ALREADY_CURRENT, UPDATED, NEVER_STARTED, DID_NOT_UPDATE, UNKNOWN,
+} from '../../../tasks/fleet-update/follow-to-current.mjs';
 
 // A fake canon. Versions are date-anchored `<day>.<n>` like every real one — a shape
 // the corpus's own isVersion accepts, so this exercises the real comparison.
@@ -80,11 +80,11 @@ test('a member already at canon versions is a success, and a DISTINCT one', asyn
   assert.deepEqual(slept, [], 'an already-current fleet finishes on the first pass');
 });
 
-test('a member that was behind and reaches canon reports converged, not already-current', async () => {
+test('a member that was behind and reaches canon reports updated, not already-current', async () => {
   const { out } = await follow(
     { 'o/a': { versions: [at(OLD), at(OLD), at(NEW)] } },
     [member('o/a', false)]);
-  assert.equal(out[0].outcome, CONVERGED);
+  assert.equal(out[0].outcome, UPDATED);
   assert.ok(isSuccess(out[0].outcome));
 });
 
@@ -93,13 +93,13 @@ test('a dispatched member that never reaches canon is a FAILURE, not a fired cou
   const { out } = await follow(
     { 'o/a': { versions: [at(OLD)], started: true } },
     [member('o/a')], { budgetMs: 30_000 });
-  assert.equal(out[0].outcome, DID_NOT_CONVERGE);
+  assert.equal(out[0].outcome, DID_NOT_UPDATE);
   assert.equal(isSuccess(out[0].outcome), false);
   assert.match(out[0].detail, /scheduler ran/);
   assert.match(out[0].detail, /behind canon by engine v60823\.1 → v60823\.2/);
 });
 
-// A dispatch that vanished is a different fix from a converge that fell short, so the
+// A dispatch that vanished is a different fix from an update that fell short, so the
 // two must not share an outcome.
 test('a member whose run never started is told apart from one that ran and fell short', async () => {
   const { out } = await follow(
@@ -114,7 +114,7 @@ test('each member leaves the loop as it reads current — a slow one does not ho
     'o/fast': { versions: [at(NEW)] },
     'o/slow': { versions: [at(OLD), at(OLD), at(OLD), at(NEW)] },
   }, [member('o/fast', true), member('o/slow')]);
-  assert.deepEqual(out.map((f) => f.outcome), [ALREADY_CURRENT, CONVERGED]);
+  assert.deepEqual(out.map((f) => f.outcome), [ALREADY_CURRENT, UPDATED]);
 });
 
 test('the report keeps the sweep\'s member order, whatever order they finish in', async () => {
@@ -126,8 +126,8 @@ test('the report keeps the sweep\'s member order, whatever order they finish in'
   assert.deepEqual(out.map((f) => f.fullName), ['o/a', 'o/b', 'o/c']);
 });
 
-// A transient read failure must not condemn a member that is converging fine.
-test('a read that fails once and then succeeds still converges', async () => {
+// A transient read failure must not condemn a member that is updating fine.
+test('a read that fails once and then succeeds still updates', async () => {
   const gh = fakeGh({ 'o/a': { versions: [at(NEW)] } });
   let calls = 0;
   const flaky = async (_gh, fullName) => {
@@ -188,19 +188,19 @@ test('startedSince only counts runs at or after the dispatch instant', async () 
 // lever tells the owner is testable without a fleet. This is where #1292's regression
 // would reappear, so it is asserted directly rather than left to the follow's unit
 // tests.
-import { renderBaselineReport, runVerdict, OUTCOME_SECTIONS } from '../../../tasks/fleet-baseline/force-fleet-baseline.mjs';
+import { renderUpdateReport, runVerdict, OUTCOME_SECTIONS } from '../../../tasks/fleet-update/force-fleet-update.mjs';
 
 const outcome = (fullName, o, detail = 'because') => ({ fullName, outcome: o, detail });
 
-const report = (over = {}) => renderBaselineReport({
+const report = (over = {}) => renderUpdateReport({
   owner: 'acme', dryRun: false, filter: null,
   fired: [], followed: [], skipped: [], failed: [], ...over,
 });
 
 test('the headline is current-of-dispatched, never a count of dispatches', () => {
   const followed = [
-    outcome('acme/a', CONVERGED), outcome('acme/b', ALREADY_CURRENT),
-    outcome('acme/c', DID_NOT_CONVERGE), outcome('acme/d', NEVER_STARTED),
+    outcome('acme/a', UPDATED), outcome('acme/b', ALREADY_CURRENT),
+    outcome('acme/c', DID_NOT_UPDATE), outcome('acme/d', NEVER_STARTED),
   ];
   const out = report({ fired: followed, followed });
   assert.match(out, /\| current \| not current \|/);
@@ -209,8 +209,8 @@ test('the headline is current-of-dispatched, never a count of dispatches', () =>
 });
 
 // The exact run that prompted this: every dispatch accepted, most members untouched.
-test('a sweep where every dispatch landed and nothing converged does NOT read as success', () => {
-  const followed = Array.from({ length: 9 }, (_, i) => outcome(`acme/r${i}`, DID_NOT_CONVERGE));
+test('a sweep where every dispatch landed and nothing updated does NOT read as success', () => {
+  const followed = Array.from({ length: 9 }, (_, i) => outcome(`acme/r${i}`, DID_NOT_UPDATE));
   const out = report({ fired: followed, followed });
   assert.match(out, /\| 0 of 9 \| 9 \|/);
   assert.match(runVerdict({ fired: followed, followed, failed: [] }),
@@ -218,14 +218,14 @@ test('a sweep where every dispatch landed and nothing converged does NOT read as
 });
 
 test('a fully current fleet fails nothing', () => {
-  const followed = [outcome('acme/a', CONVERGED), outcome('acme/b', ALREADY_CURRENT)];
+  const followed = [outcome('acme/a', UPDATED), outcome('acme/b', ALREADY_CURRENT)];
   assert.equal(runVerdict({ fired: followed, followed, failed: [] }), null);
 });
 
 // An undispatchable member is a grant to fix and must not be masked by the follow's
 // own verdict, so it is reported first.
 test('a failed dispatch outranks a follow failure in the escalation', () => {
-  const followed = [outcome('acme/a', DID_NOT_CONVERGE)];
+  const followed = [outcome('acme/a', DID_NOT_UPDATE)];
   assert.match(runVerdict({
     fired: followed, followed,
     failed: [{ fullName: 'acme/z', state: 'no-permission', detail: '403' }],
@@ -234,7 +234,7 @@ test('a failed dispatch outranks a follow failure in the escalation', () => {
 
 test('every outcome the follow can produce has a section to be reported in', () => {
   const named = new Set(OUTCOME_SECTIONS.map(([state]) => state));
-  for (const state of [ALREADY_CURRENT, CONVERGED, NEVER_STARTED, DID_NOT_CONVERGE, UNKNOWN]) {
+  for (const state of [ALREADY_CURRENT, UPDATED, NEVER_STARTED, DID_NOT_UPDATE, UNKNOWN]) {
     assert.ok(named.has(state), `${state} would be observed and never printed`);
   }
 });

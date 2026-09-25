@@ -37,7 +37,7 @@
 
   ```
   node .claudinite/shared/packs/claudinite-tasks/src/schedule/create-work-item.mjs \
-    claudinite-fleet-sheepdog/fleet-baseline
+    claudinite-fleet-sheepdog/fleet-update
   ```
 
   Add `--context "REPOS=owner/a owner/b"` to narrow it (space-separated: a Context line splits on
@@ -45,7 +45,7 @@
   `--context "INCLUDE_DORMANT=true"` to reach members that stopped their own scheduler on purpose.
   Both knobs are read from the item's Context and nowhere else — an item created without them runs
   unscoped and live. It queues one run per member and then FOLLOWS each to canon's published engine
-  and pack versions, reporting per member whether it converged, was already current, or never got
+  and pack versions, reporting per member whether it updated, was already current, or never got
   there — never a count of accepted dispatches. A member with nothing to do reads
   `already-current`, which is a success, so over-using it is wasteful rather than unsafe.
 

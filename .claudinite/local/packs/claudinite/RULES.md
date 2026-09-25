@@ -46,7 +46,7 @@ Below are rules on how to work on this repo.
   repo?"* is live: engine flow, a contract member files must satisfy, a stub, a migration record, a
   new config key. Otherwise the nightly converge is the delivery. (landing-change-members)
 
-- **Forcing fleet delivery** — drive Shepherd's `fleet-baseline` with `follow`, report per member
+- **Forcing fleet delivery** — drive Shepherd's `fleet-update` with `follow`, report per member
   unasked, and attach the repos verification needs. A dispatch is not a result; 204 means queued.
   (forcing-fleet-delivery)
 
