@@ -20,11 +20,11 @@
 // repo already converged produces an empty change list.
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
-import { join, dirname, relative, sep } from 'node:path';
+import { join, basename, dirname, relative, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { writeRulesIndex, RULES_INDEX_FILE, RULES_INDEX_IMPORT } from './pack_loader/generate-rules-index.mjs';
 import { writeSkillsIndex, SKILLS_INDEX_FILE } from './pack_loader/generate-skills-index.mjs';
-import { LOCAL_PACKS_SUBDIR, LOCAL_DECL_PREFIX, SHARED_SUBDIR } from './pack_loader/pack-registry.mjs';
+import { LOCAL_PACKS_SUBDIR, LOCAL_DECL_PREFIX, SHARED_SUBDIR, TEMP_PACKS_SUBDIR } from './pack_loader/pack-registry.mjs';
 
 // The mount's two halves as git wants them spelled: '/' separators, and the shared
 // subtree's own name for a pattern written from inside the mount root. SHARED_SUBDIR
@@ -192,6 +192,26 @@ export function ensureMountAttributes(root) {
   if (existsSync(path) && readFileSync(path, 'utf8') === MOUNT_ATTRIBUTES_TEXT) return false;
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, MOUNT_ATTRIBUTES_TEXT);
+  return true;
+}
+
+// --- the mount's own git ignores ----------------------------------------------
+
+// The session root (engine/pack_loader/pack-registry.mjs) is written into the mount at
+// every session start and never tracked. A member's root `.gitignore` is the repo's own
+// and may say nothing about it, so the mount ignores it itself, the same way it carries
+// its own attributes. Anchored, so only the mount root's session directory matches.
+export const MOUNT_IGNORE_FILE = `${MOUNT_ROOT}/.gitignore`;
+const SESSION_ROOT_NAME = basename(dirname(TEMP_PACKS_SUBDIR));
+
+const MOUNT_IGNORE_TEXT = `/${SESSION_ROOT_NAME}/\n`;
+
+// Returns true when the file was written (absent, or drifted from the target).
+export function ensureMountIgnore(root) {
+  const path = join(root, MOUNT_IGNORE_FILE);
+  if (existsSync(path) && readFileSync(path, 'utf8') === MOUNT_IGNORE_TEXT) return false;
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, MOUNT_IGNORE_TEXT);
   return true;
 }
 
@@ -387,6 +407,7 @@ export async function convergeWiring(root, fullName, { seedLocalPack = false } =
   if (await writeSkillsIndex(root)) changed.push(SKILLS_INDEX_FILE);
   if (ensureRulesIndexImport(root)) changed.push(`${CLAUDE_MD} rules-index import`);
   if (ensureMountAttributes(root)) changed.push(MOUNT_ATTRIBUTES_FILE);
+  if (ensureMountIgnore(root)) changed.push(MOUNT_IGNORE_FILE);
   if (removeRetiredRootAttributes(root)) changed.push('removed retired root .gitattributes entries');
   return { changed, ...(hooks.error ? { error: hooks.error } : {}) };
 }

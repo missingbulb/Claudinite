@@ -14,7 +14,7 @@ import {
 } from '../packs/claudinite-lifecycle/updates/converge-scope.mjs';
 import { removeTree } from '../engine/remove-tree.mjs';
 import { RULES_INDEX_FILE } from '../engine/pack_loader/generate-rules-index.mjs';
-import { CLAUDE_MD, MOUNT_ATTRIBUTES_FILE, SETTINGS_PATH } from '../engine/converge-wiring.mjs';
+import { CLAUDE_MD, MOUNT_ATTRIBUTES_FILE, MOUNT_IGNORE_FILE, SETTINGS_PATH } from '../engine/converge-wiring.mjs';
 
 test('a vendored pack tree is the one write nothing a member runs can see', () => {
   assert.equal(isConvergeBookkeeping('.claudinite/shared/packs/acme-pack/RULES.md'), true);
@@ -28,7 +28,7 @@ test('a vendored pack tree is the one write nothing a member runs can see', () =
 });
 
 test('the mount\'s own wiring rides with the packs — its content IS the pack set', () => {
-  for (const file of [RULES_INDEX_FILE, CLAUDE_MD, MOUNT_ATTRIBUTES_FILE, SETTINGS_PATH]) {
+  for (const file of [RULES_INDEX_FILE, CLAUDE_MD, MOUNT_ATTRIBUTES_FILE, MOUNT_IGNORE_FILE, SETTINGS_PATH]) {
     assert.equal(isConvergeBookkeeping(file), true, `${file} moves with the pack set, not with the repo`);
   }
 });
