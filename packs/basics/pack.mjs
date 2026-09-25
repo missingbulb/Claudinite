@@ -1,15 +1,9 @@
 
-// The baseline pack: cross-project working discipline, the task lifecycle, and
-// the general engineering skills. Declared explicitly like every other pack — no pack is active by
-// default. Bootstrap's --init seeds the declaration and the nightly update
-// backfills it into existing consumers; never fingerprinted (the declaration is
-// authoritative — dropping it is a deliberate choice).
+// The baseline pack: cross-project working discipline, the task lifecycle, and the general
+// engineering skills. Active only where a repo declares it, and never fingerprinted.
 //
-// Its skills/ holds general engineering practice every project's work can call for,
-// whatever its technology, mounted wherever basics is declared (which --init seeds
-// everywhere). When one stops being a baseline activity, its directory moves to the
-// pack whose projects need it (#385 moved the git/GitHub and Claudinite-lifecycle
-// skills out).
+// Its skills/ holds the general engineering practice any project's work can call for, whatever
+// its technology, mounted wherever this pack is declared.
 import { contributedBarrierRules } from './barriers.mjs';
 
 export default {

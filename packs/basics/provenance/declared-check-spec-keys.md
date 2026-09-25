@@ -5,3 +5,8 @@
 - **Mechanism:** a check
 - **Retire when:** Retire it only if the load can refuse unknown keys again without wedging any
   fleet lane.
+
+## 2026-09-01 · reworded · Guard the spec-key rule against an engine older than its export (#1549)
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude, per the commit trailer.
+- **Landed:** #1549 · pack version 60901.2.

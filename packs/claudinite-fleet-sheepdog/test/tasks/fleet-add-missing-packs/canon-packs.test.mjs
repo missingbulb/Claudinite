@@ -1,12 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, cpSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadCanonPacks } from '../../../tasks/fleet-add-missing-packs/canon-packs.mjs';
 import { removeTree } from '../../../../../engine/remove-tree.mjs';
+import { git } from '../../../../../engine-tests/helpers.mjs';
 
 // The corpus loader guards ONE silent failure, and it is the worst one this task
 // could have: sweeping the fleet against a pack corpus that is nearly empty. Every
@@ -32,12 +32,9 @@ function fakeCanon({ full = true } = {}) {
       cpSync(join(canonRoot, 'packs', id), join(dir, 'packs', id), { recursive: true });
     }
   }
-  const git = (...args) => execFileSync('git', ['-C', dir, ...args], { stdio: ['ignore', 'ignore', 'pipe'] });
-  git('init', '-q');
-  git('config', 'user.email', 't@t');
-  git('config', 'user.name', 't');
-  git('add', '-A');
-  git('commit', '-qm', 'canon');
+  git(dir, 'init', '-q');
+  git(dir, 'add', '-A');
+  git(dir, 'commit', '-qm', 'canon');
   return { origin: `file://${root}`, cleanup: () => removeTree(root) };
 }
 
@@ -71,10 +68,8 @@ test('loadCanonPacks: a repo that is not a canon is an error, not an empty corpu
   const dir = join(root, `${REPO}.git`);
   mkdirSync(dir, { recursive: true });
   t.after(() => removeTree(root));
-  const git = (...args) => execFileSync('git', ['-C', dir, ...args], { stdio: ['ignore', 'ignore', 'pipe'] });
   writeFileSync(join(dir, 'README.md'), '# not a canon\n');
-  git('init', '-q'); git('config', 'user.email', 't@t'); git('config', 'user.name', 't');
-  git('add', '-A'); git('commit', '-qm', 'x');
+  git(dir, 'init', '-q'); git(dir, 'add', '-A'); git(dir, 'commit', '-qm', 'x');
   await assert.rejects(
     () => loadCanonPacks({ canonRepo: REPO, token: 'unused', origin: `file://${root}` }),
     /not a Claudinite canon/,

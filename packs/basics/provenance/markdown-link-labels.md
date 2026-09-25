@@ -1,10 +1,14 @@
-## 2026-09-01 · born · converted from references.md (check:markdown-link-labels)
-- **Reason:** Converted from `repo-text-sweeps`' prose in #552. The mechanism a review needs is the
-  sweep that produces it: a Markdown link carries its path **twice** —
-  ``[`old/path.md`](../old/path.md)`` holds it in both the visible label and the target — so a
+## 2026-07-06 · born · Context-relief architecture: packs (prose + checks) and skills, with enforcement (#128)
+- **Reason:** a Markdown link carries its path twice, in the visible label and in the target, so a
   `sed` anchored on the `](../href)` form rewrites the target and leaves the label reading the old
-  path, and the doc then points right while *reading* wrong. Both the plain `[old/path.md]` and
-  backticked label forms need the same rewrite.
-- **Mechanism:** a check
-- **Retire when:** Reaffirm while Markdown duplicates the path across label and target; retire only
-  if that stops being true.
+  path: the doc then points right while reading wrong.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude Fable 5, per the commit trailer.
+- **Mechanism:** check markdown-link-labels, in packs/basics/worldRules/markdown-link-labels.mjs.
+- **Retire when:** Markdown stops duplicating the path across label and target.
+- **Landed:** #128, closing #127 and #131.
+
+## 2026-09-04 · reworded · Declarative checks: the four-moment design, the rule inventory, and pass two (derive → quantify) (#1676)
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude Fable 5.1, per the commit trailer.
+- **Landed:** #1676 · pack version 60904.1.
