@@ -11,3 +11,10 @@
   members are backfilled by hand.
 - **Actor:** @missingbulb (owner), who declined a backfill task for the members that predate
   provenance.
+
+## 2026-09-25 · trigger-changed · hidden from the model, description cut to 30 words
+- **Reason:** only a task's worker or a person's `/name` reaches this skill, yet its description sat
+  in every session's context.
+- **Mechanism:** the harness's `disable-model-invocation: true`; the worker reads the SKILL.md by
+  path.
+- **Actor:** @missingbulb (owner).

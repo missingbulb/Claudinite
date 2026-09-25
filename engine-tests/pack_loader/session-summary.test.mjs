@@ -125,6 +125,21 @@ test('counts the mounted skill set from the registry, split by whether a hook lo
   } finally { removeTree(corpus); removeTree(project); }
 });
 
+test('counts a skill the model cannot invoke as manual, and names no manual skills when there are none', () => {
+  const corpus = makeCorpus({ alpha: { skills: ['open', 'hidden'] } });
+  const hidden = '---\nname: hidden\ndescription: x\ndisable-model-invocation: true\n---\n';
+  for (const name of ['open', 'hidden']) {
+    mkdirSync(join(corpus, 'packs', 'alpha', 'skills', name), { recursive: true });
+    writeFileSync(join(corpus, 'packs', 'alpha', 'skills', name, 'SKILL.md'), `${name === 'hidden' ? hidden : ''}# skill\n`);
+  }
+  const project = makeProject({ packs: ['alpha'] });
+  try {
+    assert.match(run(corpus, project), /0 auto-trigger skills, 1 regular skill, 1 manual skill\./);
+    writeFileSync(join(corpus, 'packs', 'alpha', 'skills', 'hidden', 'SKILL.md'), '# skill\n');
+    assert.match(run(corpus, project), /0 auto-trigger skills, 2 regular skills\./);
+  } finally { removeTree(corpus); removeTree(project); }
+});
+
 test('names the repo off the checkout\'s origin remote, else the runner\'s environment, else not at all', () => {
   const corpus = makeCorpus({ alpha: {} });
   const project = makeProject({ packs: ['alpha'] });

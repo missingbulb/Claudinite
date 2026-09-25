@@ -1,6 +1,7 @@
 ---
 name: triaging-usage-findings
-description: Turn a usage-review finding that has lasted into a proposed change - read the element's provenance first, settle which of the rule's causes it is, and write the edit itself rather than a description of it. Use when a usage-triage run hands you lasting findings, or when an owner asks what to do about one.
+description: Turn a lasting usage-review finding into a proposed change, written as the edit itself. Use on a usage-triage run, or when asked what to do about a finding.
+disable-model-invocation: true
 metadata:
   body: workflow
   usage:

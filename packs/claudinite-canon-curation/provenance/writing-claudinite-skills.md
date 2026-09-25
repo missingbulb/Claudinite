@@ -30,3 +30,14 @@
   skill may carry a trigger and still expect most loads by judgment, which is a real claim about
   itself rather than a contradiction.
 - **Landed:** #2214
+
+## 2026-09-25 · trigger-changed · description cut to the 30-word cap
+- **Reason:** the description summarised the method the body already carries; every session paid for
+  it.
+- **Mechanism:** the description, as before.
+- **Actor:** @missingbulb (owner).
+
+## 2026-09-25 · reworded · task-only skills hide their description
+- **Reason:** nothing told an author that a skill no session picks by judgment can leave the
+  listing.
+- **Actor:** @missingbulb (owner).

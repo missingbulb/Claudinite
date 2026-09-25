@@ -13,3 +13,10 @@
 - **Mechanism:** the skill reads two sets each run - the last 24 hours, and the first 24 hours still
   on the branch - so the prune needs no agent to tell it a capture was read.
 - **Landed:** #992 (Closes #964).
+
+## 2026-09-25 · trigger-changed · hidden from the model, description cut to 30 words
+- **Reason:** only a task's worker or a person's `/name` reaches this skill, yet its description sat
+  in every session's context.
+- **Mechanism:** the harness's `disable-model-invocation: true`; the worker reads the SKILL.md by
+  path.
+- **Actor:** @missingbulb (owner).

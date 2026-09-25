@@ -1,6 +1,7 @@
 ---
 name: extract-packs-from-a-project
-description: Decompose a project into its pack facets (working-style class, technology, aspect, domain) and author the canon packs those facets earn. Use from a canon when a project's evidence shows a facet its shelf does not yet home — the curation stages' pack-writing method, and an owner's when asking what a project has taught the shelf.
+description: Decompose a project into its pack facets and author the canon packs they earn. Use from a canon when a project shows a facet its shelf does not yet home.
+disable-model-invocation: true
 metadata:
   body: workflow
   usage:
