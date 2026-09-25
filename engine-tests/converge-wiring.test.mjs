@@ -11,6 +11,7 @@ import {
   PRETOOLUSE_MATCHER,
   ensureRulesIndexImport,
   ensureMountAttributes, removeRetiredRootAttributes, MOUNT_ATTRIBUTES_FILE,
+  ensureMountIgnore, MOUNT_IGNORE_FILE,
   seedRepoLocalPack, packIdForRepo,
 } from '../engine/converge-wiring.mjs';
 import { RULES_INDEX_IMPORT } from '../engine/pack_loader/generate-rules-index.mjs';
@@ -156,6 +157,23 @@ test('the mount attributes git resolves cover the files they are written for', (
 });
 
 
+test('ensureMountIgnore: git ignores the session state under the mount, and nothing else there', () => {
+  // The session root is written into every member at session start; a member's own
+  // .gitignore may say nothing about it, so the mount carries the ignore itself.
+  const root = mkRepo();
+  execFileSync('git', ['init', '-q'], { cwd: root });
+  assert.equal(ensureMountIgnore(root), true);
+  assert.ok(existsSync(join(root, MOUNT_IGNORE_FILE)));
+  assert.equal(ensureMountIgnore(root), false);
+  const ignored = (path) => {
+    try { execFileSync('git', ['check-ignore', '-q', '--no-index', path], { cwd: root }); return true; } catch { return false; }
+  };
+  assert.equal(ignored('.claudinite/temp/packs/current_user/RULES.md'), true);
+  assert.equal(ignored('.claudinite/local/packs/acme-pack/RULES.md'), false);
+  assert.equal(ignored('.claudinite/shared/engine/temp/x.mjs'), false, 'anchored to the mount root');
+});
+
+
 test('removeRetiredRootAttributes: takes back the lines Claudinite planted in the root file', () => {
   const root = mkRepo();
   writeFileSync(join(root, '.gitattributes'),
@@ -193,6 +211,7 @@ test('convergeWiring: lands the index, its import and its merge attribute togeth
   assert.match(index, /@shared\/packs\/basics\/RULES\.md/);
   assert.ok(readFileSync(join(root, 'CLAUDE.md'), 'utf8').includes(RULES_INDEX_IMPORT));
   assert.ok(existsSync(join(root, MOUNT_ATTRIBUTES_FILE)));
+  assert.ok(existsSync(join(root, MOUNT_IGNORE_FILE)));
   assert.equal(existsSync(join(root, '.gitattributes')), false, 'nothing of ours lands in the root file');
 
   const second = await convergeWiring(root, REPO);

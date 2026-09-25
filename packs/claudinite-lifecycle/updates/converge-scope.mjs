@@ -31,6 +31,9 @@ import { join } from 'node:path';
 import { isSettingsFile } from '../../../engine/settings-file-names.mjs';
 import { LEGACY_STAMP_KEY } from '../../../engine/installed-versions.mjs';
 import { CLAUDE_MD, MOUNT_ATTRIBUTES_FILE, SETTINGS_PATH } from '../../../engine/converge-wiring.mjs';
+// A namespace read: a member can hold this pack beside an engine that predates the export,
+// and a named import of it would fail to link there.
+import * as wiring from '../../../engine/converge-wiring.mjs';
 import { RULES_INDEX_FILE } from '../../../engine/pack_loader/generate-rules-index.mjs';
 import { SKILLS_INDEX_FILE } from '../../../engine/pack_loader/generate-skills-index.mjs';
 
@@ -38,7 +41,7 @@ const VENDORED_PACKS = '.claudinite/shared/packs/';
 // The mount's wiring, taken from the modules that write it rather than respelled:
 // a file this set names by a stale path would be reported as a change the repo's
 // tests can see on every single cycle.
-const MOUNT_WIRING = new Set([RULES_INDEX_FILE, SKILLS_INDEX_FILE, CLAUDE_MD, MOUNT_ATTRIBUTES_FILE, SETTINGS_PATH]);
+const MOUNT_WIRING = new Set([RULES_INDEX_FILE, SKILLS_INDEX_FILE, CLAUDE_MD, MOUNT_ATTRIBUTES_FILE, wiring.MOUNT_IGNORE_FILE, SETTINGS_PATH]);
 
 // Is this path one of the writes a member's own tests are structurally blind to?
 export const isConvergeBookkeeping = (file) => file.startsWith(VENDORED_PACKS) || MOUNT_WIRING.has(file);
