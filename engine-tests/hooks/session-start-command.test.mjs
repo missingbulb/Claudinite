@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { git } from '../helpers.mjs';
 
 // This test lives at <repo>/engine-tests/hooks/session-start-command.test.mjs.
 const HOOKS_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'engine', 'hooks');
@@ -74,11 +75,10 @@ test('the git-config step configures the CLONE, and is silent where there is no 
   // from a fresh checkout, so the assertion is on the repo the session actually has.
   const corpus = makeCorpus();
   const projectDir = mkdtempSync(join(tmpdir(), 'claudinite-proj-'));
-  spawnSync('git', ['init', '-q'], { cwd: projectDir });
+  git(projectDir, 'init', '-q');
   const r = run(corpus, projectDir);
   assert.equal(r.status, 0);
-  const cfg = (key) =>
-    spawnSync('git', ['-C', projectDir, 'config', '--get', key], { encoding: 'utf8' }).stdout.trim();
+  const cfg = (key) => git(projectDir, 'config', '--get', key).trim();
   assert.equal(cfg('merge.ours.driver'), 'true');
   assert.equal(cfg('rerere.enabled'), 'true');
   assert.doesNotMatch(r.stdout, /WARNING/);

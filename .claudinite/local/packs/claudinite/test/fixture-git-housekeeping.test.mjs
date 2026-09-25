@@ -62,6 +62,20 @@ test('fixture-git-housekeeping: scope is test files, not the modules beside them
   } finally { cleanup(root); }
 });
 
+// The one sanctioned holdout: removeTree's own test builds its fixture with bare
+// git on purpose, so the retry it covers is exercised over a tree nothing put the
+// housekeeping env on. The exemption is that one path and no shape, which the same
+// content elsewhere proves.
+test('fixture-git-housekeeping: removeTree\'s own fixture is the one exempt path', () => {
+  const root = at({
+    'engine-tests/remove-tree.test.mjs': BARE,
+    'engine-tests/a.test.mjs': BARE,
+  });
+  try {
+    assert.deepEqual(run(root).map((f) => f.file), ['engine-tests/a.test.mjs']);
+  } finally { cleanup(root); }
+});
+
 // A pattern left behind by a layout change matches nothing and still reads as
 // live, so the scope is measured over the real tree with the declaration's own
 // regex rather than a second copy of it here.

@@ -8,10 +8,10 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
-import { execFileSync } from 'node:child_process';
 import {
   isConvergeBookkeeping, stampOnlySettingsEdit, changesTestsCouldSee,
 } from '../packs/claudinite-lifecycle/updates/converge-scope.mjs';
+import { git } from './helpers.mjs';
 import { removeTree } from '../engine/remove-tree.mjs';
 import { RULES_INDEX_FILE } from '../engine/pack_loader/generate-rules-index.mjs';
 import { CLAUDE_MD, MOUNT_ATTRIBUTES_FILE, MOUNT_IGNORE_FILE, SETTINGS_PATH } from '../engine/converge-wiring.mjs';
@@ -55,20 +55,17 @@ test('a settings edit that moved only the installed stamp is bookkeeping, not co
 
 function gitMember() {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-scope-'));
-  const git = (...args) => execFileSync('git', ['-C', root, ...args], { stdio: 'ignore' });
   const put = (rel, content) => {
     mkdirSync(dirname(join(root, rel)), { recursive: true });
     writeFileSync(join(root, rel), content);
   };
-  git('init', '-q', '-b', 'main');
-  git('config', 'user.email', 't@example.com');
-  git('config', 'user.name', 't');
+  git(root, 'init', '-q', '-b', 'main');
   put('.claudinite-settings.json', `${JSON.stringify({ packs: [{ id: 'acme-pack', version: 3 }], engineVersion: 10 }, null, 2)}\n`);
   put('.claudinite/shared/packs/acme-pack/RULES.md', 'old\n');
   put('.claudinite/shared/engine/selftest.mjs', 'export const a = 1;\n');
   put('src/app.mjs', 'code\n');
-  git('add', '-A');
-  git('commit', '-qm', 'base');
+  git(root, 'add', '-A');
+  git(root, 'commit', '-qm', 'base');
   return { root, put };
 }
 

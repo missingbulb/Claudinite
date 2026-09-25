@@ -1,7 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,6 +14,7 @@ import {
   seedRepoLocalPack, packIdForRepo,
 } from '../engine/converge-wiring.mjs';
 import { RULES_INDEX_IMPORT } from '../engine/pack_loader/generate-rules-index.mjs';
+import { git } from './helpers.mjs';
 
 const mkRepo = () => mkdtempSync(join(tmpdir(), 'claudinite-wiring-'));
 const CANON_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -143,14 +143,14 @@ test('the mount attributes git resolves cover the files they are written for', (
   // are only worth carrying if git resolves them over the real mount paths — a
   // pattern that matches nothing reads as live and annotates nothing.
   const root = mkRepo();
-  execFileSync('git', ['init', '-q'], { cwd: root });
+  git(root, 'init', '-q');
   mkdirSync(join(root, '.claudinite', 'shared', 'engine', 'checks'), { recursive: true });
   mkdirSync(join(root, '.claudinite', 'local'), { recursive: true });
   writeFileSync(join(root, '.claudinite', 'shared', 'engine', 'checks', 'check_the_world.mjs'), '// vendored\n');
   writeFileSync(join(root, '.claudinite', 'local', 'usage.GENERATED.json'), '{}\n');
   writeFileSync(join(root, '.claudinite', 'claudinite-rules.GENERATED.md'), 'rules\n');
   assert.equal(ensureMountAttributes(root), true);
-  const attr = (name, path) => execFileSync('git', ['check-attr', name, '--', path], { cwd: root, encoding: 'utf8' });
+  const attr = (name, path) => git(root, 'check-attr', name, '--', path);
   assert.match(attr('linguist-vendored', '.claudinite/shared/engine/checks/check_the_world.mjs'), /linguist-vendored: set/);
   assert.match(attr('merge', '.claudinite/local/usage.GENERATED.json'), /merge: ours/);
   assert.match(attr('merge', '.claudinite/claudinite-rules.GENERATED.md'), /merge: ours/);
@@ -161,12 +161,12 @@ test('ensureMountIgnore: git ignores the session state under the mount, and noth
   // The session root is written into every member at session start; a member's own
   // .gitignore may say nothing about it, so the mount carries the ignore itself.
   const root = mkRepo();
-  execFileSync('git', ['init', '-q'], { cwd: root });
+  git(root, 'init', '-q');
   assert.equal(ensureMountIgnore(root), true);
   assert.ok(existsSync(join(root, MOUNT_IGNORE_FILE)));
   assert.equal(ensureMountIgnore(root), false);
   const ignored = (path) => {
-    try { execFileSync('git', ['check-ignore', '-q', '--no-index', path], { cwd: root }); return true; } catch { return false; }
+    try { git(root, 'check-ignore', '-q', '--no-index', path); return true; } catch { return false; }
   };
   assert.equal(ignored('.claudinite/temp/packs/current_user/RULES.md'), true);
   assert.equal(ignored('.claudinite/local/packs/acme-pack/RULES.md'), false);

@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
-import { execFileSync } from 'node:child_process';
 import { removeTree } from '../../../engine/remove-tree.mjs';
+import { git, gitDated } from '../../../engine-tests/helpers.mjs';
 import { main, resolvePack, allPacks, overlayIo, changedElements, referenceDateOf } from '../provenance.mjs';
 import * as provenance from '../../../engine/checks/helpers/provenance.mjs';
 
@@ -14,7 +14,6 @@ const { checkoutIo, parseEntries } = provenance;
 // run that writes nothing, the append that validates and refuses a secret, and the
 // git-backed parts (`--changed`, the conversion's dates, `history`).
 
-const git = (root, ...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
 const repo = (files) => {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-prov-cli-'));
   for (const [p, c] of Object.entries(files)) {
@@ -22,8 +21,6 @@ const repo = (files) => {
     writeFileSync(join(root, p), c);
   }
   git(root, 'init', '-q');
-  git(root, 'config', 'user.email', 't@t');
-  git(root, 'config', 'user.name', 't');
   git(root, 'add', '-A');
   git(root, 'commit', '-q', '-m', 'seed (#7)');
   return root;
@@ -192,10 +189,13 @@ test('reduce prints the reduced file; an unknown command prints the usage and ex
 // history (born where it first appears, reworded where its text changed), a commit that
 // touched many packs is a sweep - listed, never drafted onto an element - and apply
 // appends every drafted entry once, refusing the whole brief on one bad entry.
+// The author is set with `--author` rather than `user.email`, which the runner's own
+// GIT_AUTHOR_EMAIL would outrank; what the brief reads is this commit's author.
 const commitAs = (root, message, { email = 't@t', date = null } = {}) => {
   git(root, 'add', '-A');
-  const env = date ? { ...process.env, GIT_AUTHOR_DATE: `${date}T12:00:00Z`, GIT_COMMITTER_DATE: `${date}T12:00:00Z` } : process.env;
-  execFileSync('git', ['-c', `user.email=${email}`, '-c', 'user.name=t', 'commit', '-q', '-m', message], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], env });
+  const args = ['commit', '-q', '-m', message, '--author', `t <${email}>`];
+  if (date) gitDated(root, Date.parse(`${date}T12:00:00Z`) / 1000, ...args);
+  else git(root, ...args);
 };
 const briefRepo = () => {
   const root = repo({
@@ -506,7 +506,7 @@ test('check fails loudly on a shallow clone rather than settle a conversion-fill
   try {
     writeFileSync(join(root, 'packs/alpha/provenance/doing-thing.md'), CONVERTED_FILE);
     commitAs(root, 'Convert references (#62)');
-    execFileSync('git', ['clone', '-q', '--depth', '1', `file://${root}`, clone], { stdio: 'ignore' });
+    git(clone, 'clone', '-q', '--depth', '1', `file://${root}`, '.');
     const { out, code } = await capture(['check', 'alpha'], clone);
     assert.notEqual(code, 0);
     assert.match(out, /doing-thing\.md: [^\n]*shallow/);

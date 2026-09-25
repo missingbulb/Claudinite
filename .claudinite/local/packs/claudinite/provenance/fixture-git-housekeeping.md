@@ -21,3 +21,13 @@
 - **Reason:** owner decision, 2026-09-25: the field names what happens when the check fails, and
   *severity* keeps its impact sense; what this element enforces is unchanged.
 - **Actor:** @missingbulb (owner).
+
+## 2026-09-25 · scope-changed · removeTree's own fixture is exempt (#2313)
+- **Reason:** the last eleven holdouts moved to the shared runner, and one of them is the test *of*
+  removeTree's retry, the second line of defence behind the runner's env. A fixture there wearing
+  the first fix would leave the fallback's own test covering a case the fallback is not for.
+- **Actor:** the engine/implement-request run on work item #2313.
+- **Model:** claude-opus-5
+- **Mechanism:** `excludeFiles` naming that one path, so a move reports rather than goes quiet; the
+  exemption is the path and no shape, since `scanIgnoringComments` blanks any marker a site could
+  carry.

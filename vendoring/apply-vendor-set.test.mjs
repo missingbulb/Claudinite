@@ -1,11 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, copyFileSync, existsSync, readFileSync, chmodSync, statSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { ENGINE_VERSION } from '../engine/version.mjs';
+import { git } from '../engine-tests/helpers.mjs';
 
 // This test lives at <repo>/vendoring/apply-vendor.test.mjs.
 const MOUNT_DIR = dirname(fileURLToPath(import.meta.url)); // <canon>/vendoring/
@@ -110,10 +110,8 @@ test('convergence is whole-set: stale files vanish, drift reverts, everything ou
 // metadata (the fixtures above) skips the guards, which the earlier tests
 // already exercise by passing an arbitrary --ref.
 function gitify(canon) {
-  const g = (...args) => execFileSync('git', args, { cwd: canon, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+  const g = (...args) => git(canon, ...args).trim();
   g('init', '-q');
-  g('config', 'user.email', 'test@test');
-  g('config', 'user.name', 'test');
   g('add', '-A');
   g('commit', '-q', '-m', 'c1');
   const c1 = g('rev-parse', 'HEAD');
@@ -161,10 +159,8 @@ test('#328: a canon tree nested in a FOREIGN git repo is rootless — upward .gi
   // inside the CONSUMER's repo: git found by upward walk would answer with the
   // consumer's HEAD. The guards must treat that as no-checkout, not as canon truth.
   const outer = mkdtempSync(join(tmpdir(), 'claudinite-outer-'));
-  const g = (...args) => execFileSync('git', args, { cwd: outer, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+  const g = (...args) => git(outer, ...args).trim();
   g('init', '-q');
-  g('config', 'user.email', 'test@test');
-  g('config', 'user.name', 'test');
   const canon = join(outer, 'nested-canon');
   mkdirSync(join(canon, 'vendoring'), { recursive: true });
   mkdirSync(join(canon, 'engine', 'pack_loader'), { recursive: true });

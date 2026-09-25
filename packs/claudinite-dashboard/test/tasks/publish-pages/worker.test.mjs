@@ -1,6 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -16,6 +15,7 @@ import { pickOrder } from '../../../../claudinite-tasks/src/items/pick-order.mjs
 import {
   WORK_PREFIX, STATUS_READY, STATUS_RUNNING_EXECUTOR,
 } from '../../../../claudinite-tasks/public/task-constants.mjs';
+import { git as runGit } from '../../../../../engine-tests/helpers.mjs';
 
 const REPO = 'o/r';
 
@@ -40,19 +40,19 @@ test('publish-pages yields to the update it publishes', () => {
 async function remote(t) {
   const dir = await mkdtemp(join(tmpdir(), 'cd-pages-remote-'));
   t.after(() => rm(dir, { recursive: true, force: true }));
-  execFileSync('git', ['init', '--quiet', '--bare', dir]);
+  git(dir, ['init', '--quiet', '--bare']);
   return dir;
 }
-const git = (dir, args) => execFileSync('git', ['-C', dir, ...args], { encoding: 'utf8' }).trim();
+const git = (dir, args) => runGit(dir, ...args).trim();
 
 // A source checkout the worker reads HEAD from, and a build that lays down a site.
 async function source(t) {
   const dir = await mkdtemp(join(tmpdir(), 'cd-pages-source-'));
   t.after(() => rm(dir, { recursive: true, force: true }));
-  execFileSync('git', ['init', '--quiet', dir]);
+  git(dir, ['init', '--quiet']);
   await writeFile(join(dir, 'a'), 'a');
-  execFileSync('git', ['-C', dir, '-c', 'user.name=t', '-c', 'user.email=t@t', 'add', 'a']);
-  execFileSync('git', ['-C', dir, '-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '--quiet', '-m', 'src']);
+  git(dir, ['add', 'a']);
+  git(dir, ['commit', '--quiet', '-m', 'src']);
   return dir;
 }
 const siteBuild = async (out) => {

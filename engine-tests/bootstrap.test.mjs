@@ -7,6 +7,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { hashedCron } from '../packs/claudinite-tasks/src/adopt/hash-minute.mjs';
 import { packIdForRepo } from '../engine/converge-wiring.mjs';
+import { git } from './helpers.mjs';
 
 // Integration suite for bootstrap.mjs, THE one-shot adoption orchestrator: it runs
 // the real canon (this checkout) against a fresh fixture repo, because the whole
@@ -30,13 +31,10 @@ const run = (root, ...args) => execFileSync(process.execPath, [BOOTSTRAP, '--tar
 const FIXTURE_README = '# WidgetWorks\n\nA fixture.\n';
 function freshRepo() {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-bootstrap-'));
-  const git = (...a) => execFileSync('git', a, { cwd: root, stdio: ['ignore', 'pipe', 'pipe'] });
-  git('init', '-q');
-  git('config', 'user.email', 'test@example.invalid');
-  git('config', 'user.name', 'test');
+  git(root, 'init', '-q');
   writeFileSync(join(root, 'README.md'), FIXTURE_README);
-  git('add', '-A');
-  git('commit', '-qm', 'seed');
+  git(root, 'add', '-A');
+  git(root, 'commit', '-qm', 'seed');
   return root;
 }
 
