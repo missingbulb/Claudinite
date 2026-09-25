@@ -12,3 +12,10 @@
 - **Actor:** @missingbulb (owner).
 - **Model:** claude-opus-5
 - **Landed:** #2191
+
+## 2026-09-25 · trigger-changed · "baseline a repo" retired from the description
+- **Reason:** owner decision retiring the baseline vocabulary; the mechanism that re-vendors a mount
+  is called update.
+- **Actor:** @missingbulb (owner).
+- **Model:** claude-opus-5-5
+- **Mechanism:** the skill description, re-vendoring kept as a trigger.
