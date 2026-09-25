@@ -90,3 +90,34 @@
   which pins a point in time; the carrier is a writer test beside the other three, and those live
   under `packs/`, outside this task's write scope.
 - **Actor:** the growth-extract run over the 2026-09-23 window.
+
+## 2026-09-25 · declined · a stub may not read config that adoption writes after it is scaffolded
+- **Source:** #2300's second half - adoption scaffolded the executor before bootstrap Part 6 wrote
+  the endpoint's `tokenSecret`, so a new repo's executor never carried `CCR_ROUTINE_TOKEN` and
+  needed a second human-merged edit to `.github/workflows/`.
+- **Reason:** the fix is a static line in the stub with the ordering stated beside it, so what is
+  left to say is why that line reads as it does - already-settled, and at its own site.
+- **Actor:** the growth-extract run over the 2026-09-24 window.
+
+## 2026-09-25 · declined · filter a generated env line against what the template already declares
+- **Source:** #2300 taught `withDeclaredSecrets` to skip a secret the stub passes statically,
+  because Actions refuses a workflow whose env names one key twice.
+- **Reason:** a trap from one platform's own rule at one call site, where the comment now names it;
+  a pack rule would be that comment charged to every session in every declaring repo.
+- **Actor:** the growth-extract run over the 2026-09-24 window.
+
+## 2026-09-25 · declined · a blind timer while waiting on CI
+- **Source:** the capture behind #2301 answered an owner's `lgtm` with `sleep 240; echo timer-done`
+  before re-reading the check run.
+- **Reason:** `bare-sleep-wait` already guards it and already fired; the finding is advisory and the
+  session proceeded, which is a severity question for that check rather than a new lesson.
+- **Actor:** the growth-extract run over the 2026-09-24 window.
+
+## 2026-09-25 · declined · guard `--base main` on the merge-policy runner
+- **Source:** this run passed `--base main` to `merge-policy-run.mjs`, read the stale local ref, and
+  got an `AUTOMERGE: no` naming 40 files from other people's merges; `--base origin/main` said yes.
+- **Reason:** `git-pull-on-shallow-clone` already carries the fact - "nothing of value is ever on
+  this repo's local main" - so a second guard restating it for one more command is noise. The
+  wording that invited the bare name lives in `deliver-pr.md`, outside this task's write scope, and
+  is filed as #2312.
+- **Actor:** the growth-extract run over the 2026-09-24 window.
