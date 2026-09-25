@@ -258,7 +258,7 @@ test('brief inventories every commit that touched the pack, so one it drafts not
     assert.match(out, /- #12 \d{4}-\d{2}-\d{2} Hide alpha · pack\.mjs · NOTHING DRAFTED/, 'a commit no element drafts is named, not silently dropped');
     assert.match(out, /- #9 \d{4}-\d{2}-\d{2} Hyphens everywhere · RULES\.md, [^·]*· sweep · born-in-sweep \(born\), doing-another \(set aside\)/, 'a sweep is a row of the same table, carrying the files it touched under this pack and the elements it was set aside for');
     assert.match(out, /- #11 \d{4}-\d{2}-\d{2} Bump pack versions[^\n]*NOTHING DRAFTED/, 'a version bump is a row too - the session judges it, the brief does not');
-    assert.match(out, /- #8 \d{4}-\d{2}-\d{2} Said better · RULES\.md · version 2 "Said better \(#8\)" · doing-thing/, 'the version row that names the commit rides with it');
+    assert.match(out, /- #8 \d{4}-\d{2}-\d{2} Said better · RULES\.md · version 2 · doing-thing/, 'the version row that names the commit rides with it, by its number');
   } finally { removeTree(root); }
 });
 
@@ -413,7 +413,7 @@ test('brief claims a version row whose text names no pull request from the commi
     commitAs(root, 'Say it better still (#21)');
     writeFileSync(join(root, 'packs/alpha/provenance/doing-thing.md'), '');
     const { out } = await capture(['brief', 'alpha'], root);
-    assert.match(out, /- #21 [^\n]*version 4 "The rule was said better\."/, 'the commit that wrote the row is what claims it');
+    assert.match(out, /- #21 [^\n]*· version 4 ·/, 'the commit that wrote the row is what claims it');
     assert.doesNotMatch(out, /## version rows no commit here claims[\s\S]*?- 4 /, 'a row its own commit claims is not also reported unclaimed');
   } finally { removeTree(root); }
 });
@@ -509,5 +509,78 @@ test('brief follows a birth back through a carrier that spelled the rule with ma
     const { out } = await capture(['brief', 'alpha', 'pin-thekey-same'], root);
     assert.match(out, /pin-thekey-same: moved into packs\/alpha\/skills\/guide\/SKILL\.md; carried by packs\/alpha\/RULES\.md/, 'backticks at the old path and a wrap at the new one are the same rule');
     assert.match(out, /```entry pin-thekey-same\n## \d{4}-\d{2}-\d{2} · born · The key rule \(#70\)/);
+  } finally { removeTree(root); }
+});
+
+// A version row names every pull request it covers, so one row can claim many inventory
+// rows; printed beside each it repeated its text once per commit, which put basics' brief
+// past a megabyte. The text goes up once, and each inventory row carries the number.
+test('brief prints a version row\'s text once, however many commits it claims', async () => {
+  const root = briefRepo();
+  try {
+    writeFileSync(join(root, 'packs/alpha/provenance/VERSIONS.md'), '| Version | Date | What changed |\n|---|---|---|\n| 3 | 2026-08-04 | Hid the pack and cut its version, a long decision told once (#11, #12). |\n| 2 | 2026-08-02 | Said better (#8) |\n| 1 | 2026-07-01 | seed (#7) |\n');
+    commitAs(root, 'Record version 3');
+    const { out } = await capture(['brief', 'alpha'], root);
+    assert.match(out, /- #11 [^\n]*· version 3 ·/);
+    assert.match(out, /- #12 [^\n]*· version 3 ·/);
+    assert.equal(out.split('a long decision told once').length - 1, 1, 'the row\'s text is printed once');
+    assert.match(out, /## version rows\n[^\n]*\n(?:- [^\n]*\n)*- 3 2026-08-04 Hid the pack[^\n]*\(claims #11, #12\)/, 'the one printing says which commits the row claimed');
+  } finally { removeTree(root); }
+});
+
+// A rewrite of a whole file - prose paragraphs into situation-keyed bullets, #760 in
+// basics - gives every rule a new slug, trigger and text at once, and an exact match
+// stops there and drafts the rewrite as the birth. The rule's own words are what carry
+// across; a rule the rewrite genuinely added shares none of them and is born there.
+test('brief follows a rule reworded in place back to the prose it was rewritten from', async () => {
+  const root = briefRepo();
+  try {
+    writeFileSync(join(root, 'packs/alpha/RULES.md'), '- **Doing another** - plainly. (doing-another)\n\n## Committing\n\nWhen you commit, stage every file by name and never with a blanket add, and reference the issue the change serves in the message body. Keep the subject short.\n');
+    commitAs(root, 'Committing prose (#80)');
+    writeFileSync(join(root, 'packs/alpha/RULES.md'), '- **Doing another** - plainly. (doing-another)\n\n## Committing\n\nWhen you commit, stage every file by name and never with a blanket add, and reference the issue the change serves in the message body. Keep the subject short and plain.\n');
+    commitAs(root, 'Committing prose, said plainer (#81)');
+    writeFileSync(join(root, 'packs/alpha/RULES.md'), '- **Doing another** - plainly. (doing-another)\n\n- **Cutting a commit** - stage each file by name, never a blanket add; reference the issue the change serves in the message body. (cutting-commit)\n\n- **Tagging a release** - sign the annotated tag with the release key. (tagging-release)\n');
+    writeFileSync(join(root, 'packs/alpha/provenance/cutting-commit.md'), '');
+    writeFileSync(join(root, 'packs/alpha/provenance/tagging-release.md'), '');
+    commitAs(root, 'Rewrite RULES.md as situation-keyed rules (#82)');
+    const { out } = await capture(['brief', 'alpha', 'cutting-commit', 'tagging-release'], root);
+    assert.match(out, /```entry cutting-commit\n## \d{4}-\d{2}-\d{2} · born · Committing prose \(#80\)/, 'born where the rule\'s words first stood together');
+    assert.match(out, /```entry cutting-commit\n## \d{4}-\d{2}-\d{2} · reworded · Rewrite RULES\.md as situation-keyed rules \(#82\)/, 'the rewrite is a rewording');
+    assert.doesNotMatch(out, /```entry cutting-commit\n## [^\n]* · reworded · Committing prose, said plainer/, 'an edit to the paragraph that leaves the rule\'s own words alone is not the rule\'s');
+    assert.match(out, /## rules followed through an in-place rewording\n[^\n]*\n- cutting-commit: reworded in place at #82, \d+% of its words/, 'the follow is named for the run to verify');
+    assert.match(out, /```entry tagging-release\n## \d{4}-\d{2}-\d{2} · born · Rewrite RULES\.md as situation-keyed rules \(#82\)/, 'a rule the rewrite added is born at it');
+  } finally { removeTree(root); }
+});
+
+// The contrast a split draws: a rule split off a survivor shares most of its words with the
+// survivor's older text, but that text is the survivor's, still found by its own trigger.
+test('brief never follows a rule split off another back into the rule it was split from', async () => {
+  const root = briefRepo();
+  try {
+    writeFileSync(join(root, 'packs/alpha/RULES.md'), '- **Doing another** - plainly. (doing-another)\n\n- **Guarding a copy** - keep the guarded literal unbroken on one line, name the places it watches, and never comment the duplication. (guarding-copy)\n');
+    commitAs(root, 'Guard copies (#90)');
+    writeFileSync(join(root, 'packs/alpha/RULES.md'), '- **Doing another** - plainly. (doing-another)\n\n- **Guarding a copy** - keep the guarded literal unbroken on one line. (guarding-copy)\n\n- **Writing the guard text** - name the places the guarded literal watches, keep it unbroken on one line, and never comment the duplication. (writing-guard-text)\n');
+    writeFileSync(join(root, 'packs/alpha/provenance/writing-guard-text.md'), '');
+    commitAs(root, 'Split the guard rule (#91)');
+    const { out } = await capture(['brief', 'alpha', 'writing-guard-text'], root);
+    assert.match(out, /```entry writing-guard-text\n## \d{4}-\d{2}-\d{2} · born · Split the guard rule \(#91\)/);
+    assert.doesNotMatch(out, /- writing-guard-text: reworded in place/);
+  } finally { removeTree(root); }
+});
+
+// The same split with the survivor reworded too, so no exact match claims its older text:
+// that text was one rule's bullet, and it goes to the newer rule holding most of it.
+test('brief gives a split rule\'s older bullet to the survivor even where the split rewords it', async () => {
+  const root = briefRepo();
+  try {
+    writeFileSync(join(root, 'packs/alpha/RULES.md'), '- **Doing another** - plainly. (doing-another)\n\n- **Guarding a copy** - keep the guarded literal unbroken on one line, name the places it watches, and never comment the duplication. (guarding-copy)\n');
+    commitAs(root, 'Guard copies (#90)');
+    writeFileSync(join(root, 'packs/alpha/RULES.md'), '- **Doing another** - plainly. (doing-another)\n\n- **Guarding a duplicated value** - keep the guarded literal unbroken on one line, name the places it watches, and never comment the duplication beside it. (guarding-value)\n\n- **Writing the guard text** - name the places the guarded literal watches and keep it unbroken on one line. (writing-guard-text)\n');
+    writeFileSync(join(root, 'packs/alpha/provenance/writing-guard-text.md'), '');
+    writeFileSync(join(root, 'packs/alpha/provenance/guarding-value.md'), '');
+    commitAs(root, 'Split and reword the guard rule (#92)');
+    const { out } = await capture(['brief', 'alpha', 'writing-guard-text', 'guarding-value'], root);
+    assert.match(out, /```entry writing-guard-text\n## \d{4}-\d{2}-\d{2} · born · Split and reword the guard rule \(#92\)/, 'the rule split off is born at the split');
+    assert.match(out, /```entry guarding-value\n## \d{4}-\d{2}-\d{2} · born · Guard copies \(#90\)/, 'the survivor keeps its history through the rewording');
   } finally { removeTree(root); }
 });

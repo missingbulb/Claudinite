@@ -48,6 +48,10 @@ so the sections it prints without a draft under them are the run's work, not its
    earlier, but a listing named it before its carrier did or the birth commit took text out
    of another carrier - so the drafted birth is an assumption, and an element reworded on its
    way across is exactly what no text search can follow. Read the evidence named beside each.
+   **A rule reworded in place** - a whole file rewritten, every slug, trigger and text new
+   at once - is followed by its own words into the older passage holding most of them, and
+   listed with that share: verify the passage is this rule and not a neighbour it shared a
+   paragraph with, and restore the born to the rewrite where it is not.
    **A pack that has moved** says so under the header, and its inventory covers every path it
    has lived at, so rows naming a file in full are from before the move.
 3. **Work the commit inventory before the drafts.** The drafts cover what a carrier's own
@@ -59,7 +63,8 @@ so the sections it prints without a draft under them are the run's work, not its
    A row marked **sweep** is kept out of the drafts because a sweep usually re-wraps what it
    touches, but where its diff shows it *deciding* something about one element, that element
    owes the entry: touching twelve packs is not deciding nothing here. Read the version rows
-   with them, the claimed ones and the *version rows no commit here claims* section alike -
+   with them, the *version rows* section the inventory's numbers point into and the *version
+   rows no commit here claims* section alike -
    a row is the maintainer's own words for the decision a version was cut for, and often the
    only place a move is described as a decision at all.
 4. **Derive the entries from that evidence before re-reading the rule**, then diff against

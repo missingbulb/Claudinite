@@ -111,3 +111,8 @@
 - **Actor:** @missingbulb (owner), who asked for #2253.
 - **Model:** Claude Opus 5, per the commit trailer.
 - **Landed:** #2253
+
+## 2026-09-25 · reworded · the brief follows a rule reworded in place and prints a version row once
+- **Reason:** the brief gained a section for rules followed through an in-place rewording, and the
+  claimed version rows moved into one section; the skill names both.
+- **Actor:** @missingbulb (owner).
