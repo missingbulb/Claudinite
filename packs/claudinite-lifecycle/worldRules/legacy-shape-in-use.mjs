@@ -151,6 +151,22 @@ const rule = {
       }
     }
 
+    // Files at the paths the layout left (#2322). Literals, because they are history
+    // and nothing current names them. The indexes are regenerated wholesale, so the
+    // converge removes them; the usage files roll forward, so each moves with its
+    // writer's next run and must never be deleted by hand.
+    const tracked = Array.isArray(ctx.tracked) ? ctx.tracked : ctx.files;
+    for (const path of tracked) {
+      if (/^\.claudinite\/claudinite-(rules|skills)\.GENERATED\.md$/.test(path)) {
+        out.push(finding(rule, { file: path, what: 'the index sits outside .claudinite/flat/, where the converge now writes it',
+          fix: 'let the converge run: it writes the index into .claudinite/flat/, rewrites the CLAUDE.md import and removes this file' }));
+      } else if (/^\.claudinite\/local\/(usage|tasks-usage|usage-review)\.GENERATED\.json$/.test(path)
+        || /^\.claudinite\/local\/dashboard\/[^/]+\.GENERATED\.json$/.test(path)) {
+        out.push(finding(rule, { file: path, what: 'a rolling usage file still at its path from before .claudinite/usage/',
+          fix: 'leave it: its writer\'s next run moves it into .claudinite/usage/ in a rename commit, history intact - do not delete it, since the next run starts from what it holds' }));
+      }
+    }
+
     return out;
   },
 };

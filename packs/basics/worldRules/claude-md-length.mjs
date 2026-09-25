@@ -6,7 +6,7 @@
 //
 // Coded rather than declared: the declaration language matches lines within one file,
 // and this assertion is a sum over a set of files that only reading the first one
-// names. The check kept its id when it moved off `maxLines`: `usage.GENERATED.json`
+// names. The check kept its id when it moved off `maxLines`: `sessions-and-elements.json`
 // stores its finding counts under that name, and a rename would read the series as
 // ending rather than continuing.
 import { dirname, join, normalize } from 'node:path';

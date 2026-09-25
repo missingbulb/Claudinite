@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
 import {
   ruleImports, renderRulesIndex, corpusRootFor, writeRulesIndex, rulesIndexImports,
   RULES_INDEX_FILE, RULES_INDEX_IMPORT,
@@ -92,14 +92,12 @@ test('a pack with no prose, or whose prose is not vendored yet, is skipped', () 
   assert.doesNotMatch(out, /quiet/);
 });
 
-test('the file holds nothing but imports and one stripped comment', () => {
-  // "ONLY the hard imports" (owner, #807). The banner is an HTML comment on purpose:
-  // block comments are stripped before a memory file enters context, so it costs
-  // nothing every session while staying visible to anything that Reads the file.
+test('the file holds nothing but imports', () => {
+  // "ONLY the hard imports" (owner, #807), and no banner either: the file's name
+  // already says GENERATED.
   const root = makeMember({ canon: ['acme-pack', 'other'] });
   const lines = renderRulesIndex(imports(root, [pack('acme-pack'), pack('other')])).trim().split('\n');
-  assert.match(lines[0], /^<!-- GENERATED/);
-  assert.deepEqual(lines.slice(1), ['@shared/packs/acme-pack/RULES.md', '@shared/packs/other/RULES.md']);
+  assert.deepEqual(lines, ['@shared/packs/acme-pack/RULES.md', '@shared/packs/other/RULES.md']);
   // No routing table, no prose, no per-pack labels — those duplicated
   // packs/directory.GENERATED.md, which every mount already carries.
   const text = renderRulesIndex(imports(root, [pack('acme-pack')]));
@@ -155,7 +153,7 @@ test('the index names exactly the packs a repo declares, and every import resolv
   const text = readFileSync(join(root, RULES_INDEX_FILE), 'utf8');
   const paths = text.split('\n').filter((l) => l.startsWith('@')).map((l) => l.slice(1));
   assert.ok(paths.length, text);
-  for (const rel of paths) assert.ok(existsSync(join(root, '.claudinite', rel)), `dangling import: @${rel}`);
+  for (const rel of paths) assert.ok(existsSync(join(root, dirname(RULES_INDEX_FILE), rel)), `dangling import: @${rel}`);
   assert.deepEqual(
     (await rulesIndexImports(root)).map((i) => i.id).sort(),
     paths.map((p) => p.replace(/.*\/packs\/([^/]+)\/.*/, '$1')).sort(),
@@ -184,7 +182,7 @@ test('the index carries the copied pack\'s prose when, and only when, a pack cop
   const line = withCopy.at(-1);
   assert.equal(line.id, 'current_user');
   // LAST: a person's own rules are read against the project's, so they follow them.
-  assert.equal(line.path, 'temp/packs/current_user/RULES.md');
+  assert.equal(line.path, '../temp/packs/current_user/RULES.md');
 });
 
 test('a copied pack discovered mid-session is not imported twice', () => {

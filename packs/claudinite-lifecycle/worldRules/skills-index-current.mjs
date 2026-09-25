@@ -7,12 +7,14 @@ import * as index from '../../../engine/pack_loader/generate-skills-index.mjs';
 // refresh, carries a catalog that no longer names what is mounted. Asked from the
 // repo's own files, as rules-index-current is (a rule cannot await the generator):
 // is there an index, and does it name every skill a declared pack holds here.
-const SKILLS_INDEX_FILE = '.claudinite/claudinite-skills.GENERATED.md';
+// Where it is comes from the engine that writes it, so an older engine's path is still
+// the one checked while the two lanes converge apart.
+const SKILLS_INDEX_FILE = typeof index.SKILLS_INDEX_FILE === 'string' ? index.SKILLS_INDEX_FILE.split('\\').join('/') : null;
 
 const rule = {
   id: 'skills-index-current',
   on_fail: 'block',
-  description: `${SKILLS_INDEX_FILE} must exist and name every skill the declared packs bundle`,
+  description: 'The skills index must exist and name every skill the declared packs bundle',
   doc: 'engine/pack_loader/generate-skills-index.mjs',
   why: 'the index is the one readable answer to which skill loads when — a stale one sends a reader, and a session whose edit was held, to a skill that is not there or past one that is',
 

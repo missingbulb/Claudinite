@@ -120,13 +120,13 @@ test('the pack flow converges the CLAUDE.md index, because it is what changed th
   setStamp(root, { engineVersion: ENGINE_VERSION, packVersions: { [A_CANON_PACK]: 0, [ANOTHER_CANON_PACK]: 0 } });
 
   assert.equal((await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' })).status, 'ok');
-  const index = readFileSync(join(root, '.claudinite', 'claudinite-rules.GENERATED.md'), 'utf8');
+  const index = readFileSync(join(root, '.claudinite', 'flat', 'claudinite-rules.GENERATED.md'), 'utf8');
   // Every declared pack imported, off the mount this flow just wrote.
-  assert.ok(index.includes(`@shared/packs/${A_CANON_PACK}/RULES.md`), index);
-  assert.ok(index.includes(`@shared/packs/${ANOTHER_CANON_PACK}/RULES.md`), index);
+  assert.ok(index.includes(`@../shared/packs/${A_CANON_PACK}/RULES.md`), index);
+  assert.ok(index.includes(`@../shared/packs/${ANOTHER_CANON_PACK}/RULES.md`), index);
   // And the wiring that makes the file load for anyone.
   const claudeMd = readFileSync(join(root, 'CLAUDE.md'), 'utf8').split('\n');
-  assert.ok(claudeMd.some((l) => !l.includes('`') && l.includes('@.claudinite/claudinite-rules.GENERATED.md')), claudeMd.join('\n'));
+  assert.ok(claudeMd.some((l) => !l.includes('`') && l.includes('@.claudinite/flat/claudinite-rules.GENERATED.md')), claudeMd.join('\n'));
   assert.match(readFileSync(join(root, '.claudinite', '.gitattributes'), 'utf8'), /merge=ours/);
   removeTree(root);
 });

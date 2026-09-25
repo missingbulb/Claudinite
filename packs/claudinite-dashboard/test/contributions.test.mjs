@@ -4,8 +4,9 @@ import { readFileSync } from 'node:fs';
 import {
   parseDescriptor, parseValues, valueOf, fleetPhrase, phraseText, listItems, windowDelta,
   descriptorPathIn, declaredPackIds, readContributions, liveSourcesNeeded,
-  valuesPath, MAX_LIST_ITEMS, MAX_REPO_WIDGETS, FLEET_KINDS,
+  valuesPath, legacyValuesPath, MAX_LIST_ITEMS, MAX_REPO_WIDGETS, FLEET_KINDS,
 } from '../src/read/contributions.mjs';
+import { FLAT_DASHBOARD_PATH } from '../src/read/flat.mjs';
 
 const NOW = Date.UTC(2026, 7, 22, 12, 0, 0);
 
@@ -266,6 +267,42 @@ test('a pack that reads a values file gets it parsed', async () => {
   });
   assert.equal(c.values.values.landed.value, 5);
   assert.equal(valueOf(c.descriptor.widgets.get('landed'), { values: c.values }).state, 'ok');
+});
+
+// A converged member carries every declared pack's descriptor in one flat file, so
+// the page spends one read on all of them and none per pack.
+test('a member\'s flat descriptor file answers every pack in one read', async () => {
+  const asked = [];
+  const flat = JSON.stringify({ version: 1, dashboards: {
+    'acme-tools': { path: 'packs/acme-tools/dashboard.json', declaration: JSON.parse(descriptor()) },
+    'acme-undeclared': { path: 'packs/acme-undeclared/dashboard.json', declaration: JSON.parse(descriptor()) },
+  } });
+  const gh = { getTextAtSha: async (_r, _s, path) => { asked.push(path); return path === FLAT_DASHBOARD_PATH ? flat : null; } };
+  const out = await readContributions({
+    repo: 'o/r', sha: 's', token: 't', gh,
+    declaration: { packs: ['acme-tools', 'acme-pack'] },
+    paths: [FLAT_DASHBOARD_PATH, 'packs/acme-tools/dashboard.json'],
+  });
+  assert.deepEqual(out.map((c) => c.pack), ['acme-tools']);
+  assert.ok(!out[0].descriptor.fault, out[0].descriptor.fault);
+  assert.ok(!asked.some((p) => p.endsWith('/dashboard.json')), asked.join(','));
+});
+
+// A pack whose writer has not yet moved its values off the old path still shows them.
+test('values still at their old path are read there, and only there', async () => {
+  const asked = [];
+  const values = JSON.stringify({ generatedAt: '2026-08-22T00:00:00Z', values: { landed: { value: 5, previous: 8, window: '2w' } } });
+  const gh = { getTextAtSha: async (_r, _s, path) => {
+    asked.push(path);
+    if (path === 'packs/demo/dashboard.json') return descriptor({ fleet: { member: 'landed' } });
+    return path === legacyValuesPath('demo') ? values : null;
+  } };
+  const [c] = await readContributions({
+    repo: 'o/r', sha: 's', token: 't', gh,
+    declaration: { packs: ['demo'] }, paths: ['packs/demo/dashboard.json', legacyValuesPath('demo')],
+  });
+  assert.equal(c.values.values.landed.value, 5);
+  assert.ok(!asked.includes(valuesPath('demo')), 'a member that has not moved spends no read on the new path');
 });
 
 // --- the shipped descriptor ----------------------------------------------------------

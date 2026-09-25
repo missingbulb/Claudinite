@@ -67,7 +67,7 @@ Two kinds, and the vocabulary is the dashboard's to extend, one deliberate kind 
 time:
 
 - **`generated`** (the default): the value is read from the pack's own generated file in
-  the member's tree, `.claudinite/local/dashboard/<pack>.GENERATED.json`, keyed by widget
+  the member's tree, `.claudinite/usage/<pack>-dashboard-values.json`, keyed by widget
   `id`:
 
   ```jsonc
@@ -240,9 +240,8 @@ declares the pack with no change and no whitelist entry.
 collects for it. Both views already hold each member's declaration and tree listing at the
 head sha, and the descriptor and values are two more reads against that same sha.
 
-**Nothing in `.claudinite/local`'s shape.** The values file sits in the repo-owned area
-that already holds `usage.GENERATED.json`, under a directory of its own so two packs never
-share a file.
+**Nothing in `.claudinite/usage`'s shape.** The values file sits beside the member's other
+rolling records, named for its pack so two packs never share a file.
 
 **And nothing in another pack — until that pack chooses to contribute.** A pack on a live
 source (`latest-release`, `repo-stars`) ships a descriptor and no code at all. Only a pack

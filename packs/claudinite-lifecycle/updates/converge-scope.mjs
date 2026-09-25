@@ -34,17 +34,23 @@ import { CLAUDE_MD, MOUNT_ATTRIBUTES_FILE, SETTINGS_PATH } from '../../../engine
 // A namespace read: a member can hold this pack beside an engine that predates the export,
 // and a named import of it would fail to link there.
 import * as wiring from '../../../engine/converge-wiring.mjs';
-import { RULES_INDEX_FILE } from '../../../engine/pack_loader/generate-rules-index.mjs';
-import { SKILLS_INDEX_FILE } from '../../../engine/pack_loader/generate-skills-index.mjs';
+import * as rulesIndex from '../../../engine/pack_loader/generate-rules-index.mjs';
+import * as skillsIndex from '../../../engine/pack_loader/generate-skills-index.mjs';
 
 const VENDORED_PACKS = '.claudinite/shared/packs/';
 // The mount's wiring, taken from the modules that write it rather than respelled:
 // a file this set names by a stale path would be reported as a change the repo's
 // tests can see on every single cycle.
-const MOUNT_WIRING = new Set([RULES_INDEX_FILE, SKILLS_INDEX_FILE, CLAUDE_MD, MOUNT_ATTRIBUTES_FILE, wiring.MOUNT_IGNORE_FILE, SETTINGS_PATH]);
+const MOUNT_WIRING = new Set([rulesIndex.RULES_INDEX_FILE, skillsIndex.SKILLS_INDEX_FILE, CLAUDE_MD, MOUNT_ATTRIBUTES_FILE, wiring.MOUNT_IGNORE_FILE, SETTINGS_PATH]);
+// The indexes' paths before the flat directory, which a converge removes. A pattern
+// rather than the engine's list, which an engine older than the move does not carry.
+const RETIRED_INDEX = /^\.claudinite\/claudinite-(rules|skills)\.GENERATED\.md$/;
+// Everything under it is derived from the pack set by the converge. A prefix rather
+// than the generator's constants, which an engine older than the directory lacks.
+const FLAT_DIR = '.claudinite/flat/';
 
 // Is this path one of the writes a member's own tests are structurally blind to?
-export const isConvergeBookkeeping = (file) => file.startsWith(VENDORED_PACKS) || MOUNT_WIRING.has(file);
+export const isConvergeBookkeeping = (file) => file.startsWith(VENDORED_PACKS) || file.startsWith(FLAT_DIR) || RETIRED_INDEX.test(file) || MOUNT_WIRING.has(file);
 
 // The settings object with the installed stamp taken out — what is left is the
 // CONFIGURATION, and a change to it is what a member's checks and tests read

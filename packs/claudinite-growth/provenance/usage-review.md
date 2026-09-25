@@ -59,3 +59,10 @@
 - **Reason:** owner decision, 2026-09-25: the field names what happens when the check fails, and
   *severity* keeps its impact sense; what this element enforces is unchanged.
 - **Actor:** @missingbulb (owner).
+
+## 2026-09-25 · policy-changed · the review and its dashboard values moved into .claudinite/usage/ (#2322)
+- **Reason:** both roll forward (`since`, `previous`), so they lost `GENERATED`. The worker reads
+  the prior review from either path and moves whichever file has not moved yet.
+- **Actor:** @missingbulb (owner).
+- **Mechanism:** the worker's delivery; automerge stays `nothing`.
+- **Landed:** #2322

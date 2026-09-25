@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import rule from '../worldRules/legacy-shape-in-use.mjs';
 import { SETTINGS_FILE } from '../../../engine/settings-file-names.mjs';
 import { RENAMED_PACKS } from '../../../engine/pack_loader/renamed-packs.mjs';
+import * as flatDir from '../../../engine/pack_loader/flat-dir.mjs';
+
+const [OLD_RULES_INDEX] = flatDir.RETIRED_INDEX_FILES;
 
 // A ctx over an in-memory file map — no git, no fixture tree.
 const ctx = (files) => ({ files: Object.keys(files), read: (f) => files[f] ?? null });
@@ -110,4 +113,21 @@ test('legacy-shape-in-use: a local pack\'s coded check still carrying severity i
   assert.equal(findings.length, 1);
   assert.match(findings[0].what, /"acme-check" in the local pack "local\/acme-pack" declares severity/);
   assert.match(findings[0].fix, /on_fail: 'advise'/);
+});
+
+test('legacy-shape-in-use: files left at the pre-flat and pre-usage paths are each reported', () => {
+  const files = {
+    [SETTINGS_FILE]: JSON.stringify({ packs: ['acme-pack'] }),
+    [OLD_RULES_INDEX]: '@x\n',
+    '.claudinite/local/usage.GENERATED.json': '{}',
+    '.claudinite/local/dashboard/acme-pack.GENERATED.json': '{}',
+    '.claudinite/local/packs/own/RULES.md': 'x',
+    '.claudinite/usage/sessions-and-elements.json': '{}',
+  };
+  const found = rule.run({ ...ctx(files), tracked: Object.keys(files) }).map((f) => f.file).sort();
+  assert.deepEqual(found, [
+    OLD_RULES_INDEX,
+    '.claudinite/local/dashboard/acme-pack.GENERATED.json',
+    '.claudinite/local/usage.GENERATED.json',
+  ]);
 });

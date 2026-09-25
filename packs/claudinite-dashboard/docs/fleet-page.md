@@ -168,7 +168,7 @@ closes and parks by kind, billed minutes, API calls, and the four latency legs â
 week against last. Its quantiles are taken over every member's **samples pooled**, never over
 their medians: an average of medians is not a median, and the samples are in each file
 precisely so the quantile can be taken at the window being drawn. One row per folding member,
-and a member that folds no `tasks-usage.GENERATED.json` is **named in the table and counted in
+and a member that folds no `task-runs-and-costs.json` is **named in the table and counted in
 no figure** â€” that census is the denominator every number above it is read against, and it is
 why nothing in the panel is stated as a rate.
 

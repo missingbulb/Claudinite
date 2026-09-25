@@ -1,4 +1,4 @@
-// The ON-DISK SHAPE of `.claudinite/local/usage.GENERATED.json` — the file this task
+// The ON-DISK SHAPE of `.claudinite/usage/sessions-and-elements.json` — the file this task
 // writes, and the only thing that reads it back is this task's next run.
 //
 // It lives here, beside the fold, because the shape is this task's own business.

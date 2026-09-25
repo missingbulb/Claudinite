@@ -20,3 +20,9 @@
 - **Reason:** owner decision, 2026-09-25: the field names what happens when the check fails, and
   *severity* keeps its impact sense; what this element enforces is unchanged.
 - **Actor:** @missingbulb (owner).
+
+## 2026-09-25 · scope-changed · the rules index moved into .claudinite/flat/ (#2322)
+- **Reason:** imports now resolve against the index's own directory, taken from the engine, instead
+  of a fixed `.claudinite/`.
+- **Mechanism:** unchanged, a coded world check.
+- **Landed:** #2322

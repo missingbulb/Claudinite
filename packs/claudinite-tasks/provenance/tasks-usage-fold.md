@@ -41,3 +41,11 @@
   same work runs, exits the same way and prints the same markers.
 - **Actor:** @missingbulb (owner), who asked why every task re-implements one runner's job.
 - **Model:** Opus 5
+
+## 2026-09-25 · policy-changed · the fold's file moved to .claudinite/usage/task-runs-and-costs.json (#2322)
+- **Reason:** as for usage-fold: it is a rolling record, so it is named for what it tracks and moved
+  rather than recreated.
+- **Actor:** @missingbulb (owner).
+- **Mechanism:** automerge `rolling-usage-files` plus `rolling-usage-file-moves`; the precondition
+  reads the watermark from either path.
+- **Landed:** #2322

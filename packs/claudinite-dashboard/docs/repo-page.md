@@ -138,7 +138,7 @@ candidate, and this is the only page with the per-repo denominator (`checks.work
 The two series never share an axis.
 
 **The machinery** — this repo's own scheduler and executor, read from the *second* past-data
-file, `tasks-usage.GENERATED.json`, and never from the sessions' one beside it. Reliability
+file, `task-runs-and-costs.json`, and never from the sessions' one beside it. Reliability
 (what closed and how it ended, what was parked by kind, the four legs of an item's life as
 quantiles taken here over the window's samples) and cost (runs, jobs, billed minutes, spend
 where a rate is configured, API calls per run), each as **this week against last**. A member

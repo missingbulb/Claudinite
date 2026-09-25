@@ -4,7 +4,7 @@
 // This is the panel the fleet page could not have before. Every other figure it shows
 // comes from a live read — issues, runs, a head commit — and none of those can answer
 // the question a corpus is actually judged on: how often its checks caught something.
-// That lives in each member's `usage.GENERATED.json`, which the page now reads anyway,
+// That lives in each member's `sessions-and-elements.json`, which the page now reads anyway,
 // so the panel costs nothing beyond what the sweep already spent.
 //
 // THE RULES THE FLEET PAGE'S OWN NUMBERS FOLLOW APPLY HERE TOO:

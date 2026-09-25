@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { lastingFindings, ACTIONABLE, REVIEW_PATH } from '../../tasks/usage-triage/preconditions.mjs';
+import { lastingFindings, ACTIONABLE, REVIEW_PATH, LEGACY_REVIEW_PATH } from '../../tasks/usage-triage/preconditions.mjs';
 import { lastingFindings as shelfLasting, ACTIONABLE as shelfActionable, REVIEW_PATH as shelfPath }
   from '../../../claudinite-canon-curation/tasks/usage-triage/preconditions.mjs';
 import { mkdtempSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -16,11 +16,12 @@ import { removeTree } from '../../../../engine/remove-tree.mjs';
 // runs BOTH implementations over the same inputs and compares their answers,
 // rather than comparing their text, so a rename stays green and a behaviour
 // change goes red.
-const withReview = (findings, body) => {
+const withReview = (findings, body, at = REVIEW_PATH) => {
   const root = mkdtempSync(join(tmpdir(), 'usage-triage-'));
   try {
+    mkdirSync(join(root, '.claudinite', 'usage'), { recursive: true });
     mkdirSync(join(root, '.claudinite', 'local'), { recursive: true });
-    writeFileSync(join(root, REVIEW_PATH), JSON.stringify({ findings }));
+    writeFileSync(join(root, at), JSON.stringify({ findings }));
     return body(root);
   } finally { removeTree(root); }
 };
@@ -63,4 +64,14 @@ test('both tasks declare the same policy, since a proposal is the owner\'s to ta
   }
   assert.deepEqual(ACTIONABLE, shelfActionable);
   assert.equal(REVIEW_PATH, shelfPath);
+});
+
+// A review not yet moved off its old path is still read, by both twins alike: the
+// move happens on the review's next delivery, and a gate that went blind until then
+// would drop two weeks of standing findings on the floor.
+test('both gates read a review still at its old path', () => {
+  withReview([finding()], (root) => {
+    assert.equal(lastingFindings(root).length, 1);
+    assert.equal(shelfLasting(root).length, 1);
+  }, LEGACY_REVIEW_PATH);
 });

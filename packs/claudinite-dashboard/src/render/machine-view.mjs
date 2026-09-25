@@ -78,7 +78,7 @@ export function machinePanel(m) {
       el('div', { className: 'k', textContent: 'this repo folds no machinery usage file' }),
       el('p', {
         className: 'sub',
-        textContent: 'Everything in this panel comes from `.claudinite/local/tasks-usage.GENERATED.json`, '
+        textContent: 'Everything in this panel comes from `.claudinite/usage/task-runs-and-costs.json`, '
           + 'which the claudinite-tasks pack\'s tasks-usage-fold task writes. Declare that pack and the '
           + 'panel fills in from its first run; nothing else on this page depends on it.',
       }),
@@ -269,7 +269,7 @@ export function fleetMachinePanel(f, onOpen = null) {
       el('p', {
         className: 'sub',
         textContent: `${f.readable} readable member(s), none of them folding `
-          + '`.claudinite/local/tasks-usage.GENERATED.json` — everything here waits on the '
+          + '`.claudinite/usage/task-runs-and-costs.json` — everything here waits on the '
           + 'claudinite-tasks pack\'s tasks-usage-fold task.',
       }),
     ])];

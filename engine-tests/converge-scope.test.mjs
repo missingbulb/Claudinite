@@ -75,7 +75,8 @@ function gitMember() {
 test('a pure pack re-vendor, stamp and index included, is seen by nothing the member runs', () => {
   const { root, put } = gitMember();
   put('.claudinite/shared/packs/acme-pack/RULES.md', 'new\n');
-  put('.claudinite/claudinite-rules.GENERATED.md', 'index\n');
+  put('.claudinite/flat/claudinite-rules.GENERATED.md', 'index\n');
+  put('.claudinite/flat/tasks.GENERATED.json', '{}\n');
   put('.claudinite-settings.json', `${JSON.stringify({ packs: [{ id: 'acme-pack', version: 4 }], engineVersion: 10 }, null, 2)}\n`);
   assert.deepEqual(changesTestsCouldSee(root), []);
   removeTree(root);

@@ -1395,7 +1395,7 @@ module.exports = { issue, check };
       }, null, 2) + '\n',
       // …and the values its own task writes, which nothing checks but which is the
       // half a reader of this fixture will look for.
-      '.claudinite/local/dashboard/fixture-metrics.GENERATED.json': JSON.stringify({
+      '.claudinite/usage/fixture-metrics-dashboard-values.json': JSON.stringify({
         generatedAt: '1999-01-02T00:00:00Z',
         values: { checked: { value: 12, previous: 9, window: '1w' }, best: { value: 84 } },
       }, null, 2) + '\n',

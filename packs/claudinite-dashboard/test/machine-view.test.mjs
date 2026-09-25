@@ -141,7 +141,7 @@ test('latency is drawn as quantiles over the window\'s samples, withheld below t
 test('a repo that folds no machinery file says which file and which task writes it', () => {
   const text = render(machinePanel(tasksMachine(null, { now: NOW, span: 7 })));
   assert.match(text, /folds no machinery usage file/);
-  assert.match(text, /tasks-usage\.GENERATED\.json/);
+  assert.match(text, /task-runs-and-costs\.json/);
   assert.match(text, /tasks-usage-fold/);
   // It does not borrow the sessions' file to fill the gap.
   assert.doesNotMatch(text, /acme-task-g task writes[^]*sessions/);

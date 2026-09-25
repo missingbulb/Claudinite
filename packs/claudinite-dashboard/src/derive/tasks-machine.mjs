@@ -1,5 +1,5 @@
 // How well the task machinery ran, and what it cost — derived from one file and
-// nothing else: the member's own `tasks-usage.GENERATED.json`. Pure, like every
+// nothing else: the member's own `task-runs-and-costs.json`. Pure, like every
 // derive module here: no clock of its own beyond the one it is handed, no I/O, no DOM.
 //
 // THE SESSIONS' PLANE IS NOT THIS ONE. `growthSeries` and `fleetCorpus` answer what the

@@ -8,3 +8,8 @@
   same inputs and compares their answers.
 - **Retire when:** as its twin - proposals opened and none merged over two months.
 - **Landed:** #2214
+
+## 2026-09-25 · policy-changed · the precondition reads the review from .claudinite/usage/ (#2322)
+- **Reason:** it follows the review file, falling back to the old path until that file has moved.
+- **Mechanism:** unchanged, a task-local precondition term.
+- **Landed:** #2322

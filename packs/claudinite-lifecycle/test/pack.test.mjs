@@ -14,13 +14,13 @@ function run(rule, root, mode = 'changed') {
 // The rules index is the ONLY channel a pack's prose reaches a session on, so every
 // case below is one where a repo silently runs with no rules at all.
 
-const INDEX = '.claudinite/claudinite-rules.GENERATED.md';
+const INDEX = '.claudinite/flat/claudinite-rules.GENERATED.md';
 // A converged member: acme-pack vendored, the index importing it, CLAUDE.md loading it.
 const converged = (over = {}) => ({
   '.claudinite-settings.json': JSON.stringify({ packs: ['acme-pack'] }),
   '.claudinite/shared/packs/acme-pack/RULES.md': 'BASICS\n',
-  [INDEX]: '@shared/packs/acme-pack/RULES.md\n',
-  'CLAUDE.md': '@.claudinite/claudinite-rules.GENERATED.md\n',
+  [INDEX]: '@../shared/packs/acme-pack/RULES.md\n',
+  'CLAUDE.md': '@.claudinite/flat/claudinite-rules.GENERATED.md\n',
   ...over,
 });
 
@@ -69,7 +69,7 @@ test('rules-index-current: a declared, held pack the index omits is blocking', (
 test('rules-index-current: an import resolving to nothing is blocking', () => {
   // #807 in a new costume — the channel works, the rules still do not arrive.
   const root = makeRepo({ changed: converged({
-    [INDEX]: '@shared/packs/acme-pack/RULES.md\n@shared/packs/gone/RULES.md\n',
+    [INDEX]: '@../shared/packs/acme-pack/RULES.md\n@../shared/packs/gone/RULES.md\n',
   }) });
   try {
     const f = run(rulesIndexCurrent, root, 'all');
@@ -82,7 +82,7 @@ test('rules-index-current: a CLAUDE.md that only documents the import does not c
   // The harness skips `@` mentions inside code spans, so a quoted line is one it never
   // follows — and reading that as wired would be the silent failure again.
   const root = makeRepo({ changed: converged({
-    'CLAUDE.md': 'Claudinite loads via `@.claudinite/claudinite-rules.GENERATED.md`.\n',
+    'CLAUDE.md': 'Claudinite loads via `@.claudinite/flat/claudinite-rules.GENERATED.md`.\n',
   }) });
   try {
     const f = run(rulesIndexCurrent, root, 'all');
@@ -115,7 +115,7 @@ test('claudinite-isolation: inert without the vendored mount; a consumer file re
     // coverage note). So this line does not by itself prove the carve-out works — it
     // pins the real-member shape, and the carve-out is what keeps that shape legal if
     // reference detection is ever widened to bare prose paths.
-    'CLAUDE.md': '@.claudinite/claudinite-rules.GENERATED.md\n',
+    'CLAUDE.md': '@.claudinite/flat/claudinite-rules.GENERATED.md\n',
   };
   const shared = {
     '.claudinite/shared/engine/checks/check_the_world.mjs': 'engine\n',
