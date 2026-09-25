@@ -8,7 +8,7 @@ export const ON_FAIL = Object.freeze(['block', 'advise']);
 // local packs and settings still hold it until it acts on `legacy-shape-in-use`,
 // and a canon pack version predating the rename runs beside this engine for the
 // window between the engine's update and that pack's.
-// @legacy-tolerance advisory:legacy-shape-in-use retire:#0
+// @legacy-tolerance advisory:legacy-shape-in-use retire:#2319
 export const LEGACY_ON_FAIL = Object.freeze({ blocking: 'block', advisory: 'advise' });
 
 // The on_fail a rule, declaration, finding or override value means, or undefined
@@ -22,7 +22,7 @@ export function onFailOf(x) {
 // A finding also carries its on_fail in the old spelling, because a member's own
 // tests may read `finding.severity` and would break on the engine update rather than
 // on anything the member did; it comes out with the rest of the tolerance.
-// @legacy-tolerance advisory:none retire:#0
+// @legacy-tolerance advisory:none retire:#2319
 const LEGACY_SEVERITY_MIRROR = Object.freeze({ block: 'blocking', advise: 'advisory' });
 
 // The finding failing as `onFail`, in both spellings.
