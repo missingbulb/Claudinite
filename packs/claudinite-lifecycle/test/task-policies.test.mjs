@@ -2,7 +2,7 @@
 // task's real diff shape proven mergeable, and anything outside that shape proven
 // parked. adopt-requested-packs' shape is an adoption (declaration edit,
 // whole-mount re-vendor including the policy files packs carry, regenerated rules
-// index); update's is a converge plus whatever its apply stage delivers on top of
+// index); update's is a re-vendor plus whatever its apply stage delivers on top of
 // one — a staged workflow moved into place, and the test repairs that follow the
 // suite being re-run (#1932).
 

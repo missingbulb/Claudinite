@@ -13,7 +13,7 @@ is [DESIGN.md](DESIGN.md); the adoption procedure that first runs this machinery
 
 Both run **from the canon tree** (a checkout or a fetched snapshot) *against* a consumer
 checkout — vendoring is done *on* a project, never *by* it. The regular updater is the
-nightly baselining worker performing the equivalent writes over MCP; adoption and an
+nightly `update` task performing the equivalent writes; adoption and an
 on-demand refresh run these directly.
 
 The session-start orchestration the vendored files provide lives in

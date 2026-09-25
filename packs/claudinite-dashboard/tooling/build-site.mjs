@@ -67,7 +67,7 @@ const tasksSource = join(mountRoot, TASKS);
 if (!await exists(join(pageSource, PAGE_AT)) || !await exists(engineSource)) {
   process.stdout.write(
     `No dashboard in the mount at ${pageSource} — nothing to publish. `
-    + 'The next converge that delivers this pack will make this build produce a site.\n',
+    + 'The next update that delivers this pack will make this build produce a site.\n',
   );
   process.exit(0);
 }

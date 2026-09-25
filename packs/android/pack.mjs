@@ -2,7 +2,7 @@
 // No rules captured yet, so no RULES.md.
 export default {
   version: '60921.1',
-  minEngineVersion: '60822.1',
+  minEngineVersion: '60925.1',
   ruleRoutingGuidance: {
     belongs: 'gradle/AGP builds, AndroidManifest, permissions, signing configs, product flavors and emulator workflows for an Android app module',
     excludes: 'store submission and release cadence — play-store-release; Flutter-side widget or Dart code — flutter',

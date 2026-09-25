@@ -7,3 +7,8 @@
 - **Mechanism:** check declared-check-messages, in
   packs/basics/worldRules/declared-check-messages.mjs.
 - **Landed:** #839 · pack version 3.
+
+## 2026-09-25 · reworded · `severity: blocking|advisory` is spelled `on_fail: block|advise`
+- **Reason:** owner decision, 2026-09-25: the field names what happens when the check fails, and
+  *severity* keeps its impact sense; what this element enforces is unchanged.
+- **Actor:** @missingbulb (owner).

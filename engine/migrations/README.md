@@ -1,25 +1,25 @@
-# Baseline migrations (`engine/migrations/`) — declared path relocations, applied by each member itself
+# Migration records (`engine/migrations/`) — declared path relocations, applied by each member itself
 
-> The **baseline migrations** mechanism, and the machinery that runs it (this README,
+> The **migration records** mechanism, and the machinery that runs it (this README,
 > `registry.mjs`, `apply.mjs`). Every migration ever landed lives in one folder —
 > `<landed-date>-<slug>/migration.mjs` — **under the flow that owns it**: an engine change beside
 > this file, a pack's own change under `packs/<pack>/migrations/`
 > (docs/versioned-updates/DESIGN.md §3.7). Discovery walks both, so a caller never asks which.
 > Records are never retired, archived, or deleted: the full history is the durable backfill
 > source, and **fetching decides relevance** — vendoring ships a consumer only the records landed
-> within the last 7 days, while a dormant project baselining out of a fresh canon clone sees them
-> all and applies what it needs. The code identifiers stay `*Migrations`; "baseline migration" is
-> what to call the mechanism.
+> within the last 7 days, while a dormant project updating out of a fresh canon clone sees them
+> all and applies what it needs. The code identifiers stay `*Migrations`; "migration record" is
+> what to call one.
 
 When the canon renames or relocates an artifact that consumers hold their own copy of — a tracked
 file, a `settings.json` registration, a stub, a path a check or script references — the consumer's
 copy doesn't move on its own. Historically each such rename grew its own scattered tolerance
 (`LEGACY_STUB_NAMES` in a check, a `.gitkeep` fallback in the sync script and again in the census, a
-Part-3b step in bootstrap) with **no single home**. A **baseline migration** closes that gap: one
+Part-3b step in bootstrap) with **no single home**. A **migration record** closes that gap: one
 declarative record per rename, discovered structurally (any `<flow>/migrations/<date>-<slug>/migration.mjs`,
 like packs and skills), that supplies the read-side resolver and the write-side rename.
 
-## A baseline migration
+## A migration record
 
 ```js
 // An illustrative record (the shape, not a live migration): the historical
@@ -57,7 +57,7 @@ export default {
   every member should run, whose parameters the canon knows and the member cannot derive
   (`materialize` would clobber a per-repo declaration; `rewrite` has no literal in common across
   repos). Declaring a pack whose code is not yet in the member's mount would be a blocking `config`
-  error there, so baselining **re-converges the mount** whenever this pass changed the declaration.
+  error there, so the update **re-vendors the mount** whenever this pass changed the declaration.
   All honor an optional `appliesTo(read)` gate so a migration only touches the repos it's meant for
   (never the canon itself). [`apply.mjs`](apply.mjs) runs all four over a checkout
   (`node engine/migrations/apply.mjs`); idempotent, a no-op once done. Each member migrates **itself**:
@@ -87,7 +87,7 @@ There is no retirement, no archive, and no TTL mover. All records are equal; thr
 the slice they need:
 
 - **Apply/backfill** ([`loadMigrations`](registry.mjs)) loads **every** record present. In a fresh
-  canon clone that is the full history, so a dormant project that fell behind and only now baselines
+  canon clone that is the full history, so a dormant project that fell behind and only now updates
   still catches up on everything it missed — `apply.mjs` is idempotent, so records it already
   applied are no-ops.
 - **Vendoring** ([`compute-vendor-set.mjs`](../../vendoring/compute-vendor-set.mjs)) ships a consumer
@@ -118,4 +118,4 @@ history.
 2. Point every reader of the old path at `resolvePath(...)`, or gate an inline tolerance on
    `migrationActive('<slug>')` so it ends itself when the record ages out of the window.
 3. There is no step 3 — the record ships to consumers for 7 days, every member applies it on its own
-   next converge, and the folder remains here as the durable backfill for the long tail.
+   next update, and the folder remains here as the durable backfill for the long tail.

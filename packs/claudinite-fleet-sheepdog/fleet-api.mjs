@@ -185,7 +185,7 @@ export async function putFile(gh, fullName, { path, text, sha, message }) {
 export async function isCovered(gh, fullName) {
   // The tracked declaration file is THE membership signal — the one file every
   // member carries whatever its mount shape (the engine can't run without it,
-  // and baselining backfills it nightly), and the only shape the planner can
+  // and the update backfills it nightly), and the only shape the planner can
   // plan for at all (activePacks is read from it). A mount marker WITHOUT a
   // declaration is a half-adoption that must classify as uncovered — the roster
   // then opens an adoption issue and it heals loudly, instead of rotting as a
@@ -196,7 +196,7 @@ export async function isCovered(gh, fullName) {
 // --- firing a member's own scheduler -------------------------------------------
 
 // The member-side workflow every fan-out fires, and the shape of the firing. Two of
-// this pack's tasks press this button — fleet-baseline (each member baselines itself)
+// this pack's tasks press this button — fleet-update (each member updates itself)
 // and fleet-add-missing-packs (each member adopts the packs its work-list issue names)
 // — so the primitive lives here on the shared floor rather than in either task. The
 // fan-out model is the point (#749): the enforcer DISPATCHES, the member EXECUTES —
@@ -248,9 +248,9 @@ export function classifyDispatch(status) {
       // refuses dispatch — that one is a repo to nudge. The other is a member whose
       // scheduler workflow predates the `wake` input: GitHub rejects a dispatch
       // naming an input the workflow does not declare, so the member is behind on
-      // its mount, NOT misconfigured, and it heals on its own next converge. Saying
+      // its mount, NOT misconfigured, and it heals on its own next update. Saying
       // only "disabled" sent a reader to the repo's settings for a stale checkout.
-      return { state: 'not-dispatchable', detail: 'the workflow exists but refused the dispatch (422) — either its scheduler workflow predates the `wake` input, which its next converge lands, or GitHub has disabled it (cron is switched off on inactive repos)' };
+      return { state: 'not-dispatchable', detail: 'the workflow exists but refused the dispatch (422) — either its scheduler workflow predates the `wake` input, which its next update lands, or GitHub has disabled it (cron is switched off on inactive repos)' };
     default:
       return { state: 'error', detail: `dispatch returned ${status}` };
   }

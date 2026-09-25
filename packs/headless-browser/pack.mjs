@@ -10,7 +10,7 @@ const SOURCE = /\.(mjs|cjs|js|jsx|ts|tsx)$/;
 
 export default {
   version: '60922.2',
-  minEngineVersion: '60822.1',
+  minEngineVersion: '60925.1',
   ruleRoutingGuidance: {
     belongs:
       'driving a real browser from code — resolving and pinning the build, faking the page world, capture mechanics',

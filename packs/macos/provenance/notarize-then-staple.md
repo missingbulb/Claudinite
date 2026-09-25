@@ -11,3 +11,8 @@
 - **Rejected:** deleting the prose bullet it converts. Under the deletion test it stays whole: it
   also carries `--wait`, `stapler validate` and which container to staple.
 - **Landed:** #2059, the canon-prose-to-checks run · pack version 60915.1.
+
+## 2026-09-25 · reworded · `severity: blocking|advisory` is spelled `on_fail: block|advise`
+- **Reason:** owner decision, 2026-09-25: the field names what happens when the check fails, and
+  *severity* keeps its impact sense; what this element enforces is unchanged.
+- **Actor:** @missingbulb (owner).

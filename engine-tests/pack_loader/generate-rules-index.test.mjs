@@ -126,7 +126,7 @@ test('writeRulesIndex is idempotent, and never truncates on a fail-soft empty', 
   writeFileSync(join(root, '.claudinite-settings.json'), '{ "packs": ["basics"] }\n'); // @real-entity writeRulesIndex discovers packs off the real corpus, so the id must be one it carries
   assert.equal(await writeRulesIndex(root), true, 'first write lands the file');
   const first = readFileSync(join(root, RULES_INDEX_FILE), 'utf8');
-  assert.equal(await writeRulesIndex(root), false, 'a converge over an unchanged declaration is a no-op');
+  assert.equal(await writeRulesIndex(root), false, 'an update over an unchanged declaration is a no-op');
   assert.equal(readFileSync(join(root, RULES_INDEX_FILE), 'utf8'), first);
 
   // Nothing to import must leave an existing index alone: the packs may simply not be
@@ -138,7 +138,7 @@ test('writeRulesIndex is idempotent, and never truncates on a fail-soft empty', 
 });
 
 test('the import line names the index, and both constants agree', () => {
-  // The generator writes the file, the converge writes the import, and the
+  // The generator writes the file, the update writes the import, and the
   // rules-index-current check tests for both — three call sites, one path.
   assert.equal(RULES_INDEX_IMPORT, `@${RULES_INDEX_FILE.split(/[\\/]/).join('/')}`);
 });

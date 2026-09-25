@@ -11,7 +11,7 @@ const CLIENT_ID = /[A-Za-z0-9][\w-]*\.apps\.googleusercontent\.com/g;
 
 const rule = {
   id: 'google-client-id-single-origin',
-  severity: 'advisory',
+  on_fail: 'advise',
   description: 'A change does not add a copy of a Google OAuth client-id literal that already lives in another file',
   doc: 'packs/google-identity/skills/google-id-token-validation/SKILL.md',
   scope: 'work',

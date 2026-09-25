@@ -11,3 +11,8 @@
 - **Reason:** a canon pack's version is cut on `main` by the `pack-version-bump` task after the change lands - the opposite rule for a different object, stated so the two are not confused.
 - **Actor:** @missingbulb (owner).
 - **Landed:** #1726 · pack version 60905.2.
+
+## 2026-09-25 · reworded · `severity: blocking|advisory` is spelled `on_fail: block|advise`
+- **Reason:** owner decision, 2026-09-25: the field names what happens when the check fails, and
+  *severity* keeps its impact sense; what this element enforces is unchanged.
+- **Actor:** @missingbulb (owner).

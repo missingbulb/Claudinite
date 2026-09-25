@@ -15,7 +15,7 @@ import { removeTree } from '../../engine/remove-tree.mjs';
 import { A_CANON_PACK } from '../helpers.mjs';
 
 // The import closure the declaration is written through (bootstrap `--init` and
-// the baselining backfill): declaring a pack materializes its `requires`.
+// the update's backfill): declaring a pack materializes its `requires`.
 const PACKS = [
   { id: 'acme-pack' },
   { id: 'acme-pack-b' },
@@ -230,7 +230,7 @@ test('discoverPacks: gathers a local pack\'s bundled skill-owned checks', async 
   mkdirSync(join(packDir, 'skills', 'thing'), { recursive: true });
   writeFileSync(join(packDir, 'pack.mjs'), `export default { id: 'proj', rules: [], skills: ['thing'] };`);
   writeFileSync(join(packDir, 'skills', 'thing', 'checks.mjs'),
-    `export default [{ id: 'proj-thing', severity: 'advisory', description: 'x', doc: 'd', why: 'w', run: () => [] }];`);
+    `export default [{ id: 'proj-thing', on_fail: 'advise', description: 'x', doc: 'd', why: 'w', run: () => [] }];`);
   try {
     const { packs } = await discoverPacks({ localRoot: root });
     const local = packs.find((p) => p.id === 'proj');
@@ -247,10 +247,10 @@ test('discoverPacks: a pack\'s declared-checks.json rides its world rules, a ski
   mkdirSync(join(packDir, 'skills', 'thing'), { recursive: true });
   writeFileSync(join(packDir, 'pack.mjs'), `export default { id: 'proj', worldRules: [], skills: ['thing'], ruleRoutingGuidance: { belongs: 'whatever proj owns', excludes: 'whatever proj does not' } };`);
   writeFileSync(join(packDir, 'declared-checks.json'), JSON.stringify([
-    { id: 'proj-declared', severity: 'blocking', failureMessage: 'it matters', scanFiles: '/\\.txt$/', matchLines: [{ match: '/bad/', what: 'w', fix: 'f' }] },
+    { id: 'proj-declared', on_fail: 'block', failureMessage: 'it matters', scanFiles: '/\\.txt$/', matchLines: [{ match: '/bad/', what: 'w', fix: 'f' }] },
   ]));
   writeFileSync(join(packDir, 'skills', 'thing', 'declared-checks.json'), JSON.stringify([
-    { id: 'proj-thing-declared', severity: 'advisory', failureMessage: 'it matters too', scanFiles: '/\\.txt$/', matchLines: [{ match: '/bad/', what: 'w', fix: 'f' }] },
+    { id: 'proj-thing-declared', on_fail: 'advise', failureMessage: 'it matters too', scanFiles: '/\\.txt$/', matchLines: [{ match: '/bad/', what: 'w', fix: 'f' }] },
   ]));
   try {
     const { packs, errors } = await discoverPacks({ localRoot: root });
@@ -289,7 +289,7 @@ test('loadPacks: thin array wrapper over discoverPacks', async () => {
 
 // --- renamed packs ---------------------------------------------------------
 // The rename tolerance is what keeps a member from going dark for a cycle: its
-// declaration and its mount are renamed by different halves of one converge, and
+// declaration and its mount are renamed by different halves of one update, and
 // nothing may depend on which half landed first. These assertions are ABOUT the
 // legacy spellings, so a repo-wide rename sweep must never "fix" them into the new
 // ones — that leaves the test asserting today's id maps to itself, which is green
@@ -317,7 +317,7 @@ test('resolveDeclaredPacks: the old spelling pulls in the renamed pack requires'
 
 test('canonicalPackVersions: a version stamped under the old key is not read as absent', () => {
   assert.deepEqual(canonicalPackVersions({ 'tidy-repo': 6, 'git-github': 3 }), { basics: 6, 'git-github': 3 }); // @real-entity the rename map under test carries these ids
-  // Mid-converge a declaration can carry both; today's spelling is the one the
+  // Mid-update a declaration can carry both; today's spelling is the one the
   // flows wrote, so it wins rather than being clobbered by the residue.
   assert.deepEqual(canonicalPackVersions({ 'tidy-repo': 5, basics: 6 }), { basics: 6 });
 });

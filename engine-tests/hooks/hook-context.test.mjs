@@ -32,7 +32,7 @@ const skill = (name, trigger) => [
   '---', `# ${name}`, '',
 ].join('\n');
 const DECLARED = JSON.stringify([{
-  id: 'fixture-cache-guard', severity: 'advisory', scope: 'action', failureMessage: 'the fixture frowns on it',
+  id: 'fixture-cache-guard', on_fail: 'advise', scope: 'action', failureMessage: 'the fixture frowns on it',
   guardToolCalls: [{ tool: 'Bash', inputField: 'command', match: '/\\bnoisy\\b/', what: 'ran {match}', fix: 'quieter' }],
 }]);
 const PACK_DIR = '.claudinite/local/packs/fixture-cache';
@@ -86,9 +86,9 @@ test('a trigger edited, a skill added, a declaration changed, a pack declared �
     assert.equal((await hookContext(root, 'test')).source, 'cache');
 
     // The registry memoises a declarations file per process, so the flipped
-    // severity is read by fresh hook processes — the way a session reads it:
+    // on_fail is read by fresh hook processes — the way a session reads it:
     // the first derives and writes, the second reads what the first wrote.
-    writeFileSync(join(root, PACK_DIR, 'declared-checks.json'), DECLARED.replace('advisory', 'blocking'));
+    writeFileSync(join(root, PACK_DIR, 'declared-checks.json'), DECLARED.replace('advise', 'block'));
     assert.equal((await hookContext(root, 'test')).source, 'registry');
     dropCache(root);
     assert.equal(hook(root, 'noisy').status, 2, 'the flipped declaration blocks through a fresh process');

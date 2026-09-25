@@ -1,7 +1,7 @@
 [
   {
     "id": "aws-sam/esbuild-dependency",
-    "severity": "blocking",
+    "on_fail": "block",
     "failureMessage": "SAM's esbuild builder runs a production-only npm install, so a devDependency esbuild is skipped and the build fails",
     "relevantWhen": {
       "someTrackedFileContains": {
@@ -22,7 +22,7 @@
   },
   {
     "id": "aws-sam/cloudfront-authorization",
-    "severity": "blocking",
+    "on_fail": "block",
     "failureMessage": "CloudFront rejects a custom origin-request policy that forwards Authorization at deploy time",
     "checkParsedFiles": [
       {

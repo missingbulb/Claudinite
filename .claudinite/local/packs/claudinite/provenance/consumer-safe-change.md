@@ -59,3 +59,8 @@
 - **Model:** Claude Opus 5, per the commit trailer.
 - **Mechanism:** narrowed to the vendor set's own `TEST_DIR`.
 - **Landed:** #2060 (Refs #1869).
+
+## 2026-09-25 · reworded · reads a rule's `on_fail`, and the retired `severity` on the base side
+- **Reason:** the field rename (`severity` → `on_fail`) must not itself read as a rule becoming
+  blocking.
+- **Actor:** @missingbulb (owner).

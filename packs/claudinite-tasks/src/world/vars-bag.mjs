@@ -2,7 +2,7 @@
 //
 // WHY THIS EXISTS. Actions requires a workflow to name each value it passes, so
 // before this a task needing a repo variable needed the executor workflow to name it —
-// and `.github/workflows/` is the one path a converge cannot write, so that meant a
+// and `.github/workflows/` is the one path an update cannot write, so that meant a
 // human-merged PR in every member, the coupling that wedged one in #1296. One static
 // line, `CLAUDINITE_VARS: ${{ toJSON(vars) }}`, ends it: the workflow stops being a
 // function of what any task declares, and setting a variable in repo settings is the

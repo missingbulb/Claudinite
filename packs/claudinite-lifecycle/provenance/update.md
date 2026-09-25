@@ -95,3 +95,13 @@
   same work runs, exits the same way and prints the same markers.
 - **Actor:** @missingbulb (owner), who asked why every task re-implements one runner's job.
 - **Model:** Opus 5
+
+## 2026-09-25 · reworded · "baseline" / "baselining" vocabulary retired
+- **Reason:** owner decision: the mechanism that re-vendors a mount is called update, and the pack
+  every repo declares is basics; the baseline wording named a retired mechanism.
+- **Actor:** @missingbulb (owner).
+
+## 2026-09-25 · reworded · "converge" in the nightly-update sense reads "update"
+- **Reason:** owner decision: the mechanism that re-vendors a mount is called update; "converge"
+  stays only for a work item reaching its end state.
+- **Actor:** @missingbulb (owner).

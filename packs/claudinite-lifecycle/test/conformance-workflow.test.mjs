@@ -62,7 +62,7 @@ test('a path-filtered sweep is flagged, naming the file', () => {
   assert.equal(out.length, 1);
   // Advisory on purpose: blocking would red every member lacking the workflow on
   // its next baselining — the #555 failure mode this rule guards against.
-  assert.equal(out[0].severity, 'advisory');
+  assert.equal(out[0].on_fail, 'advise');
   assert.match(out[0].what, /behind a path filter/);
   assert.match(out[0].what, /test-extension\.yml/);
 });

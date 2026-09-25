@@ -14,7 +14,7 @@ const asWord = (id) => new RegExp(`(^|[^\\w-])${id}([^\\w-]|$)`); // never insid
 
 const rule = {
   id: 'pack-no-enforcement-narration',
-  severity: 'blocking',
+  on_fail: 'block',
   description: "A pack's injected prose neither tells the reader to run the checks runner nor names the rules the pack's own checks enforce",
   doc: 'engine/checks/DESIGN.md',
   why: 'checks run automatically at every Stop and in CI, and each failure message carries its rule — prose narrating its own enforcement duplicates the mechanism and drifts from it',

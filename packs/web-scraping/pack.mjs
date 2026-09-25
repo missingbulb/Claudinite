@@ -6,7 +6,7 @@
 
 export default {
   version: '60922.1',
-  minEngineVersion: '60822.1',
+  minEngineVersion: '60925.1',
   ruleRoutingGuidance: {
     belongs:
       'acquiring data from a site you do not own: finding its data surface, fetching defensively, caching raw payloads',

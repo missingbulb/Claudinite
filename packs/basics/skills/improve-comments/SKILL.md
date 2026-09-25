@@ -73,7 +73,7 @@ mention there.** A path duplicated across comments is a rename waiting to break 
 - **A doc comment a tool publishes** (JSDoc, docstrings, Javadoc). It is an output surface,
   not an aside — improve it as documentation or not at all.
 - **Anything under `.claudinite/`.** The mount is not this repo's source: the vendored
-  half is replaced whole by the next converge, so a comment improved there is gone by
+  half is replaced whole by the next update, so a comment improved there is gone by
   morning, and the local packs are written by the growth tasks. The gate reds a change
   there whatever it holds.
 - **Anything outside the files you were handed.** A comment two directories away being

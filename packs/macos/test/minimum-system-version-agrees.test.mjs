@@ -33,7 +33,7 @@ ruleTester(minimumSystemVersionAgrees, {
         'Resources/Info.plist': plist(floorKey('13.0')),
       },
       at: [{
-        file: 'Resources/Info.plist', line: 7, severity: 'blocking',
+        file: 'Resources/Info.plist', line: 7, on_fail: 'block',
         what: /LSMinimumSystemVersion is 13\.0.*macOS floor of 14/,
         fix: /<string>14<\/string>/,
       }],

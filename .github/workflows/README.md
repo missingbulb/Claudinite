@@ -1,7 +1,7 @@
 # `.github/workflows/` — this repo's own workflows
 
 Everything here runs in Claudinite itself. GitHub requires every workflow and composite action to
-live flat under `.github/`, and a converge cannot push to this directory, so a change to any of
+live flat under `.github/`, and an update cannot push to this directory, so a change to any of
 these files lands only through a pull request a human merges.
 
 ## Repo CI

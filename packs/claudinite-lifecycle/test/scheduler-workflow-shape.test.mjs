@@ -47,7 +47,7 @@ test('scheduler-workflow-shape: flags an off-band cron minute', () => {
   assert.match(f[0].what, /cron: '5 4,16 \* \* \*' is not two daily ticks/);
 });
 
-// The two-tick form is what the converge writes now; a single daily hour is neither
+// The two-tick form is what the update writes now; a single daily hour is neither
 // that nor the legacy hourly line, so it is still a drifted cron.
 test('scheduler-workflow-shape: accepts two daily ticks, and flags a single daily hour', () => {
   assert.deepEqual(run({ [WF]: goodWorkflow.replace("'25 4,16 * * *'", "'25 4,16 * * *'") }), []);
@@ -60,7 +60,7 @@ test('scheduler-workflow-shape: accepts two daily ticks, and flags a single dail
 });
 
 // THE HOURLY LINE IS RETIRED (#1234). It was accepted only because `.github/workflows/` is the one
-// path a converge cannot push, so each member held its hourly cron until its own apply-stage pull
+// path an update cannot push, so each member held its hourly cron until its own apply-stage pull
 // request landed — and going red in that window would have fired the check on every member the
 // change had not reached. All 13 now carry the two-tick form, so the tolerance is gone and the
 // line it covered is a drifted cron like any other.

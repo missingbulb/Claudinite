@@ -26,7 +26,7 @@
 // made it, in this repo's config), so an issue asking someone to copy it into every
 // member would be ceremony around a mechanical edit. The write is one PUT to the
 // member's default branch, guarded by the blob sha the read returned. It is not a
-// content migration and does not ride the maintenance-branch lane baselining
+// content migration and does not ride the maintenance-branch lane the update
 // delivers on: there is no code in it, nothing to review, and it is
 // idempotent — a member already declaring the seed is read and left alone. It does
 // REFORMAT the declaration it edits to canonical 2-space JSON (the shape `--init`
@@ -35,10 +35,10 @@
 //
 // THE MOUNT GATE. A declared pack whose code is not in the member's mount is a blocking
 // `config` error there ("declares unknown pack"), and a member's mount carries only what
-// that member declared as of its last converge. So a seed is written only where the
+// that member declared as of its last update. So a seed is written only where the
 // pack's code is already ON DISK — for a pack arriving with canon, that is what the
-// baseline migration arranges (it declares and re-converges in one transactional
-// commit). `not-vendored` is a WAIT, not a finding: members converge nightly, and each
+// migration record arranges (it declares and re-vendors in one transactional
+// commit). `not-vendored` is a WAIT, not a finding: members update nightly, and each
 // is written the first run after its own mount carries the pack.
 //
 // SEED, NEVER OVERRIDE. A member that already declares the pack keeps its entry, and
@@ -90,7 +90,7 @@ export function classifySeed({ config, seed, vendored }) {
   if (!vendored) {
     return {
       state: 'not-vendored',
-      detail: `its mount does not carry the ${seed.id} pack yet — waiting for the converge that vendors it, rather than declaring a pack whose code is absent (a blocking config error there)`,
+      detail: `its mount does not carry the ${seed.id} pack yet — waiting for the update that vendors it, rather than declaring a pack whose code is absent (a blocking config error there)`,
     };
   }
   return {
@@ -220,7 +220,7 @@ export async function main() {
     '',
     written.length ? `**Written:**\n${written.map((w) => `- ${w}`).join('\n')}` : '**Written:** none',
     already.length ? `**Already declaring every seed:** ${already.join(', ')}` : '',
-    waiting.length ? `**Waiting on their next converge (the pack is not in their mount yet):**\n${waiting.map((w) => `- ${w}`).join('\n')}` : '',
+    waiting.length ? `**Waiting on their next update (the pack is not in their mount yet):**\n${waiting.map((w) => `- ${w}`).join('\n')}` : '',
     dormant.length ? `**Dormant (self-declared, not written to):** ${dormant.join(', ')}` : '',
     outOfScope.length ? `**Out of scope:**\n${outOfScope.map((o) => `- ${o}`).join('\n')}` : '',
     unknown.length ? `**UNKNOWN (read or write failed — fix the token/scope):** ${unknown.join('; ')}` : '',

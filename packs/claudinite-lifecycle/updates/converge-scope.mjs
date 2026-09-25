@@ -1,4 +1,4 @@
-// WHAT A CONVERGE WROTE THAT A MEMBER'S OWN TESTS COULD SEE (#1932).
+// WHAT AN UPDATE WROTE THAT A MEMBER'S OWN TESTS COULD SEE (#1932).
 //
 // The update's deterministic half gates on the vendored `selftest --strict` — a
 // run of Claudinite's own probes against the converged mount. It never runs the
@@ -22,7 +22,7 @@
 //     `convergeWiring` writes, and every one of them is a function of the pack set
 //     rather than of the repo. Holding them visible would summon a session for
 //     every pack re-vendor, which is the cost this predicate exists to avoid.
-//   - a SETTINGS EDIT THAT ONLY MOVED THE STAMP is the converge's bookkeeping, and
+//   - a SETTINGS EDIT THAT ONLY MOVED THE STAMP is the update's bookkeeping, and
 //     every cycle writes one. A key a migration ADDED to the same file is a
 //     configuration change and is not excluded.
 import { execFileSync } from 'node:child_process';
@@ -88,7 +88,7 @@ const git = (root, args) => execFileSync('git', ['-C', root, ...args],
 export function changesTestsCouldSee(root) {
   let status;
   // `-z` because a path carrying a space or a quote is rendered quoted in the
-  // default format, and a converge writes whatever a migration names.
+  // default format, and an update writes whatever a migration names.
   // `--no-renames` so a record is one path, never a pair; `-uall` so an untracked
   // DIRECTORY is listed as its files, which is what the prefixes below match on.
   try { status = git(root, ['status', '--porcelain', '-z', '--no-renames', '-uall']); }

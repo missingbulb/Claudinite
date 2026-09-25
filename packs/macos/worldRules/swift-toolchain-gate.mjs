@@ -64,7 +64,7 @@ const logicalLines = (text) => {
 
 const rule = {
   id: 'swift-toolchain-gate',
-  severity: 'blocking',
+  on_fail: 'block',
   description: 'A `command -v swift` probe sits behind an `xcode-select -p` gate (shell scripts, workflows)',
   doc: 'packs/macos/RULES.md',
   why: '/usr/bin/swift is a stub present on every Mac that prompts an 8 GB command-line-tools install when run without a developer directory, so `command -v swift` reports success on exactly the toolchain-less Mac the script is meant to degrade on',

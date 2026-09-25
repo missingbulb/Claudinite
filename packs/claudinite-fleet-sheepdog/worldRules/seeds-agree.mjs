@@ -50,7 +50,7 @@ function lineOf(text, needle) {
 
 const rule = {
   id: 'fleet-pack-seed-agrees',
-  severity: 'blocking',
+  on_fail: 'block',
   description: 'A pack this fleet seeds and also declares here carries the same config in both places',
   doc: 'packs/claudinite-fleet-sheepdog/RULES.md',
   why: 'the pack-seed sweep writes a seed into every member and never overrides an existing entry, so a seed that disagrees with what the enforcer runs reaches the whole fleet once and sticks',

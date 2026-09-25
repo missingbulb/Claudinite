@@ -17,7 +17,7 @@ import { VERSIONS_FILENAME, rowVersions } from '../pack-versions.mjs';
 
 const rule = {
   id: 'pack-version-log-ordered',
-  severity: 'blocking',
+  on_fail: 'block',
   description: 'A pack\'s VERSIONS.md rows run strictly descending by version, newest first',
   doc: 'packs/claudinite-canon-curation/README.md',
   why: 'a reader trusts a VERSIONS.md row\'s position to say its age; once the tail drifts out of sequence a number near the bottom could be old or merely misplaced, and nothing short of re-deriving the order from the numbers themselves can tell which (#1542)',

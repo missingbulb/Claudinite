@@ -17,3 +17,8 @@
   name reads as never-loaded until it next loads - left as true history rather than answered with
   rename machinery for one cosmetic discontinuity.
 - **Landed:** #2191
+
+## 2026-09-25 · reworded · "baseline" / "baselining" vocabulary retired
+- **Reason:** owner decision: the mechanism that re-vendors a mount is called update, and the pack
+  every repo declares is basics; the baseline wording named a retired mechanism.
+- **Actor:** @missingbulb (owner).

@@ -18,7 +18,7 @@ const PUBLISHES = /actions\/(deploy-pages|upload-pages-artifact|configure-pages)
 
 const rule = {
   id: 'gp/deploy-workflow',
-  severity: 'blocking',
+  on_fail: 'block',
   since: '2026-09-17',
   description: 'The vendored deploy workflow is present, dispatch-only, and the only workflow that publishes to Pages',
   doc: 'packs/github-pages/skills/github-pages-pipeline/SKILL.md',

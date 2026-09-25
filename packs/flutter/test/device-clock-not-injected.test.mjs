@@ -24,7 +24,7 @@ ruleTester(deviceClockNotInjected, {
           + '  start.difference(DateTime.now()).inMinutes.toString();\n',
       },
       at: [{
-        file: 'lib/ui/countdown.dart', line: 3, severity: 'blocking',
+        file: 'lib/ui/countdown.dart', line: 3, on_fail: 'block',
         what: /reads the device clock directly/,
         fix: /take a Clock port/,
       }],

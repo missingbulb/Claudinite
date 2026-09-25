@@ -55,7 +55,7 @@ test('fires on github-script, in the stub and in the canon copy alike', () => {
       'packs/claudinite-tasks/stubs/claudinite-executor.yml', // @real-entity the real stubs this rule matches by name
     ]);
     for (const f of findings) {
-      assert.equal(f.severity, 'blocking');
+      assert.equal(f.on_fail, 'block');
       assert.match(f.what, /github-script/);
       assert.match(f.fix, /packs\/claudinite-tasks\/src\//);
     }

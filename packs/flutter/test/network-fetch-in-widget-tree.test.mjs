@@ -25,7 +25,7 @@ ruleTester(networkFetchInWidgetTree, {
           + 'Widget poster(String url) => Image.network(url);\n',
       },
       at: [{
-        file: 'lib/screens/show_page.dart', line: 2, severity: 'blocking',
+        file: 'lib/screens/show_page.dart', line: 2, on_fail: 'block',
         what: /fetches its own image from inside the widget tree/,
         fix: /take the ImageProvider or TileProvider as a parameter/,
       }],

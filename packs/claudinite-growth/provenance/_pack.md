@@ -34,3 +34,9 @@
   and what it does not own. The README loses the same class of sentence.
 - **Actor:** @missingbulb (owner), through the provenance backfill.
 - **Model:** Claude Opus 5
+
+## 2026-09-25 · scope-changed · `minEngineVersion` rises to 60925.1
+- **Reason:** this pack's checks declare `on_fail`, which an older engine does not read; the pack
+  update holds this version until the member's engine is at 60925.1.
+- **Actor:** @missingbulb (owner).
+- **Mechanism:** the manifest's `minEngineVersion`, which the pack update enforces.

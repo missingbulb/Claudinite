@@ -53,7 +53,7 @@ test('a root matches the path itself and anything under it, never a sibling by n
 test('changing a shipped file without raising the version fires', () => {
   const findings = run(['extension/popup.js'], '1.2.3');
   assert.equal(findings.length, 1);
-  assert.equal(findings[0].severity, 'blocking');
+  assert.equal(findings[0].on_fail, 'block');
   assert.equal(findings[0].file, 'extension/manifest.json');
   assert.match(findings[0].what, /leaves the version at 1\.2\.3/);
   assert.match(findings[0].what, /extension\/popup\.js/);

@@ -13,7 +13,7 @@
 // MEANING anything". Both take the member's declared pack set as given. Neither ever
 // asks whether that set still MATCHES the repo — and nothing else does either: a
 // pack's `detect` fingerprint is consulted once, at bootstrap's `--init`, and never
-// again. Baselining backfills the seeded packs and each declared pack's `requires`
+// again. The update backfills the seeded packs and each declared pack's `requires`
 // closure; it does not re-fingerprint. So a repo that grows into a pack after
 // adoption — adds a package.json, a firebase.json, a Chrome manifest — is never told
 // the pack exists, and the owner has to already know what to ask for.

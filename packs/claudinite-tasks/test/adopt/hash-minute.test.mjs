@@ -60,8 +60,8 @@ test('both cron hours come from the repo name, twelve apart, inside the day', ()
   assert.equal(seen.size, 12, 'every hour of the anchor band is reachable');
 });
 
-// The shape the converge keeps rather than restamping. A line outside it is not one
-// this repo wrote, so the converge replaces it instead of preserving a broken cron.
+// The shape the update keeps rather than restamping. A line outside it is not one
+// this repo wrote, so the update replaces it instead of preserving a broken cron.
 test('isSchedulerCron accepts what hashedCron writes, and nothing malformed', () => {
   for (const name of ['o/r', 'missingbulb/Claudinite', 'a/b']) {
     assert.ok(isSchedulerCron(hashedCron(name)), name);

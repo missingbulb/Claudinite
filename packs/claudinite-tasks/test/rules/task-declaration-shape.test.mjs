@@ -80,11 +80,11 @@ test('task-declaration-shape: a missing description is an advisory, a bad one bl
   const { description, ...none } = good;
   const f = run({ [TASK]: json(none) });
   assert.equal(f.length, 1);
-  assert.equal(f[0].severity, 'advisory');
+  assert.equal(f[0].on_fail, 'advise');
   assert.match(f[0].what, /declares no "description"/);
   const long = run({ [TASK]: json({ ...good, description: Array.from({ length: 51 }, () => 'word').join(' ') }) });
   assert.equal(long.length, 1);
-  assert.equal(long[0].severity, 'blocking');
+  assert.equal(long[0].on_fail, 'block');
   assert.match(long[0].what, /"description" runs to 51 words/);
   assert.match(whatsOf({ [TASK]: json({ ...good, description: '' }) }), /"description" is empty/);
 });
@@ -109,7 +109,7 @@ test('task-declaration-shape: the retired frequency field blocks, naming the cad
   for (const [field, term] of [['daily', 'schedule:at-most-daily'], ['weekly', 'schedule:at-most-weekly'], ['monthly', 'schedule:at-most-monthly'], ['manual', null]]) {
     const findings = run({ [TASK]: json({ ...bare, frequency: field, preconditions: [term ?? 'substantive-change'] }) });
     assert.equal(findings.length, 1, `${field}: the field is the one finding`);
-    assert.equal(findings[0].severity, 'blocking');
+    assert.equal(findings[0].on_fail, 'block');
     assert.match(findings[0].what, /"frequency", which is retired/);
     // `manual` meant no schedule at all, which a declaration now says outright.
     assert.match(findings[0].fix, term === null ? /"trigger": "request"/ : new RegExp(`\\["${term}", …\\]`));
@@ -132,7 +132,7 @@ test('task-declaration-shape: a retired outcome ceiling is no longer a rename, i
     const { automerge, ...rest } = good;
     const f = run({ [TASK]: json({ ...rest, expected_outcome: retired }) });
     assert.equal(f.length, 1, JSON.stringify(f));
-    assert.equal(f[0].severity, 'blocking', `${retired} blocks`);
+    assert.equal(f[0].on_fail, 'block', `${retired} blocks`);
     assert.match(f[0].what, new RegExp(`"expected_outcome" is "${retired}", not a legal value`));
   }
   for (const outcome of ['amend_existing_or_create_new_pr', 'supersede_existing_pr']) {
@@ -258,7 +258,7 @@ test('task-declaration-shape: the trigger is required, and its value checked', (
   const { trigger, ...none } = good;
   const missing = run({ [TASK]: json(none) });
   assert.equal(missing.length, 1, JSON.stringify(missing));
-  assert.equal(missing[0].severity, 'blocking');
+  assert.equal(missing[0].on_fail, 'block');
   assert.match(missing[0].what, /declares no "trigger"/);
   assert.match(missing[0].fix, /schedule, request/);
   assert.match(whatsOf({ [TASK]: json({ ...good, trigger: 'cron' }) }), /"trigger" is "cron", not a legal value/);

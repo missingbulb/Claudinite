@@ -12,3 +12,8 @@
 - **Rejected:** deleting the prose bullet it converts. Under the deletion test the bullet stays
   whole: it also asks that the key exist at all, which the check deliberately does not enforce.
 - **Landed:** #901, the weekly prose-to-checks sweep (tracker #450) · pack version 2.
+
+## 2026-09-25 · reworded · `severity: blocking|advisory` is spelled `on_fail: block|advise`
+- **Reason:** owner decision, 2026-09-25: the field names what happens when the check fails, and
+  *severity* keeps its impact sense; what this element enforces is unchanged.
+- **Actor:** @missingbulb (owner).

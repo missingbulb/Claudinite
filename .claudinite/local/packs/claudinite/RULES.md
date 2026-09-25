@@ -44,9 +44,9 @@ Below are rules on how to work on this repo.
 
 - **Landing a change to what members receive** — force delivery only where *"will it work on every
   repo?"* is live: engine flow, a contract member files must satisfy, a stub, a migration record, a
-  new config key. Otherwise the nightly converge is the delivery. (landing-change-members)
+  new config key. Otherwise the nightly update is the delivery. (landing-change-members)
 
-- **Forcing fleet delivery** — drive Shepherd's `fleet-baseline` with `follow`, report per member
+- **Forcing fleet delivery** — drive Shepherd's `fleet-update` with `follow`, report per member
   unasked, and attach the repos verification needs. A dispatch is not a result; 204 means queued.
   (forcing-fleet-delivery)
 
@@ -225,7 +225,7 @@ Below are rules on how to work on this repo.
 ## The engine, the mount and what reaches members
 
 - **Editing `claudinite-scheduler.yml` or `claudinite-executor.yml`** — nothing beyond triggers,
-  permissions, concurrency and the `run:` line naming an engine module. A converge cannot push to
+  permissions, concurrency and the `run:` line naming an engine module. An update cannot push to
   `.github/workflows/`, so logic left there costs a fleet-wide PR to change.
   (editing-claudinite-scheduler)
 
@@ -280,7 +280,7 @@ Below are rules on how to work on this repo.
   (asking-imported-symbols)
 
 - **Changing a vendored stub** — edit the canon's own `.github/workflows/` copy in the same commit
-  and diff the two whole files. The canon has no converge, so its copy drifts invisibly until it is
+  and diff the two whole files. The canon has no update, so its copy drifts invisibly until it is
   a permission denial in production. (changing-vendored-stub)
 
 - **Excluding files from the vendor set by pattern** — whitelist any operational file that matches
@@ -338,7 +338,7 @@ Below are rules on how to work on this repo.
   Otherwise the drift completes, filing a report that reads as a full sweep. (adding-fleet-task)
 
 - **Spawning a child process from a worker** — pass an explicit `cwd`, resolved to a root that
-  cannot vanish (`--root`, then `CLAUDE_PROJECT_DIR`, then `cwd`). The converge deletes the tree
+  cannot vanish (`--root`, then `CLAUDE_PROJECT_DIR`, then `cwd`). The update deletes the tree
   its own code-work runs inside. (spawning-child-process)
 
 - **A worker crash sharing a benign outcome code** — keep "could not run" distinguishable from

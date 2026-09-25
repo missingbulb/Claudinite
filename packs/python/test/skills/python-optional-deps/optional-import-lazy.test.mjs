@@ -21,7 +21,7 @@ test('python-optional-import-top-level: flags a bare top-level `import tensorflo
   try {
     const f = run(root);
     assert.equal(f.length, 1);
-    assert.equal(f[0].severity, 'blocking');
+    assert.equal(f[0].on_fail, 'block');
     assert.equal(f[0].line, 1);
     assert.match(f[0].what, /tensorflow.*module top level/);
   } finally { cleanup(root); }

@@ -37,13 +37,13 @@ A member that already declares the pack keeps its entry, and one that already ca
 
 ## The mount gate
 
-A declared pack whose code is **not in the member's mount** is a blocking `config` error there ("declares unknown pack"), and a member's mount carries only what that member declared as of its last converge. So a seed is written only where the pack's code is already on disk — `.claudinite/shared/packs/<id>/pack.mjs`, falling back to `packs/…` so the canon repo (which mounts nothing and runs its live tree) is swept by the same code path.
+A declared pack whose code is **not in the member's mount** is a blocking `config` error there ("declares unknown pack"), and a member's mount carries only what that member declared as of its last update. So a seed is written only where the pack's code is already on disk — `.claudinite/shared/packs/<id>/pack.mjs`, falling back to `packs/…` so the canon repo (which mounts nothing and runs its live tree) is swept by the same code path.
 
-`not-vendored` is a **wait, not a finding**: members converge nightly, and each is written the first run after its own mount carries the pack. For a pack arriving with canon, the baseline migration that ships it declares it and re-converges the mount in one transactional commit, so most members never pass through this state at all.
+`not-vendored` is a **wait, not a finding**: members update nightly, and each is written the first run after its own mount carries the pack. For a pack arriving with canon, the migration record that ships it declares it and re-vendors the mount in one transactional commit, so most members never pass through this state at all.
 
 ## The write
 
-One PUT to the member's default branch, guarded by the blob sha the read returned (the file moving under the run is a 409, which fails that member and is retried next run). It deliberately does *not* ride the maintenance-branch lane baselining delivers migrations on: there is no code in it, nothing to review, and it is idempotent. It does **reformat** the declaration it edits to canonical 2-space JSON — the shape `--init` writes — because it round-trips the file through JSON instead of editing settings as text.
+One PUT to the member's default branch, guarded by the blob sha the read returned (the file moving under the run is a 409, which fails that member and is retried next run). It deliberately does *not* ride the maintenance-branch lane the update delivers migrations on: there is no code in it, nothing to review, and it is idempotent. It does **reformat** the declaration it edits to canonical 2-space JSON — the shape `--init` writes — because it round-trips the file through JSON instead of editing settings as text.
 
 `expected_outcome: no_code_changes` is therefore not a contradiction: the ceiling describes what a task may do to **its own** repo, and this task opens no PR here at all.
 

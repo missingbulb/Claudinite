@@ -1,7 +1,7 @@
 // WHAT THE TWO WORKFLOWS DELEGATE TO. `.github/workflows/` is the one vendored
-// path a converge cannot push into — a member's copy moves only through a PR a
+// path an update cannot push into — a member's copy moves only through a PR a
 // human merges — so the logic these tests cover was moved OUT of the YAML and
-// into the engine, where it converges nightly like everything else. These pin
+// into the engine, where it updates nightly like everything else. These pin
 // the behaviour at its new home, and the drift tests in converge-wiring pin that
 // the YAML still only names it.
 import { test } from 'node:test';

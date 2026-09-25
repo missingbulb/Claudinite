@@ -29,7 +29,7 @@ const PACK = 'claude-code-web-users-support';
 
 const rule = {
   id: 'preferences-store-file-names',
-  severity: 'advisory',
+  on_fail: 'advise',
   description: 'Every entry in a personal-pack store this repo holds is README.md or an <identity>/ pack directory',
   doc: 'packs/claude-code-web-users-support/RULES.md',
   why: 'the reader copies a person\'s pack from <path>/<login>/ and fails soft on a miss, so a differently-named directory is never opened and nothing ever reports it',

@@ -23,3 +23,8 @@
 - **Mechanism:** placement declares scope - a module under `worldRules/` is a world-scope check and needs no manifest entry, so the manifest stops restating its tree and a check cannot be listed under the wrong scope.
 - **Actor:** @missingbulb (owner).
 - **Landed:** #1248 · pack version 60822.1.
+
+## 2026-09-25 · reworded · `severity: blocking|advisory` is spelled `on_fail: block|advise`
+- **Reason:** owner decision, 2026-09-25: the field names what happens when the check fails, and
+  *severity* keeps its impact sense; what this element enforces is unchanged.
+- **Actor:** @missingbulb (owner).

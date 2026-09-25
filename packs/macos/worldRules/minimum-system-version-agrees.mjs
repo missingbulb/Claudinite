@@ -81,7 +81,7 @@ const canonical = (parts) => {
 
 const rule = {
   id: 'minimum-system-version-agrees',
-  severity: 'blocking',
+  on_fail: 'block',
   description: "Info.plist's LSMinimumSystemVersion states the same OS floor as the package's platforms: [.macOS(…)]",
   doc: 'packs/macos/skills/macos-app-bundle/SKILL.md',
   why: 'the two are independent claims about the same minimum OS and only one of them is enforced at launch, so a drift ships a floor nobody chose and no build step compares them',

@@ -3,7 +3,7 @@
 // declaration or in a tested pure function - this file only moves data between them.
 //
 // It changes NOTHING it reviews. Not a pack element, not a provenance log, not a
-// severity. The file it writes and the issues it files are an analysis with a
+// check's on_fail. The file it writes and the issues it files are an analysis with a
 // recommendation attached; the one stage that edits anything is `usage-triage`, and
 // the owner merges that or declines it.
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';

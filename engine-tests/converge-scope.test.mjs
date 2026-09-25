@@ -1,4 +1,4 @@
-// What a converge WROTE, classified: which of the cycle's own writes a member's
+// What an update WROTE, classified: which of the cycle's own writes a member's
 // own test suite could possibly see. The pack-update flow asks this to decide
 // whether the deterministic half may merge on its own or has to hand the branch
 // to the apply stage, whose session re-runs those tests (#1932).
@@ -89,7 +89,7 @@ test('engine code, a configuration key and a repo source file each surface', () 
   // The same file the stamp rides in — what makes this one visible is that a key a
   // record ADDED moved with it, which is a change to what this repo's checks run.
   put('.claudinite-settings.json', `${JSON.stringify({
-    packs: [{ id: 'acme-pack', version: 4 }], engineVersion: 10, rules: { 'some-rule': 'blocking' },
+    packs: [{ id: 'acme-pack', version: 4 }], engineVersion: 10, rules: { 'some-rule': 'block' },
   }, null, 2)}\n`);
   put('src/app.mjs', 'rewritten by a migration\n');
   assert.deepEqual(changesTestsCouldSee(root), [

@@ -196,7 +196,7 @@ export function cleanup(root) {
  * work-scoped rule gets its fluent surface here exactly as it does in a run.
  * A flagged case's `at` lists every expected finding in engine
  * order; each expectation may pin `file` (exact), `line` (exact — a finding
- * with no line anchor carries the explicit `line: null`), `severity` (exact),
+ * with no line anchor carries the explicit `line: null`), `on_fail` (exact),
  * and `what` / `fix` (regexes). Keys an expectation omits are not judged.
  */
 export function ruleTester(rule, { clean = {}, flagged = {} }) {
@@ -223,7 +223,7 @@ export function ruleTester(rule, { clean = {}, flagged = {} }) {
         const got = findings[i];
         if ('file' in expected) assert.equal(got.file, expected.file);
         if ('line' in expected) assert.equal(got.line, expected.line);
-        if ('severity' in expected) assert.equal(got.severity, expected.severity);
+        if ('on_fail' in expected) assert.equal(got.on_fail, expected.on_fail);
         if ('what' in expected) assert.match(got.what, expected.what);
         if ('fix' in expected) assert.match(got.fix, expected.fix);
       });

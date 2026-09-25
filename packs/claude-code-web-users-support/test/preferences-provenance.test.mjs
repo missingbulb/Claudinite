@@ -16,7 +16,7 @@ const PREFS = '- **Ending a turn** — a blockquote callout. (turn-callout)\n\n-
 test('a rule with no marker, and one whose marker names no file, are each found at their line', () => {
   const found = rule.run(ctx(['preferences/acme-user/RULES.md'], { 'preferences/acme-user/RULES.md': PREFS }));
   assert.equal(found.length, 2);
-  assert.equal(found[0].severity, 'advisory');
+  assert.equal(found[0].on_fail, 'advise');
   assert.equal(found[0].line, 1);
   assert.match(found[0].what, /"Ending a turn" names preferences\/acme-user\/provenance\/turn-callout\.md, which does not exist/);
   assert.equal(found[1].line, 3);

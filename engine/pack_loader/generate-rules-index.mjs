@@ -39,7 +39,7 @@ import { shipsPrepareStep } from './pack-conventions.mjs';
 import { settingsPath } from '../settings-file.mjs';
 
 // The index, and the line a repo's CLAUDE.md carries to pull it in. One definition:
-// the generator writes the first, the converge ensures the second, and the basics
+// the generator writes the first, the update ensures the second, and the basics
 // check that polices a member tests for both.
 export const RULES_INDEX_FILE = join('.claudinite', 'claudinite-rules.GENERATED.md');
 export const RULES_INDEX_IMPORT = '@.claudinite/claudinite-rules.GENERATED.md';
@@ -125,12 +125,12 @@ export function ruleImports(active, { indexDir, corpusRoot }) {
 // enters context, so it costs nothing every session while staying visible to anything
 // that opens the file with Read.
 export const renderRulesIndex = (imports) => (imports.length
-  ? `<!-- GENERATED — do not hand-edit; every converge rewrites it. Edit a pack's RULES.md. -->\n${
+  ? `<!-- GENERATED — do not hand-edit; every update rewrites it. Edit a pack's RULES.md. -->\n${
     imports.map((i) => `@${i.path}`).join('\n')}\n`
   : null);
 
 // The imports for a repo on disk: discover its packs (canon mount + its own local
-// packs) and keep the active ones. Never throws — a caller in a converge treats an
+// packs) and keep the active ones. Never throws — a caller in an update treats an
 // empty list as "nothing to write".
 export async function rulesIndexImports(projectRoot) {
   try {
@@ -141,7 +141,7 @@ export async function rulesIndexImports(projectRoot) {
       corpusRoot: corpusRootFor(projectRoot),
     });
   } catch {
-    return []; // fail soft — a broken loader must never block a converge
+    return []; // fail soft — a broken loader must never block an update
   }
 }
 

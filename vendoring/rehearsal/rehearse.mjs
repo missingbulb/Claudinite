@@ -133,11 +133,11 @@ export async function rehearse(fixture, mode) {
       steps.push(await step('selftest', [join(CANON, 'engine/selftest.mjs'), '--strict'], { CLAUDE_PROJECT_DIR: root }, root));
       const sweep = join(root, '.claudinite/shared/engine/checks/check_the_world.mjs');
       // The member runs its own VENDORED sweep, not the canon's — that is the
-      // copy it will actually live with, and a converge that failed to vendor it
+      // copy it will actually live with, and an update that failed to vendor it
       // must read as a failure here rather than be silently covered for.
       steps.push(existsSync(sweep)
         ? await step('check-the-world', [sweep], { CLAUDE_PROJECT_DIR: root }, root)
-        : { name: 'check-the-world', ok: false, stdout: 'the converge vendored no check_the_world.mjs' });
+        : { name: 'check-the-world', ok: false, stdout: 'the update vendored no check_the_world.mjs' });
     }
     const stamp = existsSync(settingsPath(root))
       ? installedVersions(JSON.parse(readFileSync(settingsPath(root), 'utf8')))

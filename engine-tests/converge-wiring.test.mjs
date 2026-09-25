@@ -200,8 +200,8 @@ test('convergeWiring: lands the index, its import and its merge attribute togeth
   // All three or none: an index nothing imports, or an import with no index behind it,
   // are both a repo whose rules silently do not load.
   const root = mkRepo();
-  mkdirSync(join(root, '.claudinite', 'shared', 'packs', 'basics'), { recursive: true }); // @real-entity the real corpus the converge resolves the index against
-  writeFileSync(join(root, '.claudinite', 'shared', 'packs', 'basics', 'RULES.md'), 'BASICS PROSE\n'); // @real-entity the real corpus the converge resolves the index against
+  mkdirSync(join(root, '.claudinite', 'shared', 'packs', 'basics'), { recursive: true }); // @real-entity the real corpus the update resolves the index against
+  writeFileSync(join(root, '.claudinite', 'shared', 'packs', 'basics', 'RULES.md'), 'BASICS PROSE\n'); // @real-entity the real corpus the update resolves the index against
   writeFileSync(join(root, '.claudinite-settings.json'), '{ "packs": ["basics"] }\n');
 
   const first = await convergeWiring(root, REPO);
@@ -219,12 +219,12 @@ test('convergeWiring: lands the index, its import and its merge attribute togeth
 });
 
 
-test('convergeWiring: a declaration change rewrites the index on the next converge', async () => {
+test('convergeWiring: a declaration change rewrites the index on the next update', async () => {
   // The index is a function of the declaration, so the moments a declaration moves —
   // the nightly refresh and any pack change — are exactly when it can go stale. Both
   // call convergeWiring, which is why it is converged here and not left to a session.
   const root = mkRepo();
-  for (const id of ['basics', 'claudinite-growth']) { // @real-entity the real corpus the converge resolves the index against
+  for (const id of ['basics', 'claudinite-growth']) { // @real-entity the real corpus the update resolves the index against
     mkdirSync(join(root, '.claudinite', 'shared', 'packs', id), { recursive: true });
     writeFileSync(join(root, '.claudinite', 'shared', 'packs', id, 'RULES.md'), `${id} prose\n`);
   }
@@ -258,8 +258,8 @@ test('seedRepoLocalPack: creates the repo\'s own pack, declares it, and the inde
   // CLAUDE.md paragraph instead. Seeding it at adoption is what makes the local pack
   // the obvious destination rather than a decision.
   const root = mkRepo();
-  mkdirSync(join(root, '.claudinite', 'shared', 'packs', 'basics'), { recursive: true }); // @real-entity the real corpus the converge resolves the index against
-  writeFileSync(join(root, '.claudinite', 'shared', 'packs', 'basics', 'RULES.md'), 'BASICS\n'); // @real-entity the real corpus the converge resolves the index against
+  mkdirSync(join(root, '.claudinite', 'shared', 'packs', 'basics'), { recursive: true }); // @real-entity the real corpus the update resolves the index against
+  writeFileSync(join(root, '.claudinite', 'shared', 'packs', 'basics', 'RULES.md'), 'BASICS\n'); // @real-entity the real corpus the update resolves the index against
   writeFileSync(join(root, '.claudinite-settings.json'), '{\n  "packs": [\n    "basics"\n  ]\n}\n');
 
   const r = await convergeWiring(root, 'missingbulb/HelloWorldFlutterApp', { seedLocalPack: true });
@@ -284,7 +284,7 @@ test('seedRepoLocalPack: creates the repo\'s own pack, declares it, and the inde
 
 test('seedRepoLocalPack: never runs on the nightly, and never twice', async () => {
   // Both halves matter. The nightly must not create it: a repo that deleted its local
-  // pack made a real choice, and a converge that re-seeded it would overrule that
+  // pack made a real choice, and an update that re-seeded it would overrule that
   // every night. And a repo that already has a local pack must not get a second,
   // empty one beside the home its lessons already live in.
   const root = mkRepo();
@@ -335,7 +335,7 @@ test('convergeWiring: reports every surface it changed, and is idempotent', asyn
 // --- the README pack-badge row ---------------------------------------------
 
 const CHECKS_PATH = '.claudinite-settings.json';
-const ROW = [{ id: 'basics', path: 'packs/basics/badge.svg' }, { id: 'claudinite-growth', path: 'packs/claudinite-growth/badge.svg' }]; // @real-entity the real corpus the converge resolves the index against
+const ROW = [{ id: 'basics', path: 'packs/basics/badge.svg' }, { id: 'claudinite-growth', path: 'packs/claudinite-growth/badge.svg' }]; // @real-entity the real corpus the update resolves the index against
 
 test('removeRetiredBadgeSetting: cuts the retired knob out as text, leaving the rest byte-identical', () => {
   const root = mkRepo();
@@ -357,7 +357,7 @@ test('removeRetiredBadgeSetting: the knob as the LAST key takes its trailing com
   writeFileSync(join(root, CHECKS_PATH), '{\n  "packs": ["basics"],\n  "badges": { "readme": "off" }\n}\n');
   assert.equal(removeRetiredBadgeSetting(root), true);
   const text = readFileSync(join(root, CHECKS_PATH), 'utf8');
-  assert.deepEqual(JSON.parse(text), { packs: ['basics'] }, 'still valid JSON, knob gone'); // @real-entity the real corpus the converge resolves the index against
+  assert.deepEqual(JSON.parse(text), { packs: ['basics'] }, 'still valid JSON, knob gone'); // @real-entity the real corpus the update resolves the index against
   assert.ok(!text.includes('badges'));
 });
 

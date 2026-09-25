@@ -58,7 +58,7 @@ export const hashedHours = (fullName) => {
   return { anchor, drain: anchor + ANCHOR_HOURS };
 };
 
-// WRITTEN ONCE, AT SCAFFOLD. The converge preserves whatever cron a repo's workflow
+// WRITTEN ONCE, AT SCAFFOLD. The update preserves whatever cron a repo's workflow
 // already carries (converge-workflows.mjs), because `.github/workflows/` lands only
 // through a pull request a person merges: restamping it would put every member's
 // scheduler behind a human gate every time this derivation changed.
@@ -67,7 +67,7 @@ export const hashedCron = (fullName) => {
   return `${hashedMinute(fullName)} ${anchor},${drain} * * *`;
 };
 
-// The shape a scheduler cron must have for the converge to keep it: a minute in the
+// The shape a scheduler cron must have for the update to keep it: a minute in the
 // band, and two hours twelve apart. Anything else is not a cron this repo wrote.
 const CRON_RE = /^(\d{1,2}) (\d{1,2}),(\d{1,2}) \* \* \*$/;
 export function isSchedulerCron(text) {

@@ -42,7 +42,7 @@ test('a pack newly declared with no answers yields one finding per unanswered qu
     packs: [asking()],
   });
   assert.equal(f.length, 2);
-  assert.ok(f.every((x) => x.file === '.claudinite-settings.json' && x.severity === 'blocking'));
+  assert.ok(f.every((x) => x.file === '.claudinite-settings.json' && x.on_fail === 'block'));
   assert.deepEqual(f.map((x) => x.what.match(/asks "(\w+)"/)[1]).sort(), ['market', 'product']);
 });
 

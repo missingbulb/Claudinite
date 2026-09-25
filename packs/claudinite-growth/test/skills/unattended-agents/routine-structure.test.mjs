@@ -28,7 +28,7 @@ test('routine-structure: flags a routine.md invoking a script that does not exis
   try {
     const findings = run(root);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].severity, 'blocking');
+    assert.equal(findings[0].on_fail, 'block');
     assert.match(findings[0].what, /does not exist/);
   } finally { cleanup(root); }
 });
@@ -41,7 +41,7 @@ test('routine-structure: flags a script the entry point never invokes (orphan)',
   try {
     const findings = run(root);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].severity, 'advisory');
+    assert.equal(findings[0].on_fail, 'advise');
     assert.equal(findings[0].file, 'dev/routines/demo/helper.sh');
     assert.match(findings[0].what, /never invoked/);
   } finally { cleanup(root); }
@@ -54,7 +54,7 @@ test('routine-structure: flags phase scripts in a folder with no routine.md entr
   try {
     const findings = run(root);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].severity, 'blocking');
+    assert.equal(findings[0].on_fail, 'block');
     assert.match(findings[0].what, /entry point/);
   } finally { cleanup(root); }
 });
@@ -78,7 +78,7 @@ test('routine-structure: a task folder with a phase script but no task.md entry 
   try {
     const findings = run(root);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].severity, 'blocking');
+    assert.equal(findings[0].on_fail, 'block');
     assert.match(findings[0].what, /routine.md \/ task.md entry point/);
   } finally { cleanup(root); }
 });
@@ -91,7 +91,7 @@ test('routine-structure: flags a script with no shebang', () => {
   try {
     const findings = run(root);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].severity, 'advisory');
+    assert.equal(findings[0].on_fail, 'advise');
     assert.match(findings[0].what, /shebang/);
   } finally { cleanup(root); }
 });

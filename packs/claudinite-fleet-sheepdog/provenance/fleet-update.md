@@ -61,3 +61,11 @@
   same work runs, exits the same way and prints the same markers.
 - **Actor:** @missingbulb (owner), who asked why every task re-implements one runner's job.
 - **Model:** Opus 5
+
+## 2026-09-25 · reworded · renamed from fleet-baseline, its file moved with it
+- **Reason:** owner decision retiring the baseline vocabulary: the lever forces each member's
+  update, so it is named for it. The report's `converged`/`did-not-converge` outcomes became
+  `updated`/`did-not-update` for the same reason.
+- **Actor:** @missingbulb (owner).
+- **Rejected:** renaming the sweep's `FLEET_BASELINE_*` environment knobs: a hand-run still setting
+  the old `DRY_RUN` name would run live.

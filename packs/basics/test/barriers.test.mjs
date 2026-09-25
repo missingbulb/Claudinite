@@ -224,7 +224,7 @@ test('malformed config surfaces a blocking config finding', () => {
   const notObj = runCheck({ rules: 'nope' }, { 'a/x.js': '1\n' });
   assert.equal(notObj.length, 1);
   assert.equal(notObj[0].file, '.claudinite-settings.json');
-  assert.equal(notObj[0].severity, 'blocking');
+  assert.equal(notObj[0].on_fail, 'block');
 
   const missing = runCheck({ rules: [{ from: 'a' }] }, { 'a/x.js': '1\n' });
   assert.equal(missing.length, 1);
@@ -301,7 +301,7 @@ test('packs without contributions add nothing; a malformed contribution is a blo
   assert.equal(rules.length, 2);
   const findings = rules.flatMap((r) => r.run());
   assert.equal(findings.length, 2);
-  assert.ok(findings.every((f) => f.severity === 'blocking'));
+  assert.ok(findings.every((f) => f.on_fail === 'block'));
   assert.equal(findings[0].file, 'packs/bad-shape/pack.mjs');
   assert.match(findings[0].what, /not an array/);
   assert.match(findings[1].file, /local\/packs\/no-id\/pack\.mjs$/);
@@ -639,7 +639,7 @@ test('a to-less exception excuses the whole file; unused it goes stale on a whol
     'content/alpha/mod.js': '1\n',
   });
   assert.equal(stale.length, 1);
-  assert.equal(stale[0].severity, 'blocking');
+  assert.equal(stale[0].on_fail, 'block');
   assert.match(stale[0].what, /matched nothing/);
 });
 
@@ -655,7 +655,7 @@ test('a pinned exception whose target is unused is a blocking stale finding', ()
     'content/beta/mod.js': '1\n',
   });
   assert.equal(f.length, 1);
-  assert.equal(f[0].severity, 'blocking');
+  assert.equal(f[0].on_fail, 'block');
   assert.match(f[0].what, /"content\/beta" matched nothing/);
 });
 

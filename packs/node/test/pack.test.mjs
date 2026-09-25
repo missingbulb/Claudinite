@@ -21,7 +21,7 @@ test('earn-each-dependency: flags a dependency the manifest did not carry before
     const findings = run(earnEachDependency, root);
     assert.equal(findings.length, 1);
     assert.equal(findings[0].file, 'package.json');
-    assert.equal(findings[0].severity, 'advisory');
+    assert.equal(findings[0].on_fail, 'advise');
     assert.match(findings[0].what, /"chalk" added to dependencies/);
   } finally { cleanup(root); }
 });

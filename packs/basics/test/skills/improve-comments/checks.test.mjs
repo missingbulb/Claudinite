@@ -51,7 +51,7 @@ test('a code change riding along under the comment title is blocked', () => {
   try {
     const findings = runScope(root);
     assert.deepEqual(files(findings), ['src/app.mjs']);
-    assert.equal(findings[0].severity, 'blocking');
+    assert.equal(findings[0].on_fail, 'block');
     assert.match(findings[0].what, /changed more than the comments/);
   } finally { cleanup(root); }
 });

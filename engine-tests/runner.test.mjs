@@ -200,7 +200,7 @@ test('a pack entry object declares the pack and carries its own accept/rules', a
     changed: {
       'doc.md': '[gone](missing.md)\n',
       '.claudinite-settings.json': JSON.stringify({
-        packs: [{ id: A_CANON_PACK, rules: { 'reference-integrity': 'advisory' } }],
+        packs: [{ id: A_CANON_PACK, rules: { 'reference-integrity': 'advise' } }],
       }),
     },
   });
@@ -218,7 +218,7 @@ test('settings validity: an unknown pack name in an entry object, and conflictin
   const conflicted = makeRepo({
     changed: {
       '.claudinite-settings.json': JSON.stringify({
-        packs: [{ id: A_CANON_PACK, rules: { 'reference-integrity': 'advisory' } }],
+        packs: [{ id: A_CANON_PACK, rules: { 'reference-integrity': 'advise' } }],
         rules: { 'reference-integrity': 'off' },
       }),
     },
@@ -229,15 +229,15 @@ test('settings validity: an unknown pack name in an entry object, and conflictin
     assert.match(u.stdout, /unknown pack "no-such-pack"/);
     const c = await world(conflicted);
     assert.equal(c.status, 1);
-    assert.match(c.stdout, /rule "reference-integrity" is set to "off" by the top-level "rules" and "advisory" by the "basics" pack entry/); // @real-entity the real check ids the catalog must carry, and the real closure the seed writes
+    assert.match(c.stdout, /rule "reference-integrity" is set to "off" by the top-level "rules" and "advise" by the "basics" pack entry/); // @real-entity the real check ids the catalog must carry, and the real closure the seed writes
   } finally { cleanup(unknown); cleanup(conflicted); }
 });
 
-test('severity override in config demotes a blocking rule to advisory', async () => {
+test('an on_fail override in config demotes a blocking rule to advise', async () => {
   const root = makeRepo({
     changed: {
       'doc.md': '[gone](missing.md)\n',
-      '.claudinite-settings.json': JSON.stringify({ packs: [A_CANON_PACK], rules: { 'reference-integrity': 'advisory' } }),
+      '.claudinite-settings.json': JSON.stringify({ packs: [A_CANON_PACK], rules: { 'reference-integrity': 'advise' } }),
     },
   });
   try {
@@ -359,7 +359,7 @@ test('a declared forbidReferences wall runs via the runner, under its own id', a
 });
 
 test('no pack runs undeclared — basics included', async () => {
-  // Same blocking violation as above, but nothing declared: the baseline is
+  // Same blocking violation as above, but nothing declared: basics is
   // explicit opt-in, so the run stays silent and green.
   const bare = makeRepo({ changed: { 'doc.md': '[gone](missing.md)\n' } });
   const empty = makeRepo({ changed: {
@@ -402,12 +402,12 @@ const LOCAL_PACK = `export default {
     excludes: 'anything portable to another repo — that is a canon pack',
   },
   worldRules: [{
-    id: 'no-todo-marker', severity: 'blocking',
+    id: 'no-todo-marker', on_fail: 'block',
     description: 'no TODO_MARKER files', doc: '.claudinite/local/packs/proj/RULES.md',
     why: 'demo local check',
     run(ctx) {
       return ctx.files.filter((f) => f.endsWith('TODO_MARKER')).map((f) => ({
-        rule: 'no-todo-marker', severity: 'blocking', file: f, line: null,
+        rule: 'no-todo-marker', on_fail: 'block', file: f, line: null,
         what: 'TODO_MARKER present', why: 'demo', fix: 'remove it',
         doc: '.claudinite/local/packs/proj/RULES.md',
       }));

@@ -6,7 +6,7 @@ import { adoptedPages, CONFIG_PATH, KEYS, NEVER_PUBLISHED, parseConfig, publishS
 // lib.mjs), plus the existence of every path it names.
 const rule = {
   id: 'gp/site-config',
-  severity: 'blocking',
+  on_fail: 'block',
   since: '2026-09-17',
   description: `${CONFIG_PATH} declares the publish set explicitly — the three required keys, no unknown keys, every published path present`,
   doc: 'packs/github-pages/skills/github-pages-pipeline/SKILL.md',

@@ -1,7 +1,7 @@
 [
   {
     "id": "google-token-audience-pinned",
-    "severity": "blocking",
+    "on_fail": "block",
     "failureMessage": "every Google-issued token shares the issuer, so only the audience claim scopes a token to this app — unset, any Google OAuth client's token authenticates here",
     "fix": "configure the validator's audience to your exact OAuth web-application client id, next to the issuer; never leave it unset",
     "scanFiles": "/\\.(ya?ml|json|toml|tf)$/",
@@ -21,7 +21,7 @@
   },
   {
     "id": "google-token-email-verified",
-    "severity": "blocking",
+    "on_fail": "block",
     "failureMessage": "a Google ID token carries email regardless of verification — an action gated on the bare claim trusts an address Google has not verified",
     "scanFileClasses": ["javascriptFiles", "pythonFiles"],
     "excludeFileClasses": ["testFiles"],

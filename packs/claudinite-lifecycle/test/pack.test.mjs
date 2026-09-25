@@ -47,7 +47,7 @@ test('rules-index-current: a missing index is blocking', () => {
   try {
     const f = run(rulesIndexCurrent, root, 'all');
     assert.equal(f.length, 1, JSON.stringify(f, null, 2));
-    assert.equal(f[0].severity, 'blocking');
+    assert.equal(f[0].on_fail, 'block');
     assert.match(f[0].what, /missing/);
   } finally { cleanup(root); }
 });
@@ -132,7 +132,7 @@ test('claudinite-isolation: inert without the vendored mount; a consumer file re
     assert.equal(f.length, 1, JSON.stringify(f, null, 2));
     assert.equal(f[0].file, 'src/tool.mjs');
     assert.match(f[0].what, /\.claudinite\/shared\/engine\/checks\/check_the_world\.mjs/);
-    assert.equal(f[0].severity, 'blocking');
+    assert.equal(f[0].on_fail, 'block');
   } finally { cleanup(off); cleanup(on); }
 });
 

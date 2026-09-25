@@ -19,7 +19,7 @@ test('jwt-verify-binds-audience: a verify that pins algorithms but binds no reci
   try {
     const findings = run(root);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].severity, 'advisory');
+    assert.equal(findings[0].on_fail, 'advise');
     assert.match(findings[0].what, /neither audience nor issuer/);
   } finally { cleanup(root); }
 });

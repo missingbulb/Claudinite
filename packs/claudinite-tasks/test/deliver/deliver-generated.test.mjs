@@ -133,7 +133,7 @@ test('a run handed no target fails rather than minting a branch of its own (#169
   // The lane used to reuse an open pull request whose head carried a prefix, and mint
   // `<prefix>/<stamp>` where it found none — a second decision site beside the
   // executor's. An executor that hands none in now predates the hand-off, and its
-  // member's next converge brings the one that does: delivering somewhere the
+  // member's next update brings the one that does: delivering somewhere the
   // executor is not looking is worse than saying so.
   assert.throws(() => generatedTarget({ pulls: open, branch: null, pr: null }), /CLAUDINITE_TARGET_BRANCH/);
   assert.throws(() => generatedTarget({ pulls: open }), /CLAUDINITE_TARGET_BRANCH/);

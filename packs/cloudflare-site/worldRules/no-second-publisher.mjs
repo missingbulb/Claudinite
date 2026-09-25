@@ -22,7 +22,7 @@ const PUBLISHES = /actions\/(deploy-pages|upload-pages-artifact|configure-pages)
 
 const rule = {
   id: 'cloudflare-site/no-second-publisher',
-  severity: 'blocking',
+  on_fail: 'block',
   since: '2026-09-13',
   description: 'Nothing but the site-release task publishes the site',
   doc: 'packs/cloudflare-site/RULES.md',

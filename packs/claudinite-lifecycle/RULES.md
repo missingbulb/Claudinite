@@ -33,7 +33,7 @@
 - **Judging whether Claudinite is current here** — read the stamp's `engineVersion` and
   `packVersions`, never `claudinite.updated` or `ref`: the versioned flows stamp versions and
   nothing else, so those two hold the provenance of the last full re-vendor rather than of this
-  mount, and a member converging nightly reads as weeks stale. (judging-whether-claudinite)
+  mount, and a member updating nightly reads as weeks stale. (judging-whether-claudinite)
 
 - **Answering "why did the mount not update"** — read the member's own artifacts (its declaration,
   its stamp, the head sha's runs) before theorizing about a platform setting; propose a settings

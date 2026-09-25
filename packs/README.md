@@ -1,6 +1,6 @@
 # packs/ — the corpus content, active by declaration
 
-Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session start when the pack is active), its **checks** (run at every Stop), and its **bundled skills** (`<pack>/skills/`, mounted at session start). **No pack is active by default** — every pack, the `basics` baseline included, activates only when declared in `.claudinite-settings.json` (bootstrap's `--init` seeds `basics` plus the fingerprinted technology packs; the nightly update backfills the explicit `basics` declaration into existing consumers). Discovery is structural — any `packs/<name>/pack.mjs` is a pack, and that manifest is the pack's index: what it owns, the checks it runs in each scope, the skills it bundles. A pack's `README.md` is **optional** and carries only what the manifest cannot — provenance, design rationale, an index of its prose. A README that restates the manifest is duplication with a drift risk, and several had already drifted.
+Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session start when the pack is active), its **checks** (run at every Stop), and its **bundled skills** (`<pack>/skills/`, mounted at session start). **No pack is active by default** — every pack, `basics` included, activates only when declared in `.claudinite-settings.json` (bootstrap's `--init` seeds `basics` plus the fingerprinted technology packs; the nightly update backfills the explicit `basics` declaration into existing consumers). Discovery is structural — any `packs/<name>/pack.mjs` is a pack, and that manifest is the pack's index: what it owns, the checks it runs in each scope, the skills it bundles. A pack's `README.md` is **optional** and carries only what the manifest cannot — provenance, design rationale, an index of its prose. A README that restates the manifest is duplication with a drift risk, and several had already drifted.
 
 ## Packs
 
@@ -286,7 +286,7 @@ questions: [{ id: 'ui_testing', prompt: 'How are the executable UI requirements 
 
 Only a pack a project **chooses** earns one. A pack that arrives through another's `requires` was
 never adopted, so its question reaches an owner who did not ask for it — which is why the
-folder-access graph, pulled in everywhere the baseline is declared, asks nothing and simply stays
+folder-access graph, pulled in everywhere basics is declared, asks nothing and simply stays
 inert until a repo writes one (#1681).
 
 The answers live **verbatim** on the pack's entry in `.claudinite-settings.json` (`answers:
@@ -313,7 +313,7 @@ manifest.
 ## Corpus size — checks vs prose
 
 Counted, never quoted: `check_the_world.mjs --list` prints the check catalog a rule at a time (id,
-severity, description, doc pointer), and each pack README's rule index carries that pack's prose rules
+on_fail, description, doc pointer), and each pack README's rule index carries that pack's prose rules
 with their size bands. Ask those two, in the tree in front of you. A total transcribed into this file
 is a copy of derived data that every pack change falsifies — it drifted to 41 against a real 65 once,
 and the ratio it fed was wrong by a third.

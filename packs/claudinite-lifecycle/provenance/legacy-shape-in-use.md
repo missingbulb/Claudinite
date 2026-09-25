@@ -45,3 +45,18 @@
 - **Actor:** claudinite/engine implement-request run, rebased and reconciled in an owner session.
 - **Model:** claude-opus-5
 - **Landed:** #1919
+
+## 2026-09-25 · scope-changed · also names a check's retired `severity` spelling
+- **Reason:** `severity: blocking|advisory` became `on_fail: block|advise` (owner decision,
+  2026-09-25); the engine still reads the old spelling in a settings override, a local pack's
+  declared check and a local pack's coded check, and a tolerance needs an advisory reaching whoever
+  holds it.
+- **Actor:** @missingbulb (owner).
+- **Mechanism:** this check: it already owns every declaration-shape tolerance's advisory, and it
+  reads the member's own files only, so a vendored pack's old spelling is left to that pack's
+  update.
+
+## 2026-09-25 · reworded · "converge" in the nightly-update sense reads "update"
+- **Reason:** owner decision: the mechanism that re-vendors a mount is called update; "converge"
+  stays only for a work item reaching its end state.
+- **Actor:** @missingbulb (owner).

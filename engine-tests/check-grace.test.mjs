@@ -17,7 +17,7 @@ const at = (iso) => new Date(Date.parse(iso));
 const emptyConfig = { rules: {}, accept: [] };
 
 const blocking = (extra = {}) => finding(
-  { id: 'newborn', severity: 'blocking', why: 'because', doc: null, ...extra },
+  { id: 'newborn', on_fail: 'block', why: 'because', doc: null, ...extra },
   { file: 'a.mjs', what: 'it happened', fix: 'stop it' },
 );
 
@@ -26,14 +26,14 @@ test('a blocking finding is advisory inside its rule\'s grace window, and blocki
   assert.equal(f.since, '2026-08-27');
 
   const inside = applyGrace([f], { now: at('2026-09-05T00:00:00Z') })[0];
-  assert.equal(inside.severity, 'advisory');
+  assert.equal(inside.on_fail, 'advise');
   assert.equal(inside.graceUntil, '2026-09-10');
 
   const onTheDay = applyGrace([f], { now: at('2026-08-27T00:00:00Z') })[0];
-  assert.equal(onTheDay.severity, 'advisory', 'the day it was added is inside the window');
+  assert.equal(onTheDay.on_fail, 'advise', 'the day it was added is inside the window');
 
   const after = applyGrace([f], { now: at('2026-09-10T00:00:00Z') })[0];
-  assert.equal(after.severity, 'blocking', 'the window is half-open — day 14 bites');
+  assert.equal(after.on_fail, 'block', 'the window is half-open — day 14 bites');
   assert.equal(after.graceUntil, undefined);
 });
 
@@ -43,24 +43,24 @@ test('the window is GRACE_DAYS long, measured from the declared date', () => {
 
 test('no date, an unparseable date, or a future date grants no grace', () => {
   const now = at('2026-08-27T12:00:00Z');
-  assert.equal(applyGrace([blocking()], { now })[0].severity, 'blocking');
-  assert.equal(applyGrace([blocking({ since: 'last tuesday' })], { now })[0].severity, 'blocking');
-  assert.equal(applyGrace([blocking({ since: '2099-01-01' })], { now })[0].severity, 'blocking');
+  assert.equal(applyGrace([blocking()], { now })[0].on_fail, 'block');
+  assert.equal(applyGrace([blocking({ since: 'last tuesday' })], { now })[0].on_fail, 'block');
+  assert.equal(applyGrace([blocking({ since: '2099-01-01' })], { now })[0].on_fail, 'block');
   assert.equal(graceUntil(undefined), null);
   assert.equal(graceUntil('27-08-2026'), null);
 });
 
 test('an advisory finding is untouched — the window only ever demotes', () => {
-  const f = finding({ id: 'soft', severity: 'advisory', since: '2026-08-27' }, { file: 'a.mjs', what: 'w', fix: 'f' });
-  assert.equal(applyGrace([f], { now: at('2026-08-28T00:00:00Z') })[0].severity, 'advisory');
+  const f = finding({ id: 'soft', on_fail: 'advise', since: '2026-08-27' }, { file: 'a.mjs', what: 'w', fix: 'f' });
+  assert.equal(applyGrace([f], { now: at('2026-08-28T00:00:00Z') })[0].on_fail, 'advise');
 });
 
 test('a project\'s own blocking override outranks the grace', () => {
   const f = blocking({ since: '2026-08-27' });
   const resolved = applyConfig(applyGrace([f], { now: at('2026-08-28T00:00:00Z') }), {
-    rules: { newborn: 'blocking' }, accept: [],
+    rules: { newborn: 'block' }, accept: [],
   });
-  assert.equal(resolved[0].severity, 'blocking');
+  assert.equal(resolved[0].on_fail, 'block');
 });
 
 test('the reporter does not fail the build over a finding inside its window, and says why', () => {
@@ -98,7 +98,7 @@ test('render omits the grace line for a finding that has no window', () => {
 test('a declared check carries `since` onto the rule it compiles to', () => {
   const rule = patternRule({
     id: 'declared-with-a-date',
-    severity: 'blocking',
+    on_fail: 'block',
     since: '2026-08-27',
     failureMessage: 'it matters',
     scanFiles: '/\\.mjs$/',
@@ -110,7 +110,7 @@ test('a declared check carries `since` onto the rule it compiles to', () => {
 test('a malformed `since` is an authoring error, not a silently missing grace', () => {
   assert.throws(() => patternRule({
     id: 'declared-with-a-bad-date',
-    severity: 'blocking',
+    on_fail: 'block',
     since: '27/08/2026',
     failureMessage: 'it matters',
     scanFiles: '/\\.mjs$/',

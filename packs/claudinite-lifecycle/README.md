@@ -80,7 +80,7 @@ scoped ones first — naming what the declared packs actually bundle.
 
 | Skill | For |
 |---|---|
-| [`adopt-claudinite`](skills/adopt-claudinite/SKILL.md) | setting a project up on Claudinite for the first time — mount, hooks, checks, skills — and re-baselining one to pick up updates |
+| [`adopt-claudinite`](skills/adopt-claudinite/SKILL.md) | setting a project up on Claudinite for the first time — mount, hooks, checks, skills — and re-vendoring one to pick up updates |
 | [`adopt-pack`](skills/adopt-pack/SKILL.md) | adding a pack to a repo that already runs Claudinite: declare, interview, re-vendor, scaffold, land |
 
 The adoption skills bundle two more checks of the same kind, over the answers a member stores

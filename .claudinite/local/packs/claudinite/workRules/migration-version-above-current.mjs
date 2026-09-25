@@ -109,7 +109,7 @@ const rule = {
   // written by an unattended growth run whose pull request self-merges, so the severity
   // is the one the growth ladder sets for hand-written logic nobody reviewed
   // (claudinite-growth/extracting-lessons.md). Promote it once it has fired for real.
-  severity: 'advisory',
+  on_fail: 'advise',
   scope: 'work',
   description: 'A migration record\'s version is above the version its flow currently carries',
   doc: 'engine/migrations/README.md',

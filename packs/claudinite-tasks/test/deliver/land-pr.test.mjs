@@ -68,7 +68,7 @@ test('deliveryFor: only an explicit true withholds the PR', () => {
   assert.equal(deliveryFor(null), DEFAULT_DELIVERY);
 });
 
-// The rename's window: a member carries the retired block until its own converge runs
+// The rename's window: a member carries the retired block until its own update runs
 // the record, and reading past it would land a `review` member's PR unreviewed.
 test('deliveryFor: the retired maintenance.delivery still speaks, and loses to the current key', () => {
   assert.equal(deliveryFor({ maintenance: { delivery: 'review' } }), 'review');
@@ -297,7 +297,7 @@ test('landAttempt polls while a run is still going, and gives up at the in-fligh
 // in 25s and one that took 3m29s, and the poll — bounded at 180s whether or not
 // anything was visibly happening — gave up 26 seconds before the second
 // concluded green. The next cycle's disposal then merged it a day later, so the
-// member ran a converge behind while every run reported success.
+// member ran one update behind while every run reported success.
 //
 // Nothing-visible is the case that must stay short: a dispatch that registered
 // nothing will never register it. A run we can SEE executing is the opposite —

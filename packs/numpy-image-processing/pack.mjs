@@ -10,7 +10,7 @@ const SCIPY = /\bscipy\b/i;
 
 export default {
   version: '60921.1',
-  minEngineVersion: '60822.1',
+  minEngineVersion: '60925.1',
   ruleRoutingGuidance: {
     belongs:
       'numeric image analysis in Python — deriving a mask/skeleton/threshold from a NumPy image array with SciPy ndimage and scikit-image',

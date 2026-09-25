@@ -12,7 +12,7 @@ const hasMarkerNearRoot = (ctx) =>
 
 export default {
   version: '60921.1',
-  minEngineVersion: '60822.1',
+  minEngineVersion: '60925.1',
   ruleRoutingGuidance: {
     belongs: 'the Cloudflare Workers platform: Wrangler, D1, R2, Vectorize, Workflows, Workers AI and Containers',
     excludes: 'serving a static site from Workers assets — cloudflare-site; a different serverless vendor — aws-sam; generic Node conventions — node',

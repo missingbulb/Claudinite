@@ -195,7 +195,7 @@ test('a converged tree that fails its self-test ends at needs-human, with the up
   assert.equal(r.status, NEEDS_HUMAN);
   assert.equal(r.selftest.ok, false);
   assert.match(r.selftest.output, /probes FAILED/);
-  assert.equal(stampOf(root).engineVersion, ENGINE_VERSION, 'the converge happened; the gate governs the merge');
+  assert.equal(stampOf(root).engineVersion, ENGINE_VERSION, 'the update happened; the gate governs the merge');
   removeTree(root);
 });
 
@@ -228,7 +228,7 @@ test('runSelfTest reports an absent gate as a failure, never as a pass', () => {
 // whether a path resolves IN THE CANON, which it did; the rehearsal fixtures are built
 // from the current canon, so none of them holds an older pack. Only the live canary
 // found it, by converging a real member that did — and it found it as a mount that
-// fails its own self-test, which is the state a converge refuses to land at all, so the
+// fails its own self-test, which is the state an update refuses to land at all, so the
 // member could not have received the fix either.
 test('every import in the engine lane resolves inside the engine lane', async () => {
   const { computeVendorSet } = await import('../vendoring/compute-vendor-set.mjs');

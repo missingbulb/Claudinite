@@ -18,3 +18,8 @@
 - **Mechanism:** the rule moves from the `claudinite` local pack's RULES.md into this pack's first
   RULES.md.
 - **Landed:** #1674 (Closes #1673) · pack version 60904.1.
+
+## 2026-09-25 · reworded · "converge" in the nightly-update sense reads "update"
+- **Reason:** owner decision: the mechanism that re-vendors a mount is called update; "converge"
+  stays only for a work item reaching its end state.
+- **Actor:** @missingbulb (owner).

@@ -14,7 +14,7 @@ test('a resolvable store is the healthy case and says nothing', () => {
 test('a declared pack with no store is reported, with the fix in the finding', () => {
   const [f] = rule.run(ctx({}));
   // A project mid-adoption sits here legitimately for a while; blocking would make that a build break.
-  assert.equal(f.severity, 'advisory');
+  assert.equal(f.on_fail, 'advise');
   assert.equal(f.file, '.claudinite-settings.json');
   assert.match(f.what, /declared but names no store/);
   assert.match(f.fix, /"repo": "owner\/name"/);

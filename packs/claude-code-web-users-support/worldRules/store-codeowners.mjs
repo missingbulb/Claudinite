@@ -10,7 +10,7 @@ const WRITER = 'node .claudinite/shared/packs/claude-code-web-users-support/writ
 
 const rule = {
   id: 'preferences-store-codeowners',
-  severity: 'advisory',
+  on_fail: 'advise',
   description: 'A personal-pack store this repo holds carries the CODEOWNERS block its person directories derive',
   doc: 'packs/claude-code-web-users-support/README.md',
   why: 'a person trusts that nobody but them or the admin edited their pack only while their directory has its code-owner line',

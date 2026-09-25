@@ -51,8 +51,8 @@ test('the stale mode really pins the fixture below the corpus before converging'
   const r = await rehearse(fixture, stale);
   assert.ok(r.ok, `\n${formatResult(r)}\n`);
   // apply-vendor-set advances the versions, so the POST-converge numbers are
-  // current; what must be true is that the converge ran against the pinned ones.
-  assert.ok(r.stamp?.engineVersion, 'the converge recorded no engine version at all');
+  // current; what must be true is that the update ran against the pinned ones.
+  assert.ok(r.stamp?.engineVersion, 'the update recorded no engine version at all');
   assert.notEqual(r.stamp.engineVersion, stale.installed.engineVersion,
     'the engine version was never advanced — apply-vendor-set did not run');
 });

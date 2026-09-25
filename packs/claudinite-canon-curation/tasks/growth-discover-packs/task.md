@@ -62,7 +62,7 @@ Deliver on the branch your item names — push to `Target-branch:` and open the 
 
 A pack is authored because a member's real files demonstrated the knowledge — so that member is the first repo that should be running it, and the sweep is the only thing that knows why. For **each** member the fleet view records at `core` or `supporting` prominence for the technology, open **one issue in that member repo**, titled exactly `Adopt canon pack: <name>`. Find it by that exact title first and leave an existing one alone — one issue per member per pack, converged, never a second copy on a later run.
 
-The body carries what the member cannot re-derive: **the evidence** (that repo's own files, the ones the pack was grounded in), **the canon PR** link, **the blocker** (nothing to do until that PR merges *and* this repo's next converge carries the pack — declaring a pack whose code is not on disk is a blocking `config` error), and **the action** once both hold: the `adopt-pack` skill, which declares it, asks its adoption questions and re-vendors.
+The body carries what the member cannot re-derive: **the evidence** (that repo's own files, the ones the pack was grounded in), **the canon PR** link, **the blocker** (nothing to do until that PR merges *and* this repo's next update carries the pack — declaring a pack whose code is not on disk is a blocking `config` error), and **the action** once both hold: the `adopt-pack` skill, which declares it, asks its adoption questions and re-vendors.
 
 Two things it is not:
 

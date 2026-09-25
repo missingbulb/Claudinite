@@ -12,7 +12,7 @@ import pack from '../pack.mjs';
 import { classifyDispatch } from '../fleet-api.mjs';
 import { main as roster } from '../tasks/fleet-roster/check-fleet-roster.mjs';
 import { main as seeds } from '../tasks/fleet-pack-seeds/check-fleet-pack-seeds.mjs';
-import { main as baseline } from '../tasks/fleet-baseline/force-fleet-baseline.mjs';
+import { main as fleetUpdate } from '../tasks/fleet-update/force-fleet-update.mjs';
 import { worker as addPacks } from '../tasks/fleet-add-missing-packs/worker.mjs';
 
 // The token is granted ONCE, for the whole pack, so what any one sweep says when it is
@@ -38,7 +38,7 @@ const BAG = {
 const SWEEPS = [
   ['fleet-roster', roster],
   ['fleet-pack-seeds', seeds],
-  ['fleet-baseline', baseline],
+  ['fleet-update', fleetUpdate],
   ['fleet-add-missing-packs', () => addPacks(BAG)],
 ];
 

@@ -23,7 +23,7 @@ import { findExtensionManifest } from '../../engine/checks/helpers/chrome-manife
 // prose: it is long, and only the checks need to be eager.
 export default {
   version: '60922.4',
-  minEngineVersion: '60822.1',
+  minEngineVersion: '60925.1',
   ruleRoutingGuidance: {
     belongs: 'writing and shipping a Chrome extension: MV3 service-worker, permission, content-script and auth gotchas, plus Web Store release, versioning and privacy',
     excludes: 'generic workflow lint rules — git-github; shipping to a different store — the app-store-release and play-store-release packs',

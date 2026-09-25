@@ -23,7 +23,7 @@ test('content-script-module-syntax: flags a top-level import in a static content
   try {
     const findings = run(root);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].severity, 'blocking');
+    assert.equal(findings[0].on_fail, 'block');
     assert.equal(findings[0].file, 'content/main.js');
     assert.equal(findings[0].line, 1);
     assert.match(findings[0].what, /top-level `import`/);

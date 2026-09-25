@@ -10,7 +10,7 @@ ruleTester(notarizeThenStaple, {
     'a release script that submits and never staples': {
       files: { 'scripts/release.sh': `#!/bin/bash\nset -euo pipefail\n${SUBMIT}` },
       at: [{
-        file: 'scripts/release.sh', line: 3, severity: 'blocking',
+        file: 'scripts/release.sh', line: 3, on_fail: 'block',
         what: /submits the artifact to the notary service/,
         fix: /stapler staple/,
       }],

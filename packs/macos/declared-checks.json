@@ -1,7 +1,7 @@
 [
   {
     "id": "sudden-termination-vs-teardown",
-    "severity": "blocking",
+    "on_fail": "block",
     "failureMessage": "sudden termination licenses macOS to SIGKILL the app at logout, skipping applicationWillTerminate and every teardown there — an abandoned CoreAudio tap can wedge a USB device until re-plugged",
     "relevantWhen": {
       "someTrackedFileContains": {
@@ -21,7 +21,7 @@
   },
   {
     "id": "notarize-then-staple",
-    "severity": "blocking",
+    "on_fail": "block",
     "since": "2026-09-15",
     "failureMessage": "an unstapled artifact carries no ticket, so Gatekeeper must reach Apple the first time a user opens it — and never has to on the machine that submitted it",
     "scanFiles": "/\\.(sh|bash|zsh|ya?ml|mjs|cjs|jsx?|tsx?|py|rb)$|(^|\\/)Makefile$/",

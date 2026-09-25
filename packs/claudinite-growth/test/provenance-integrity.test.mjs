@@ -18,8 +18,8 @@ const clean = {
   [`${PACK}RULES.md`]: '- **Doing a thing** — the settled way. (doing-thing)\n\n- **Doing another** — plainly.\n  (doing-another)\n',
   [`${PACK}skills/how/SKILL.md`]: '---\nname: how\nmetadata:\n  body: workflow\n---\n\n1. First. (3)\n',
   [`${PACK}skills/rules/SKILL.md`]: '---\nname: rules\nmetadata:\n  body: guidelines\n---\n\n- **Guideline one** — do it. (guideline-one)\n',
-  [`${PACK}worldRules/my-rule.mjs`]: "const rule = { id: 'my/rule', severity: 'blocking' };\nexport default rule;\n",
-  [`${PACK}declared-checks.json`]: '[{ "id": "declared-one", "severity": "advisory", "failureMessage": "m" }]\n',
+  [`${PACK}worldRules/my-rule.mjs`]: "const rule = { id: 'my/rule', on_fail: 'block' };\nexport default rule;\n",
+  [`${PACK}declared-checks.json`]: '[{ "id": "declared-one", "on_fail": "advise", "failureMessage": "m" }]\n',
   [`${PACK}tasks/nightly/task.json`]: '{}\n',
   [`${PACK}provenance/doing-thing.md`]: BORN,
   [`${PACK}provenance/doing-another.md`]: '',
@@ -36,7 +36,7 @@ const clean = {
 // The same pack with every file filled, so a flagged case reads its one fault and no
 // pending-history advisories beside it.
 const filled = Object.fromEntries(Object.entries(clean).map(([k, v]) => [k, v === '' ? BORN : v]));
-const notAdvisory = (findings) => findings.filter((f) => f.severity !== 'advisory');
+const notAdvisory = (findings) => findings.filter((f) => f.on_fail !== 'advise');
 // A guidelines skill whose bullets share the skill's file but for the one that has its own,
 // and a RULES.md where two rules name one file: one history, one file (the owner's call of
 // 2026-09-20), split only when the histories diverge.
@@ -100,7 +100,7 @@ ruleTester(worldRule, {
     },
     'a pack-root references.md is the retired convention, tolerated at advisory with the conversion in the fix': {
       files: { ...filled, [`${PACK}references.md`]: '- **(RULES-3)** old\n' },
-      at: [{ file: `${PACK}references.md`, severity: 'advisory', what: /retired rationale convention/, fix: /convert-references mypack/ }],
+      at: [{ file: `${PACK}references.md`, on_fail: 'advise', what: /retired rationale convention/, fix: /convert-references mypack/ }],
     },
     'the canon shelf is judged the same way': {
       files: { 'packs/somepack/pack.mjs': 'export default {};\n', 'packs/somepack/RULES.md': '- **Doing a thing** — no marker.\n', 'packs/somepack/provenance/_pack.md': BORN },
@@ -139,8 +139,8 @@ test('provenance-change-recorded: a new rule, a changed skill body, a changed ch
     [`${PACK}RULES.md`]: `${filled[`${PACK}RULES.md`]}\n- **Doing a third** — newly. (doing-third)\n`,
     [`${PACK}provenance/doing-third.md`]: '',
     [`${PACK}skills/how/SKILL.md`]: '---\nname: how\nmetadata:\n  body: workflow\n---\n\n1. First, differently. (3)\n',
-    [`${PACK}worldRules/my-rule.mjs`]: "const rule = { id: 'my/rule', severity: 'advisory' };\nexport default rule;\n",
-    [`${PACK}declared-checks.json`]: '[{ "id": "declared-one", "severity": "blocking", "failureMessage": "m" }]\n',
+    [`${PACK}worldRules/my-rule.mjs`]: "const rule = { id: 'my/rule', on_fail: 'advise' };\nexport default rule;\n",
+    [`${PACK}declared-checks.json`]: '[{ "id": "declared-one", "on_fail": "block", "failureMessage": "m" }]\n',
     [`${PACK}tasks/nightly/task.json`]: '{ "automerge": ["nothing"] }\n',
     [`${PACK}pack.mjs`]: 'export default { requires: ["acme-pack"] };\n',
   });
@@ -153,7 +153,7 @@ test('provenance-change-recorded: a new rule, a changed skill body, a changed ch
   assert.ok(whats.some((w) => /task nightly changed/.test(w)));
   assert.ok(whats.some((w) => /the manifest changed/.test(w)));
   assert.deepEqual(runWork({
-    [`${PACK}worldRules/my-rule.mjs`]: "// a comment\nconst rule = { id: 'my/rule', severity: 'blocking' };\nexport default rule;\n",
+    [`${PACK}worldRules/my-rule.mjs`]: "// a comment\nconst rule = { id: 'my/rule', on_fail: 'block' };\nexport default rule;\n",
     [`${PACK}pack.mjs`]: '// why the pack exists\nexport default {};\n',
   }), [], 'a comment is not a decision');
 });
@@ -161,7 +161,7 @@ test('provenance-change-recorded: a new rule, a changed skill body, a changed ch
 test('provenance-change-recorded: a provenance file is meant to grow, and a lost or altered line is advised against, never refused', () => {
   const edited = runWork({ [`${PACK}provenance/doing-thing.md`]: BORN.replace('failed twice', 'failed thrice') });
   assert.equal(edited.length, 1);
-  assert.equal(edited[0].severity, 'advisory', 'a rewrite that is the correct history is the diff\'s to show, not the check\'s to refuse');
+  assert.equal(edited[0].on_fail, 'advise', 'a rewrite that is the correct history is the diff\'s to show, not the check\'s to refuse');
   assert.match(edited[0].what, /lost or altered a line it had at the base/);
   assert.match(edited[0].fix, /leave it where the rewrite is the correct history/);
   assert.deepEqual(runWork({ [`${PACK}provenance/doing-thing.md`]: BORN + REWORDED }), []);

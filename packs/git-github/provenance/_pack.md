@@ -34,3 +34,9 @@
 - **Actor:** @missingbulb (owner).
 - **Model:** Claude Opus 5, per the commit trailer.
 - **Landed:** #1248 (Closes #1246) · pack version 60822.2.
+
+## 2026-09-25 · scope-changed · `minEngineVersion` rises to 60925.1
+- **Reason:** this pack's checks declare `on_fail`, which an older engine does not read; the pack
+  update holds this version until the member's engine is at 60925.1.
+- **Actor:** @missingbulb (owner).
+- **Mechanism:** the manifest's `minEngineVersion`, which the pack update enforces.

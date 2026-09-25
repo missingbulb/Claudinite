@@ -11,7 +11,7 @@ import { samResources } from '../../../engine/checks/helpers/sam-templates.mjs';
 // drop) or when there is more than one entry point (behavior differs).
 const rule = {
   id: 'aws-sam/handler-path',
-  severity: 'blocking',
+  on_fail: 'block',
   description: 'A SAM esbuild single-entry Handler must not carry the entry subdirectory',
   doc: 'packs/aws-sam/RULES.md',
   why: "esbuild's default outbase is the entry's own dir, so the subdir is stripped from the artifact and a subdir Handler fails at invoke",

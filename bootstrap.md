@@ -66,7 +66,7 @@ day-to-day work.
 ## Part 2 — the pack declaration and the adoption interview
 
 The script seeds `.claudinite-settings.json` (sharing `check_the_world.mjs --init`'s seeding): the
-baseline, the technology packs the repo's fingerprint suspects, the default-on maintenance packs,
+`basics` pack, the technology packs the repo's fingerprint suspects, the default-on maintenance packs,
 each declared pack's `requires` closure, and `"maintenance": { "delivery": "auto-merge" }`. A
 fingerprint only *suspects* a pack — from here on the declaration is authoritative and
 adding/dropping packs is the project's call; offer the owner that call from the full pack
@@ -147,10 +147,10 @@ what you need. The `claudinite-isolation` check enforces this outside the wiring
 A consuming project schedules **itself** (docs/PRINCIPLES.md). The script converges
 the mechanical half: the `claudinite-scheduler.yml` workflow at the repo's stable hashed cron
 minute and hours (computed, never guessed: `hash-minute.mjs`, a pure function of the full
-name; written once here and preserved by every converge after), the
+name; written once here and preserved by every update after), the
 executor workflow, the rules index and its
 `CLAUDE.md` import, the README pack-badge row and this repo's own seed local pack — the last two
-one-time seeds the repo owns from there (baselining deliberately re-passes neither). Labels need
+one-time seeds the repo owns from there (the update deliberately re-passes neither). Labels need
 no step either: the scheduler run and the executor create the queue's labels if missing.
 
 What remains is **the executor routine and the endpoint that points at it** — the adopting

@@ -22,7 +22,7 @@ const PACK_DIR = join(ROOT, 'packs/claudinite-dashboard');
 
 // --- build-site, against a simulated member mount ----------------------------------
 
-// Stand up a member the way a converge leaves one: the pack and the engine side by
+// Stand up a member the way an update leaves one: the pack and the engine side by
 // side under `.claudinite/shared/`. The relative imports the page uses resolve only
 // if that shape is right, so building here is what proves the shape.
 async function member(declaration, extraFiles = {}) {
@@ -197,7 +197,7 @@ test('a declared pair still builds a signed-in site, and says it is on the old f
 });
 
 // An adopted-but-not-yet-converged member is the ordinary state on a fleet, not a
-// fault. Failing here would paint every run red until the converge caught up.
+// fault. Failing here would paint every run red until the update caught up.
 test('a mount without the page produces nothing and exits clean', async (t) => {
   const dir = await mkdtemp(join(tmpdir(), 'cd-bare-'));
   t.after(() => rm(dir, { recursive: true, force: true }));

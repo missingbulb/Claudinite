@@ -31,7 +31,7 @@ test('pack-no-enforcement-narration: flags prose naming a rule the pack itself d
   try {
     const findings = run(root);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].severity, 'blocking');
+    assert.equal(findings[0].on_fail, 'block');
     assert.equal(findings[0].line, 3);
     assert.match(findings[0].what, /names its own check rule "demo-rule"/);
   } finally { cleanup(root); }

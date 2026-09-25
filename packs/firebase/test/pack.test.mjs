@@ -92,7 +92,7 @@ test('functions-predeploy-build: flags a build script with no predeploy hook', (
   try {
     const findings = run(functionsPredeployBuild, root);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].severity, 'blocking');
+    assert.equal(findings[0].on_fail, 'block');
     assert.equal(findings[0].file, 'firebase.json');
     assert.match(findings[0].what, /no predeploy hook/);
   } finally { cleanup(root); }

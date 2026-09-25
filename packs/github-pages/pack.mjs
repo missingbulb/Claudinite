@@ -7,7 +7,7 @@ import { adoptedPages, CONFIG_PATH } from './lib.mjs';
 // pack's `public/version.mjs` to advance it when the pack is declared.
 export default {
   version: '60922.3',
-  minEngineVersion: '60822.1',
+  minEngineVersion: '60925.1',
   ruleRoutingGuidance: {
     belongs: 'serving a site from GitHub Pages: the nightly release, the vendored deploy workflow, site.config, the serving subpath',
     excludes: 'the version scheme and the page stamp — public-website; markup — html',

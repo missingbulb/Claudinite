@@ -9,7 +9,7 @@
 // adopt-pack skill after), and the repo owns them from that moment. That is affordable
 // because their content is static: secrets travel as one fixed line, the cron minute and
 // anchor hours are written once here, and every `run:` names a mount path behind which
-// the code converges nightly.
+// the code updates nightly.
 //
 // Operates on a repo working tree at `root` with node:fs directly, returning a summary of
 // what it wrote — idempotent: a repo already carrying both files produces an empty list.
@@ -69,7 +69,7 @@ export async function declaredSecrets(root, config) {
 // malicious-workflow detection flags (#1336): the run parks with zero jobs until a
 // person approves it, which an unattended queue can neither absorb nor notice. The
 // cost this reinstates is real and known — the file becomes a function of the task
-// set again, and `.github/workflows/` is the one path a converge cannot write, so a
+// set again, and `.github/workflows/` is the one path an update cannot write, so a
 // NEW secret needs a human-merged PR in every member (#1296). That is the trade the
 // owner took: a rare human-merged PR beats a permanent human click on every run.
 //

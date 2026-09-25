@@ -302,11 +302,11 @@ order of strength:
   A paragraph restating a landed check's message or its rationale pays twice and springs the
   corpus's own drift trap (two sources of truth). The per-paragraph decision is the
   `prose-to-checks` skill's deletion test, applied by a reader.
-- **Fail fast: a new check ships at its real severity — blocking for defect-kind rules.** A
+- **Fail fast: a new check ships at its real `on_fail` - `block` for defect-kind rules.** A
   wrong blocking check surfaces in the very next session and gets fixed; an advisory false
   positive is noise nobody reads, so a burn-in stage never actually observes the precision it
   waits for. The escape hatches bound a bad check's blast radius: a reasoned acceptance, a
-  severity override, and the Stop hook's own two-block release. `advisory` remains a per-rule
+  on_fail override, and the Stop hook's own two-block release. `advise` remains a per-rule
   **kind**, not a stage — for rules whose own semantics are directional (a placement rule's
   metric is "a direction, not a hard gate"), where a finding is a smell to judge, not a defect
   to fix. Revisit delayed adoption only if the fleet grows people who can be hurt by a wrong

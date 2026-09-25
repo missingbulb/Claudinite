@@ -1,5 +1,5 @@
 // A PACK'S CONTENT IS DELIVERED ON ITS VERSION NUMBER, and on nothing else. The
-// engine tree vendors wholesale on every converge; a pack's directory ships only
+// engine tree vendors wholesale on every update; a pack's directory ships only
 // where `planPackUpdates` sees `installed.packVersions[id] < pack.version`. So a
 // canon commit that edits `packs/<id>/` without moving that number reaches no member —
 // the fleet keeps the old bytes while the canon believes the change shipped (#939

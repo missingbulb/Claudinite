@@ -278,7 +278,7 @@ test('every record folder is <landed>-<slug>/migration.mjs, prefix matching its 
 
 // A workflow materialization can only be written by a caller that can get it delivered.
 // Writing one into a tree an Action-token push is about to carry does not deliver a
-// workflow — it rejects the whole ref and fails the converge with everything riding it.
+// workflow — it rejects the whole ref and fails the update with everything riding it.
 
 test('applyMaterializations: a workflow dest is skipped unless the caller announced it can withhold', async () => {
   const m = M({ materialize: [
@@ -338,6 +338,28 @@ test('sheepdog-fleet-baseline migration: gated on declaring the pack, and on not
   assert.equal(await m.legacyPresent(() => false, async () => null), false);
 });
 
+test('fleet-update-rename migration: a disabledTasks entry moves onto the new id, and applying twice changes nothing', async () => {
+  const m = (await loadMigrations()).find((x) => x.id === 'fleet-update-rename');
+  assert.ok(m, 'discovered');
+  const settings = (ids) => `${JSON.stringify({ packs: ['claudinite-fleet-sheepdog'], taskScheduler: { disabledTasks: ids } }, null, 2)}\n`; // @real-entity the record under test names this pack; that is its content
+  const files = new Map([['.claudinite-settings.json', settings(['claudinite-fleet-sheepdog/fleet-baseline', 'acme-pack/acme-task'])]]); // @real-entity the retired task id is what the record rewrites
+  const io = { read: async (p) => files.get(p) ?? null, write: async (p, c) => { files.set(p, c); } };
+
+  assert.equal(await m.legacyPresent(() => false, io.read), true);
+  assert.deepEqual(await applyRewrites(m, io), ['.claudinite-settings.json']);
+  assert.deepEqual(JSON.parse(files.get('.claudinite-settings.json')).taskScheduler.disabledTasks,
+    ['claudinite-fleet-sheepdog/fleet-update', 'acme-pack/acme-task']); // @real-entity the renamed task id is what the record writes
+  assert.equal(await m.legacyPresent(() => false, io.read), false);
+  assert.deepEqual(await applyRewrites(m, io), [], 'a second apply is a no-op');
+
+  // A repo that never named the lever, or has no declaration, is untouched.
+  files.set('.claudinite-settings.json', settings(['acme-pack/acme-task']));
+  assert.deepEqual(await applyRewrites(m, io), []);
+  files.clear();
+  assert.deepEqual(await applyRewrites(m, io), []);
+  assert.equal(await m.legacyPresent(() => false, io.read), false);
+});
+
 test('chrome-release-vendoring migration: gate, telemetry, and the vendoring round-trip', async () => {
   const m = (await loadMigrations()).find((x) => x.id === 'chrome-release-vendoring');
   assert.ok(m, 'discovered');
@@ -363,7 +385,7 @@ test('chrome-release-vendoring migration: gate, telemetry, and the vendoring rou
   const read = (p) => repo.get(p) ?? null;
   const write = (p, c) => repo.set(p, c);
   // Five of this record's ten materializations are WORKFLOW files, so the caller has to
-  // be one that can deliver them — the same handshake baselining's worker makes. Run it
+  // be one that can deliver them — the same handshake the pack update makes. Run it
   // without the announcement and those five are skipped instead of wedging the push, which
   // is the hazard a workflow materialization carries for a caller that cannot push one.
   const capable = { [WITHHOLD_CAPABLE_ENV]: '1' };
@@ -858,7 +880,7 @@ test('executor-vars-bag: inserts the bag, preserves each member\'s stamped secre
   assert.match(after, /^ {10}# claudinite:secrets$/m);
   // The bag sits ABOVE the marker, outside the region the wiring converge regenerates.
   assert.ok(after.indexOf('CLAUDINITE_VARS:') < after.indexOf('# claudinite:secrets'),
-    'inside the stamped region the next converge would overwrite it');
+    'inside the stamped region the next update would overwrite it');
 
   // Re-running must not double the block: appliesTo is the guard, since split/join would
   // happily match the anchor a second time.
@@ -884,7 +906,7 @@ test('executor-vars-redelivery re-issues the same rewrite above where the strand
   // importing them, because the vendor set carries only records that still apply — and
   // the members this exists for are exactly the ones the original no longer applies to,
   // so an import would resolve to a file their mount does not carry, fail
-  // pack-independence, and stop the converge landing at all. Copied text drifts, so the
+  // pack-independence, and stop the update landing at all. Copied text drifts, so the
   // two are compared here instead.
   assert.deepEqual(reissue.rewrite, original.rewrite,
     'the two records must write the same block; the copy is what pack-independence forces');
@@ -1003,13 +1025,13 @@ test('movePackOwnedSettings: dormant lands on the tasks pack entry and leaves th
   const { done, after } = await moveDormant({
     packs: ['acme-pack', { id: 'claudinite-tasks', config: { other: 1 } }], // @real-entity the record under test names this pack; that is its content
     dormant: true,
-    rules: { 'some-rule': 'blocking' },
+    rules: { 'some-rule': 'block' },
   });
   assert.equal(done.length, 1);
   assert.equal(after.dormant, undefined, 'the retired spelling is gone');
   assert.deepEqual(after.packs[1], { id: 'claudinite-tasks', config: { other: 1, dormant: true } }, // @real-entity the record under test names this pack; that is its content
     'the entry keeps the parameters it already had');
-  assert.deepEqual(after.rules, { 'some-rule': 'blocking' }, 'nothing else the member wrote is touched');
+  assert.deepEqual(after.rules, { 'some-rule': 'block' }, 'nothing else the member wrote is touched');
 });
 
 test('movePackOwnedSettings: a bare string entry is promoted to carry the parameter', async () => {

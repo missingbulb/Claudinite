@@ -16,7 +16,7 @@ ruleTester(publishesASiteDirectory, {
   flagged: {
     'a repo with no wrangler config at all': {
       files: { 'site/index.html': '<p>x</p>' },
-      at: [{ severity: 'blocking', what: /no wrangler\.json or wrangler\.jsonc/, fix: /TOML config/ }],
+      at: [{ on_fail: 'block', what: /no wrangler\.json or wrangler\.jsonc/, fix: /TOML config/ }],
     },
     'a config that does not parse': {
       files: { 'wrangler.json': '{ "assets": ', 'site/index.html': '<p>x</p>' },

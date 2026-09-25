@@ -8,7 +8,7 @@ const carriesAStamp = (ctx) => ctx.tracked.some((f) => isPage(f) && new RegExp(S
 
 export default {
   version: '60921.1',
-  minEngineVersion: '60822.1',
+  minEngineVersion: '60925.1',
   ruleRoutingGuidance: {
     belongs: 'being a public website whatever serves it: the version scheme and page stamp, client-side caching and data freshness',
     excludes: 'how the site is built, served or released — the hosting pack declared beside this one; markup — html',

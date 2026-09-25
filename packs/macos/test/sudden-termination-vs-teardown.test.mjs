@@ -35,7 +35,7 @@ ruleTester(suddenTermination, {
       // The declared form judges the whole plist (the key/value pair spans
       // lines), so the finding anchors at the file, not a line.
       at: [{
-        file: 'Resources/Info.plist', line: null, severity: 'blocking',
+        file: 'Resources/Info.plist', line: null, on_fail: 'block',
         fix: /remove the NSSupportsSuddenTermination key/,
       }],
     },

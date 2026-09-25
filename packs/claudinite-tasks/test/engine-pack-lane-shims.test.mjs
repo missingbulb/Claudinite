@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 // It vanished once (#1004). `packs/acme-pack-b/task-declaration-shape.mjs` imported
 // the engine's own `slots.mjs`, #974 renamed that to `calendar.mjs`, and the next
 // member to converge got a mount whose `core` pack would not load — which fails the
-// self-test, which makes the converge refuse to land AT ALL, so the member could not
+// self-test, which makes the update refuse to land AT ALL, so the member could not
 // even receive the pack version that would have fixed it.
 //
 // QUANTIFIED OVER HISTORY, NOT A LIST. Which symbols matter is a fact about the pack
@@ -94,5 +94,5 @@ test('every engine module a fielded pack version imports still resolves, with th
       if (!(s in mod)) missing.push(`${path} no longer exports \`${s}\``);
     }
   }
-  assert.deepEqual(missing, [], `a fielded pack version imports these and would break mid-converge:\n  ${missing.join('\n  ')}`);
+  assert.deepEqual(missing, [], `a fielded pack version imports these and would break mid-update:\n  ${missing.join('\n  ')}`);
 });

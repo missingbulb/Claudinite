@@ -1,7 +1,7 @@
 [
   {
     "id": "flutter/network-fetch-in-widget-tree",
-    "severity": "blocking",
+    "on_fail": "block",
     "since": "2026-09-20",
     "failureMessage": "widget tests block real HTTP, so a tree that fetches its own images renders error boxes where the golden expects the picture",
     "scanFiles": "/(^|\\/)lib\\/(ui|screens|widgets)\\/.*\\.dart$/",
@@ -16,7 +16,7 @@
   },
   {
     "id": "flutter/device-clock-not-injected",
-    "severity": "blocking",
+    "on_fail": "block",
     "since": "2026-09-20",
     "failureMessage": "a time read off the device clock cannot be pinned by a test, so a relative-time widget is untestable and its golden drifts with the wall clock",
     "scanFiles": "/(^|\\/)lib\\/.*\\.dart$/",

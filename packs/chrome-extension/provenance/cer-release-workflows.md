@@ -27,3 +27,13 @@
 - **Mechanism:** the tolerance now fires an advisory naming the window its tolerance ends on, annotated `@legacy-tolerance advisory:cer/release-workflows retire:#1643`, so the holder is told in its own repo and the removal is a dated link rather than a census.
 - **Rejected:** gating the removal on "no repo still makes those calls" - a census the canon cannot take, since it cannot see which members are live, inert or stale.
 - **Landed:** #1645 (Refs #1637), #1653 (Refs #1652) · pack versions 60903.3 and 60903.4; the removal issue #1643.
+
+## 2026-09-25 · reworded · `severity: blocking|advisory` is spelled `on_fail: block|advise`
+- **Reason:** owner decision, 2026-09-25: the field names what happens when the check fails, and
+  *severity* keeps its impact sense; what this element enforces is unchanged.
+- **Actor:** @missingbulb (owner).
+
+## 2026-09-25 · reworded · "baseline" / "baselining" vocabulary retired
+- **Reason:** owner decision: the mechanism that re-vendors a mount is called update, and the pack
+  every repo declares is basics; the baseline wording named a retired mechanism.
+- **Actor:** @missingbulb (owner).

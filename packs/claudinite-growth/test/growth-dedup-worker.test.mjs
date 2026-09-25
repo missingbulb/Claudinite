@@ -59,7 +59,7 @@ test('addedCheckIds: a declared-checks.json patch yields the ids it ADDED', () =
   const patch = [
     '@@ -10,6 +10,12 @@',
     '+    "id": "pack-entry-await",',
-    '+    "severity": "blocking",',
+    '+    "on_fail": "block",',
     '+    "id": "acme-check-b",',
     '-    "id": "retired-thing",',
   ].join('\n');
@@ -92,7 +92,7 @@ test('summarizeCanonWindow: declared canon packs only, files merged across commi
     ]),
     commit('b', [
       { filename: '.claudinite/shared/packs/acme-pack/RULES.md', patch: '@@\n+a third added rule' },
-      { filename: '.claudinite/shared/packs/acme-pack/declared-checks.json', patch: '@@\n+  { "id": "new-check", "severity": "advisory" }' },
+      { filename: '.claudinite/shared/packs/acme-pack/declared-checks.json', patch: '@@\n+  { "id": "new-check", "on_fail": "advise" }' },
     ]),
   ];
   const summary = summarizeCanonWindow(commits, ['acme-pack', 'acme-pack-b']);
@@ -137,7 +137,7 @@ test('renderBrief: the added lines and new check ids, under the window it covers
   const summary = summarizeCanonWindow([
     commit('a', [
       { filename: 'packs/acme-pack/RULES.md', patch: PATCH },
-      { filename: 'packs/acme-pack/declared-checks.json', patch: '@@\n+  { "id": "new-check", "severity": "advisory" }' },
+      { filename: 'packs/acme-pack/declared-checks.json', patch: '@@\n+  { "id": "new-check", "on_fail": "advise" }' },
     ]),
   ], ['acme-pack']);
   const brief = renderBrief(summary, { sinceIso: '2026-08-09T00:00:00Z' });
@@ -201,7 +201,7 @@ test('handoffDetail: names what the window held, including when it held nothing'
   // describes the window; it never re-decides the run.
   const full = summarizeCanonWindow([commit('a', [
     { filename: 'packs/acme-pack/RULES.md', patch: PATCH },
-    { filename: 'packs/acme-pack/declared-checks.json', patch: '@@\n+  { "id": "new-check", "severity": "advisory" }' },
+    { filename: 'packs/acme-pack/declared-checks.json', patch: '@@\n+  { "id": "new-check", "on_fail": "advise" }' },
   ])], ['acme-pack']);
   assert.match(handoffDetail(full), /acme-pack/);
   assert.match(handoffDetail(full), /1 new check/);

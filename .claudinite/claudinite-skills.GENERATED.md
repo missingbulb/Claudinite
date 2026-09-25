@@ -1,4 +1,4 @@
-<!-- GENERATED — do not hand-edit; every converge rewrites it. Edit a skill's SKILL.md frontmatter. -->
+<!-- GENERATED — do not hand-edit; every update rewrites it. Edit a skill's SKILL.md frontmatter. -->
 # Skills mounted here, and what loads each one
 
 A skill loads when the session's activity matches its description. A skill that names files
@@ -24,7 +24,7 @@ and an edit made another way is caught at Stop.
 
 | Skill | Pack | Loads when |
 |---|---|---|
-| `adopt-claudinite` | claudinite-lifecycle | Bootstrap Claudinite into a consuming repo — mount, hooks, checks, skills. Use when asked to bootstrap, adopt, or set up Claudinite, or to baseline a repo to pick up updates. |
+| `adopt-claudinite` | claudinite-lifecycle | Bootstrap Claudinite into a consuming repo — mount, hooks, checks, skills. Use when asked to bootstrap, adopt, or set up Claudinite, or to re-vendor a repo's mount to pick up updates. |
 | `adopt-pack` | claudinite-lifecycle | Add one or more packs to an already-adopted Claudinite member — declare, run each pack's adoption interview, re-vendor, scaffold, land. Use when asked to adopt, add, enable, or declare a pack (e.g. product-wiki, executable-requirements) on a repo that already runs Claudinite. |
 | `backfilling-provenance` | claudinite-growth | Filling a pack's empty provenance files from its history. Use when a pack under packs/ or .claudinite/local/packs/ carries empty provenance files, or when asked to backfill or write a pack's provenance. |
 | `bug-investigation` | basics | Method for investigating a bug and pinning down its root cause. Use when investigating a bug report, when a fix didn't hold or a bug recurs, or when a report doesn't reproduce against main. |
@@ -37,7 +37,7 @@ and an edit made another way is caught at Stop.
 | `extract-packs-from-a-project` | claudinite-canon-curation | Decompose a project into its pack facets (working-style class, technology, aspect, domain) and author the canon packs those facets earn. Use from a canon when a project's evidence shows a facet its shelf does not yet home — the curation stages' pack-writing method, and an owner's when asking what a project has taught the shelf. |
 | `fetching-from-the-web` | basics | Reading a page or a file from the web in a session — exact bytes over a summarizing fetch, and what a 403 or an egress block means. Use before any WebFetch or curl, and when a fetch is denied. |
 | `file-placement` | basics | Where a file should live — the reference-distance metric, the high-reach code smell, and the mandated-location, test-location and plugin-contract exemptions. Use before placing, moving, or renaming a file, or when reviewing where one lives. |
-| `git-github-advanced` | git-github | Git/GitHub procedures beyond the baseline lifecycle. Use for commit layering, recovering a branch after a squash-merge, CI-trigger rules, GitHub Actions gotchas, or merge-relocation traps. |
+| `git-github-advanced` | git-github | Git/GitHub procedures beyond the basics task lifecycle. Use for commit layering, recovering a branch after a squash-merge, CI-trigger rules, GitHub Actions gotchas, or merge-relocation traps. |
 | `github-actions-scheduling` | git-github | What a GitHub Actions `schedule:` trigger actually guarantees — late fires, dropped fires, the 60-day disable — and how to build and describe scheduled work around it. Use when adding, changing, explaining, or debugging anything that runs on a cron in GitHub Actions. |
 | `growth-dedup` | claudinite-growth | Prune a repo's local packs of items the mounted Claudinite canon now covers — remove, strip to residue, or track a wording drift, never grow an entry. Use when the growth dedup task runs, or when asked to reconcile or dedup local packs against the canon. |
 | `improve-comments` | basics | Improve a repo's own comments as a pass of their own: delete, correct, add the why. Use when working a repo's comments deliberately (the basics pack's improve-comments task), never as a side effect of another change. |

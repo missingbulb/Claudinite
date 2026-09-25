@@ -185,7 +185,7 @@ export async function computeVendorSet(declaredEntries, { today, installed = nul
   // the set otherwise carries only the declared packs, so without this catalog
   // a member session has no view of what else it could adopt (#726). Missing
   // is canon-side breakage — a mount silently without it would blind the whole
-  // fleet to the catalog — so it aborts the converge like any other set error.
+  // fleet to the catalog — so it aborts the update like any other set error.
   if (existsSync(join(canonRoot, PACK_DIRECTORY_FILE))) files.add(PACK_DIRECTORY_FILE);
   else errors.push({ what: `${PACK_DIRECTORY_FILE} is missing from the canon tree`, fix: 'regenerate it (its drift test in engine-tests/ renders it from the pack manifests) and commit it' });
 

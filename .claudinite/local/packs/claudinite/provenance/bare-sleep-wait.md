@@ -23,3 +23,8 @@
 - **Mechanism:** a second `guardToolCalls` entry matching a `for` loop whose body is nothing but the
   sleep; `while`/`until` polling on a real condition stays clean.
 - **Landed:** #1867 (Refs #1863).
+
+## 2026-09-25 · reworded · `severity: blocking|advisory` is spelled `on_fail: block|advise`
+- **Reason:** owner decision, 2026-09-25: the field names what happens when the check fails, and
+  *severity* keeps its impact sense; what this element enforces is unchanged.
+- **Actor:** @missingbulb (owner).

@@ -16,7 +16,7 @@ session needs no architecture lesson, its rules arrive injected):
 - **`packs/<name>/`** — a pack bundles everything it contributes: prose (`RULES.md`, injected at
   session start when the pack is declared), checks (run at every Stop), **and its skills**
   (`<pack>/skills/<skill>/` — activity-scoped procedures the harness surfaces on demand, one
-  owning pack per skill). No pack is active undeclared — the baseline included; activation is
+  owning pack per skill). No pack is active undeclared — basics included; activation is
   the project's `.claudinite-settings.json` declaration ([packs/README.md](packs/README.md) —
   the one catalog; a pack's skills are listed nowhere but the pack, #385). A consumer's own
   packs sit in its `.claudinite/local/packs/<name>/`, same slots, same engine.
@@ -58,7 +58,7 @@ The **growth lifecycle** — how a lesson is learned in a consuming project, lif
 
 The mounted corpus itself is **`packs/`** — each `packs/<name>/` bundling a pack's prose `RULES.md`, its check modules, and its skills, discovered structurally by [engine/pack_loader/pack-registry.mjs](engine/pack_loader/pack-registry.mjs) and activated by declaration. `engine/` holds only the machinery that runs pack content. Usage and configuration → [engine/checks/README.md](engine/checks/README.md); design → [engine/checks/DESIGN.md](engine/checks/DESIGN.md); the per-rule audit → [docs/conversion-inventory.md](docs/conversion-inventory.md).
 
-`engine/migrations/` holds the **baseline migrations** mechanism — declared path relocations, one record per canon rename (a renamed or relocated artifact consumers hold their own copy of) that supplies the read-side resolver and the write-side rename. Each record lives under the flow that owns it: an engine change beside the mechanism, a pack's own under `packs/<pack>/migrations/`. Every record ever landed stays there as durable history; **fetching decides relevance** — vendoring ships consumers only the records landed within the last 7 days, while a lagging project updating out of a fresh canon clone applies whatever it missed. The update flows apply each. See [engine/migrations/README.md](engine/migrations/README.md).
+`engine/migrations/` holds the **migration records** mechanism — declared path relocations, one record per canon rename (a renamed or relocated artifact consumers hold their own copy of) that supplies the read-side resolver and the write-side rename. Each record lives under the flow that owns it: an engine change beside the mechanism, a pack's own under `packs/<pack>/migrations/`. Every record ever landed stays there as durable history; **fetching decides relevance** — vendoring ships consumers only the records landed within the last 7 days, while a lagging project updating out of a fresh canon clone applies whatever it missed. The update flows apply each. See [engine/migrations/README.md](engine/migrations/README.md).
 
 Scheduled work is **per-repo**, not central. `packs/claudinite-tasks/` ([principles](packs/claudinite-tasks/docs/PRINCIPLES.md)) runs in each repo's own workflow off that repo's `taskScheduler` anchor: it discovers its declared packs' `tasks/<name>/` folders structurally, evaluates each task's precondition in code, and dispatches the due ones. **update** is the baseline pack's task, **growth** rides the repo-side pack and the home-side pack, and the PR/branch/issue tidy-up is three per-dimension tasks of the tidy pack — each a `tasks/<name>/` under its pack.
 

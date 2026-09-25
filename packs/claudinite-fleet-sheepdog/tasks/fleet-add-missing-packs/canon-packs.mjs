@@ -11,7 +11,7 @@
 // count is reported.
 //
 // Fetching canon also makes the fingerprints CURRENT rather than as-of the enforcer's
-// last baseline. A pack added to canon this week is one the fleet should be measured
+// last update. A pack added to canon this week is one the fleet should be measured
 // against this week; the enforcer's mount would not carry it at all.
 //
 // A shallow clone, into a scratch dir, discarded when the process exits. The packs

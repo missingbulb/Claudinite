@@ -36,7 +36,7 @@ test('python-optional-import-install-hint: flags a guard that re-raises with no 
   try {
     const f = run(root);
     assert.equal(f.length, 1);
-    assert.equal(f[0].severity, 'advisory');
+    assert.equal(f[0].on_fail, 'advise');
     assert.equal(f[0].line, 5);
     assert.match(f[0].what, /without a `pip install` hint/);
   } finally { cleanup(root); }

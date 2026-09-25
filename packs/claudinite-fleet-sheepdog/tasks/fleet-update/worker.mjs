@@ -1,8 +1,8 @@
-// The fleet-baseline work step - the module the runner calls `worker` on (cwd = this
+// The fleet-update work step - the module the runner calls `worker` on (cwd = this
 // task dir, bounded by code_work_timeout) when a hand-created work item for this task
 // is picked.
 //
-// It holds NO dispatch logic. The sweep is `force-fleet-baseline.mjs`, its SIBLING in
+// It holds NO dispatch logic. The sweep is `force-fleet-update.mjs`, its SIBLING in
 // this task folder — nothing outside this task uses it, so that is where it lives;
 // this worker only resolves the parameters out of the item's Context and invokes it.
 // Same shape as the other claudinite-fleet-sheepdog workers, deliberately.
@@ -17,7 +17,7 @@
 // runner turns that into a non-zero exit and prints the error's own `triage`, and the
 // executor converges the item to `needs-human`.
 
-import { main as sweep } from './force-fleet-baseline.mjs';
+import { main as sweep } from './force-fleet-update.mjs';
 import { parseParamBag } from '../../param-bag.mjs';
 
 // The run's own logger, under the task's name and its item. Module-level because the

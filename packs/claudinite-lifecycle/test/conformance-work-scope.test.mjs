@@ -40,7 +40,7 @@ const member = (extra = {}) => ({
 test('a member gating the tree but not the change is reported, with the one-line remedy', () => {
   const findings = rule.run(ctx(member()));
   assert.equal(findings.length, 1);
-  assert.equal(findings[0].severity, 'advisory');
+  assert.equal(findings[0].on_fail, 'advise');
   assert.equal(findings[0].file, '.github/workflows/checks.yml');
   assert.match(findings[0].what, /nothing gates the change/);
   assert.match(findings[0].fix, /ci-work-scope\.mjs --branch/);

@@ -120,7 +120,7 @@ procedure with a nameable trigger a **skill** could carry, becomes that (in a ca
 as a check/skill candidate; in a local pack you author the check outright in the pack's `rules`, with
 a red-first fixture) rather than settling as prose. What remains in a `RULES.md` is the always-relevant
 judgment core of its facet — write more checks and less prose. Dedupe against the corpus: a rule the
-basics baseline, an existing canon pack, or a skill already owns is not pack material at all.
+basics pack, an existing canon pack, or a skill already owns is not pack material at all.
 
 ## 4. Write each pack
 

@@ -23,7 +23,7 @@ ${CORE_JS}
   try {
     const findings = run(assetIntegrity, root);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].severity, 'blocking');
+    assert.equal(findings[0].on_fail, 'block');
     assert.equal(findings[0].file, 'index.html');
     assert.equal(findings[0].line, 4);
     assert.match(findings[0].what, /leaflet\.markercluster/);

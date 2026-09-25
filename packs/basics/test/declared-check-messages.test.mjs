@@ -13,7 +13,7 @@ test('declared-check-messages: an over-cap field and a fix repeated across asser
     'packs/demo/declared-checks.json': JSON.stringify([
       {
         id: 'fx-wordy',
-        severity: 'blocking',
+        on_fail: 'block',
         failureMessage: LONG,
         scanFiles: '/x/',
         matchLines: [
@@ -36,7 +36,7 @@ test('declared-check-messages: a rule-level fix shared by assertions is the mech
     'local/packs/demo/declared-checks.json': JSON.stringify([
       {
         id: 'fx-shared-fix',
-        severity: 'advisory',
+        on_fail: 'advise',
         failureMessage: 'one consequence clause',
         fix: 'the one shared remedy',
         scanFiles: '/x/',

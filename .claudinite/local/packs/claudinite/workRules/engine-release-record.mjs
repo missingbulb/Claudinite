@@ -50,7 +50,7 @@ export function releaseRowFor(text, version) {
 
 const rule = {
   id: 'engine-release-record',
-  severity: 'blocking',
+  on_fail: 'block',
   scope: 'work',
   description: 'A bump of ENGINE_VERSION lands with its RELEASES.md row, citing the canary rehearsal that qualified it',
   doc: 'engine/RELEASES.md',

@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 // A MEMBER'S OWN PROSE IS A CALLER THIS REPOSITORY CANNOT REWRITE. When a canon doc
 // spells a command as a literal mount path — `node .claudinite/shared/packs/<pack>/<x>.mjs`
 // — members copy that line into their `.claudinite/local/packs/**`, where it becomes a
-// caller of the vendored tree. The nightly converge refreshes `.claudinite/shared/` and
+// caller of the vendored tree. The nightly update refreshes `.claudinite/shared/` and
 // nothing else, so moving the file it names leaves prose no converge can correct, in a
 // repository no canon session reads.
 //
