@@ -217,7 +217,7 @@ Every flow that creates or changes an element appends, in the same change:
 | `growth-extract` (activity and conversations) | `born` per landed lesson, and the marker on the rule; a conversation-born lesson's `Source` names the capture's date and session id; `_declined.md` for a candidate dropped for a reason worth keeping |
 | `prose-to-checks` and `canon-prose-to-checks` | `converted` on the element, carrying the deletion-test verdict (prose deleted, or kept and why); `_declined.md` for a rule judged not checkable, dated |
 | `growth-dedup` | `retired` (superseded by the canon element it names), `weakened` (a strip), `reworded` |
-| `rule-revalidation`, `canon-rule-revalidation`, `revalidate-from-source` | `reaffirmed` only with new evidence or a changed `Retire when`; `reworded` or `retired` for a correction; an empty file it meets is filled from `history` first, which is how a member's local pack backfills with no task of its own |
+| `rule-revalidation`, `canon-rule-revalidation`, `revalidate-from-source` | `reaffirmed` only with new evidence or a changed `Retire when`; `reworded` or `retired` for a correction; an empty file it meets is filled from `history` first |
 | `growth-promote` | on the canon side the local file, reduced (§4), a `promoted` entry, and the marker on the promoted rule; the local file stays until dedup retires it |
 | `extract-packs-from-a-project`, `learning-a-technology` | `_pack` and one `born` per element, citing the evidence set or the dated sources |
 | `extract-from-instructions` | one `born` per element, citing the instruction file and line the rule was read from, in whichever pack the routing sent it to |
@@ -378,8 +378,8 @@ is what decides. A pack-root
 `references.md` that still exists is a finding: advisory through the conversion window the
 migration states, blocking after it, with the command in the fix text. In a member, a migration
 record in `claudinite-lifecycle` runs `mark` and `convert-references` over the local packs at the
-next converge, so every member is marked without a session; its empty files fill on
-`rule-revalidation`'s cadence (§3), which reads each element's history anyway.
+next converge, so every member is marked without a session; its empty files are backfilled by a session in that repo running the backfilling skill, since
+rule-revalidation fills only the files its claims lead it to.
 
 **No README is trimmed by the marking pass.** Which sentence of a README is history is a
 judgment made with the element's evidence in hand, so it belongs to the backfill run and not to
@@ -582,8 +582,8 @@ on `main`; a second reading a week after the shelf's last empty file fills.
 - **Expected amounts.** One marking commit creating an empty file per unnamed carrier and a marker
   per unmarked rule (about 850 files on the shelf, 185 in the home's local pack; the count is
   `mark`'s own report and the file count under `provenance/`). Backfill: one pull request per
-  pack, 36 on the shelf and one local, by hand; a member's local packs fill on the revalidation
-  cadence. Growth flows: a handful of `born` entries a week fleet-wide,
+  pack, 36 on the shelf and one local, by hand; a member's local packs by hand, in a session
+  on that repo. Growth flows: a handful of `born` entries a week fleet-wide,
   read from the extract pull requests' diffs; zero `reaffirmed` entries from a revalidation run
   that found everything still true. `references.md` files on the shelf: 21 before the conversion,
   0 after; in members' local packs the same fall at the converge that runs the migration record. About

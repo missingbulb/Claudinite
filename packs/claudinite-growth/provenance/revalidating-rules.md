@@ -5,3 +5,9 @@
 - **Model:** Claude, per the commit trailer.
 - **Mechanism:** the revalidating-rules skill, body workflow, reached by its description.
 - **Landed:** #2047 (Closes #2044).
+
+## 2026-09-25 · reworded · the empty-file fill no longer claims to backfill a member's local pack
+- **Reason:** the run fills only files its claims lead it to, so judgment rules never fill that way;
+  members are backfilled by hand.
+- **Actor:** @missingbulb (owner), who declined a backfill task for the members that predate
+  provenance.

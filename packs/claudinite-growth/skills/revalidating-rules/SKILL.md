@@ -80,8 +80,7 @@ old evidence gets no entry, and the run's pull request body is its record; `rewo
 where the probe corrected the rule. An entry is never edited: a stale reason is answered by a new
 entry. An **empty** file met on the way - an element whose history is not yet written - is filled
 first, from `provenance.mjs history <pack> <element>`, source-first, as the
-[backfilling-provenance](../backfilling-provenance/SKILL.md) skill describes; that is how a
-member's local pack backfills on this cadence with no pass of its own.
+[backfilling-provenance](../backfilling-provenance/SKILL.md) skill describes.
 
 ## Correcting what is stale
 
