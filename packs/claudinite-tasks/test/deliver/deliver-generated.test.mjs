@@ -138,3 +138,48 @@ test('a run handed no target fails rather than minting a branch of its own (#169
   assert.throws(() => generatedTarget({ pulls: open, branch: null, pr: null }), /CLAUDINITE_TARGET_BRANCH/);
   assert.throws(() => generatedTarget({ pulls: open }), /CLAUDINITE_TARGET_BRANCH/);
 });
+
+// A rolling file is MOVED, never dropped: the first commit is a pure rename carrying
+// every byte the old path held, and the regenerated content lands on top of it.
+test('a move lands as a pure rename commit before the regenerated content', () => {
+  const { dir, origin, work } = fixture();
+  try {
+    writeFileSync(join(work, 'old.json'), '{"history":[1,2,3]}\n');
+    sh(work, 'add', '-A');
+    sh(work, 'commit', '--quiet', '-m', 'old data');
+    sh(work, 'push', '--quiet', 'origin', 'main');
+
+    pushGenerated(work, {
+      remote: origin, baseSha: baseTip(work, origin, 'main'), branch: 'gen/m',
+      files: { 'usage/new.json': '{"history":[1,2,3,4]}\n' },
+      moves: { 'old.json': 'usage/new.json' },
+      message: 'fold',
+    });
+
+    assert.equal(sh(origin, 'rev-list', '--count', 'main..gen/m').trim(), '2', 'a move commit, then the fold');
+    assert.equal(sh(origin, 'show', 'gen/m~1:usage/new.json'), '{"history":[1,2,3]}\n',
+      'the move commit holds the old bytes unchanged at the new path');
+    assert.match(sh(origin, 'diff', '--name-status', '-M100%', 'main', 'gen/m~1'), /^R100\told\.json\tusage\/new\.json$/m);
+    assert.equal(sh(origin, 'show', 'gen/m:usage/new.json'), '{"history":[1,2,3,4]}\n');
+  } finally { removeTree(dir); }
+});
+
+test('a move whose target already exists leaves the old file where it is', () => {
+  const { dir, origin, work } = fixture();
+  try {
+    writeFileSync(join(work, 'old.json'), 'old\n');
+    mkdirSync(join(work, 'usage'));
+    writeFileSync(join(work, 'usage/new.json'), 'new\n');
+    sh(work, 'add', '-A');
+    sh(work, 'commit', '--quiet', '-m', 'both');
+    sh(work, 'push', '--quiet', 'origin', 'main');
+
+    pushGenerated(work, {
+      remote: origin, baseSha: baseTip(work, origin, 'main'), branch: 'gen/b',
+      files: { 'usage/new.json': 'newer\n' }, moves: { 'old.json': 'usage/new.json' }, message: 'fold',
+    });
+
+    assert.equal(sh(origin, 'rev-list', '--count', 'main..gen/b').trim(), '1', 'no move commit');
+    assert.equal(sh(origin, 'show', 'gen/b:old.json'), 'old\n', 'the old file is never removed');
+  } finally { removeTree(dir); }
+});

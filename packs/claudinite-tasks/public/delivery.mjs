@@ -37,7 +37,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { deliveryForText, pullCreateError, landDelivery } from '../src/deliver/land-pr.mjs';
 import { SETTINGS_FILE } from '../../../engine/settings-file.mjs';
-import { withTaskTrailer } from './work-item-grammar.mjs';
+import { withTaskTrailer, taskFromMessage } from './work-item-grammar.mjs';
 import { restCall } from './github.mjs';
 import { runGit } from '../src/world/processes.mjs';
 import { nowMs } from '../src/world/clock.mjs';
@@ -64,24 +64,52 @@ export function readAt(root, sha, path) {
 // Commit `files` ({ path: content }) onto the base tip and push to `branch`,
 // force — the content is regenerated wholesale each run, so the branch is a
 // regenerate-not-reconcile surface.
-export function pushGenerated(root, { remote, baseSha, branch, files, message }) {
+//
+// `moves` ({ from: to }) relocates a file whose data the new content is folded from.
+// Each move whose `from` is on the base and whose `to` is not lands as its OWN commit
+// first, the blob unchanged, so the history shows a pure rename carrying every byte
+// the old path held, and the `files` commit on top is an ordinary regeneration. A move
+// whose target already exists is skipped and the old file left where it is: nothing
+// here removes data that did not arrive at the new path intact.
+export function pushGenerated(root, { remote, baseSha, branch, files, message, moves = {} }) {
   const index = join(tmpdir(), `claudinite-deliver-${process.pid}-${nowMs()}.index`);
   const plumb = (args, opts) => git(root, args, { ...opts, env: { ...actionsEnv(), GIT_INDEX_FILE: index } });
+  const commitTree = (parent, msg) => git(root, [
+    '-c', 'user.name=claudinite[bot]', '-c', 'user.email=claudinite@users.noreply.github.com',
+    'commit-tree', plumb(['write-tree']).trim(), '-p', parent, '-m', msg,
+  ]).trim();
   try {
     plumb(['read-tree', baseSha]);
+    let parent = baseSha;
+    const moved = [];
+    for (const [from, to] of Object.entries(moves)) {
+      const blob = blobAt(root, baseSha, from);
+      if (!blob || blobAt(root, baseSha, to)) continue;
+      plumb(['update-index', '--add', '--cacheinfo', `100644,${blob},${to}`]);
+      plumb(['update-index', '--force-remove', from]);
+      moved.push(`${from} -> ${to}`);
+    }
+    if (moved.length) {
+      parent = commitTree(parent, withTrailerOf(message, `Move ${moved.length === 1 ? 'a rolling file' : 'rolling files'} to their new home, content unchanged\n\n${moved.join('\n')}`));
+    }
     for (const [path, content] of Object.entries(files)) {
       const blob = git(root, ['hash-object', '-w', '--stdin'], { input: content }).trim();
       plumb(['update-index', '--add', '--cacheinfo', `100644,${blob},${path}`]);
     }
-    const tree = plumb(['write-tree']).trim();
-    const commit = git(root, [
-      '-c', 'user.name=claudinite[bot]', '-c', 'user.email=claudinite@users.noreply.github.com',
-      'commit-tree', tree, '-p', baseSha, '-m', message,
-    ]).trim();
+    const commit = commitTree(parent, message);
     git(root, ['push', '--quiet', '--force', remote, `${commit}:refs/heads/${branch}`]);
     return commit;
   } finally { rmSync(index, { force: true }); }
 }
+
+// A path's blob id at a commit, or null when the path does not exist there.
+function blobAt(root, sha, path) {
+  try { return git(root, ['rev-parse', '--verify', '--quiet', `${sha}:${path}`]).trim() || null; } catch { return null; }
+}
+
+// The move commit carries the same task trailer as the message it precedes, so the
+// movement signals classify it as machinery too.
+const withTrailerOf = (message, subject) => withTaskTrailer(subject, taskFromMessage(message));
 
 // Which branch the regenerate lands on and which pull request it updates — THE
 // EXECUTOR'S DECISION, handed in: `branch` is the one it resolved, `pr` the open pull
@@ -111,7 +139,7 @@ export function generatedTarget({ pulls, branch = null, pr = null }) {
 // is lost.
 //
 // Returns { branch, number, reused, delivery, merged }.
-export async function deliverGenerated({ root, repo, base, token, branch: targetBranch = null, pr: targetPr = null, files, title, body, message, task = null, log = console.log }) {
+export async function deliverGenerated({ root, repo, base, token, branch: targetBranch = null, pr: targetPr = null, files, moves = {}, title, body, message, task = null, log = console.log }) {
   const { json: pulls } = await gh(token, `/repos/${repo}/pulls?state=open&per_page=100`);
   const chosen = generatedTarget({ pulls, branch: targetBranch, pr: targetPr });
   let { pr } = chosen;
@@ -127,7 +155,7 @@ export async function deliverGenerated({ root, repo, base, token, branch: target
   // Every commit this lane writes says which task wrote it. That trailer is what
   // the movement signals classify as machinery rather than the project moving, so
   // one task's delivery can never be the activity that wakes another.
-  const commit = pushGenerated(root, { remote, baseSha, branch, files, message: withTaskTrailer(message, task) });
+  const commit = pushGenerated(root, { remote, baseSha, branch, files, moves, message: withTaskTrailer(message, task) });
 
   if (!reused) {
     const created = await gh(token, `/repos/${repo}/pulls`, { method: 'POST', body: { head: branch, base, title, body } });
