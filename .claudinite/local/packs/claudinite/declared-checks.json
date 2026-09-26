@@ -606,5 +606,27 @@
         "fix": "add '{value}' to that workflow's list in RUN_PHASES, in the order the run executes it, or time the phase under a word the vocabulary already carries"
       }
     ]
+  },
+  {
+    "id": "generated-file-carries-no-banner",
+    "on_fail": "block",
+    "since": "2026-09-26",
+    "failureMessage": "a generated file's banner is read by everyone and heeded by nobody: it repeats what the file's name or its directory already says, and every reader pays the line",
+    "fix": "delete the banner where the generator writes it, not in the file it wrote",
+    "scanFiles": "/.*/",
+    "scanIgnoringMarkdownFences": true,
+    "excludeFileClasses": [
+      "testFiles"
+    ],
+    "matchLines": [
+      {
+        "match": "/^\\s*(<!--|#|\\/\\/|\\/\\*+)\\s*GENERATED\\b/",
+        "what": "opens with a banner announcing the file generated: {match}"
+      },
+      {
+        "match": "/^\\s*(<!--|\\/\\/|\\/\\*+)[^\\n]{0,90}generated\\b[^\\n]{0,90}(do not|don't|never)\\s+(hand-)?edit/i",
+        "what": "carries a do-not-edit banner: {match}"
+      }
+    ]
   }
 ]

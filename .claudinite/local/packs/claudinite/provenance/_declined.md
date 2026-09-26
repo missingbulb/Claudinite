@@ -121,3 +121,20 @@
   wording that invited the bare name lives in `deliver-pr.md`, outside this task's write scope, and
   is filed as #2312.
 - **Actor:** the growth-extract run over the 2026-09-24 window.
+
+## 2026-09-26 · declined · Node's own fetch bypasses the agent proxy unless NODE_USE_ENV_PROXY=1
+- **Source:** #2321's `read_github_login.mjs`, which runs the `GET /user` read in a child started
+  with that variable because a web session's token is a proxy placeholder and `fetch` ignores
+  `HTTPS_PROXY` without it.
+- **Reason:** eleven `fetch` call sites in the tree and only this one runs inside a session's
+  container; the rest run in Actions or a browser, where the proxy is absent. A check would have to
+  tell those apart to stay quiet, and the comment at the site already names the trap. The next
+  session-time fetch added anywhere makes it two holders and a real rule.
+- **Actor:** the `claudinite-growth/growth-extract` run on work item #2335.
+
+## 2026-09-26 · declined · converting `legacy-tolerance-holder-count` to a check
+- **Source:** the upgrade pass over this run's own additions.
+- **Reason:** class G - the condition is how many files hold the old spelling, which no signature
+  reads, and the moment the rule applies already carries `legacy-tolerance-scheduled`, so a second
+  advisory on the same added marker would fire on every legitimate tolerance too.
+- **Actor:** the `claudinite-growth/growth-extract` run on work item #2335.
