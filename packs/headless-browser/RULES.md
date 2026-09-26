@@ -151,3 +151,16 @@
   capture, so a fresh browser per shot turns a fast run into a slow one for nothing; take a new
   context or page per capture instead, and close it, so no state leaks between them.
   (launch-once-reuse)
+
+- **A click or drag that reflows the layout can leave the pointer resting on whatever slides
+  underneath it.** That element's own hover state then renders over the next capture —
+  non-deterministically, since it depends on exact timing (clean on one machine, broken on
+  another). Park the pointer off any element (e.g. move it to `(0, 0)`) before capturing, not only
+  before opening hover-driven UI on purpose. (park-pointer-after-gesture)
+
+- **Asserting a value driven by a CSS transition needs every frame, not one delayed sample.** A
+  single sample taken once the state change fires — even with a further wait added after it — can
+  still miss the transition on a loaded machine, since nothing pins *when* during the transition
+  that sample lands. Sample continuously across the transition's window instead (a
+  `MutationObserver`/`requestAnimationFrame` loop collecting frames), and assert that some sampled
+  frame actually falls between the start and end values. (sample-transition-continuously)

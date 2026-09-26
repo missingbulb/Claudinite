@@ -187,6 +187,10 @@ Its `merged`/`merged_at` fields can read `false`/empty for a PR that has genuine
 
 Passing a bare branch name in `head` (no `owner:` prefix) does not filter - it can hand back an unrelated PR as if it matched, for every branch queried, with no error to flag the miss. Qualify it as `owner:branch-name`, or skip the lookup and confirm status with a git-based check (`merge-base`/`diff --stat` against the branch) instead.
 
+## Requesting review from a PR's own author always fails
+
+When a repo's PRs are all opened under one account — a bot, a fleet's automation identity, a project's single maintainer — naming that account in `reviewers` on `create_pull_request`/`update_pull_request` is a guaranteed, zero-value call: GitHub rejects it outright with "Review cannot be requested from pull request author," on create and on update alike. Check who actually opened the PR before naming reviewers, or drop that account from the list — assigning them, or leaving `reviewers` empty, is usually what the call was reaching for.
+
 ## `issue_read`'s `get_*` methods are split on a PR number, so one that answers proves nothing about the next
 
 `issue_read` `get` resolves a PR number and returns the pull request, while `get_labels` on that same number errors "Could not resolve to an Issue with the number of N" — the method set is not uniform, so a read that succeeded is no licence to reach for a sibling method. Read a PR's labels, comments or metadata through `pull_request_read`, which answers for all of them.

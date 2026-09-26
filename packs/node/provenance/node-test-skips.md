@@ -28,3 +28,16 @@
 - **Mechanism:** a guideline of the `node-test-discovery` skill, which owns why it loads on those
   paths; see that element's file.
 - **Landed:** #1667 (Closes #1662) · pack version 60903.1.
+
+## 2026-09-26 · strengthened · a bare directory argument is a second trap, not the fix for the first (#906)
+- **Source:** Shepherd's local pack, read by the `growth-promote` task's 2026-09-26 window: a
+  captured session passed a directory to `node --test` and read the resulting single misleading
+  `MODULE_NOT_FOUND` failure as a real regression before spotting the mistake.
+- **Reason:** this skill's own remedy line ("pass that path... as an argument") could be misread
+  as licensing a bare directory path, which produces a different, opposite-direction trap — a
+  false failure rather than the false pass the rule was written against. Sharpened to state that
+  only a glob resolves, verified live on Node v22.22.2.
+- **Mechanism:** the same guideline of the `node-test-discovery` skill.
+- **Actor:** claudinite-canon-curation growth-promote run.
+- **Model:** claude-sonnet-5.
+- **Landed:** #2333.

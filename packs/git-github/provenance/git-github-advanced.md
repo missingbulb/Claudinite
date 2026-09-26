@@ -67,6 +67,19 @@
 - **Actor:** @missingbulb (owner).
 - **Mechanism:** the skill description, triggering on what it did before.
 
+## 2026-09-26 · born · requesting review from a PR's own author always fails (#906)
+- **Source:** EdFringeNow's local pack, read by the `growth-promote` task's 2026-09-26 window: an
+  identical `update_pull_request`/`create_pull_request` call naming the repo's own account in
+  `reviewers` recurred across six independent sessions there, each hitting GitHub's own "Review
+  cannot be requested from pull request author" rejection.
+- **Reason:** a 100%-predictable, zero-value call any future session can skip entirely by checking
+  the PR's actual author first — general enough to state once here rather than leaving every
+  single-owner repo to rediscover it and (optionally) hard-code its own account into a local guard.
+- **Mechanism:** a section on this workflow skill, whose body is the element.
+- **Actor:** claudinite-canon-curation growth-promote run.
+- **Model:** claude-sonnet-5
+- **Landed:** #2333
+
 ## 2026-09-27 · reworded · Claudinite canon: rule revalidation
 - **Reason:** re-probed 2026-09-27 against run 36313686047 while its only job was `in_progress`:
   `get_job_logs(run_id, failed_only: true)` answered `failed_jobs: 0` / "No failed jobs found in

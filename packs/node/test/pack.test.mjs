@@ -166,3 +166,34 @@ test('test-discovery-resolves: a bare `node --test` with no path is flagged too'
     assert.equal(run(testDiscoveryResolves, root).length, 1);
   } finally { cleanup(root); }
 });
+
+// --- node/test-directory-arg: a `node --test` given a bare directory, judged at Stop over a
+// transcript (a session's own typed Bash command, not the file it wired the invocation into).
+import { makeTranscript } from '../../../engine-tests/helpers.mjs';
+
+const testDirectoryArg = declaredCheck('packs/node', 'node/test-directory-arg');
+
+const judge = (calls) => {
+  const session = makeTranscript(calls.map((command) => (
+    { type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Bash', input: { command } }] } }
+  )));
+  const root = makeRepo({ changed: { 'a.txt': 'x\n' } });
+  try { return runRule(testDirectoryArg, buildContext({ root, mode: 'all', transcriptPath: session.path })).map((f) => f.what); }
+  finally { cleanup(root); session.cleanup(); }
+};
+
+test('test-directory-arg: flags a bare directory named with a trailing slash', () => {
+  assert.deepEqual(judge([
+    'node --test dev/requirements/',
+  ]), [
+    'a `node --test` call given a bare directory ("node --test dev/requirements/")',
+  ]);
+});
+
+test('test-directory-arg: silent on an explicit glob, explicit files, or no path at all', () => {
+  assert.deepEqual(judge([
+    "node --test 'dev/requirements/**/*.test.mjs'",
+    'node --test dev/requirements/a.test.mjs dev/requirements/b.test.mjs',
+    'node --test',
+  ]), []);
+});
