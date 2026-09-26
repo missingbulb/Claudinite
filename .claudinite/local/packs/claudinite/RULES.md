@@ -194,6 +194,10 @@ Below are rules on how to work on this repo.
   keystroke (`["none"]` vs. no key at all); a reader who hasn't loaded the schema must still be
   able to tell them apart correctly. (choosing-declared-field)
 
+- **Adding a legacy tolerance for a rename whose holders are files this session can read** - count
+  them and rename them in the same change instead; a hundred lines of dual read is scaffolding
+  where the old spelling turns out to have one holder. (legacy-tolerance-holder-count)
+
 - **Adding a legacy tolerance to `engine/` or `packs/`** — file the issue that removes it first,
   then put `// @legacy-tolerance advisory:<rule-id|none> retire:#<issue>` on the line directly
   above the declaration; `advisory:none` claims no member file can hold the old shape, so that
