@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRemoteContext, makeRemoteEvaluator, fetchTree } from '../../../tasks/fleet-add-missing-packs/remote-context.mjs';
+import { makeRemoteEvaluator, fetchTree } from '../../../tasks/fleet-add-missing-packs/remote-context.mjs';
 
 // The remote context is an APPROXIMATION of buildContext, and the whole point of the
 // tests below is the boundary of that approximation: what it can decide from a path
@@ -27,29 +27,11 @@ function fakeGh({ tracked = [], truncated = false, blobs = {} } = {}) {
   return gh;
 }
 
-const pathOnly = { id: 'path-only', detect: (ctx) => ctx.tracked.includes('package.json') };
-const readsOne = {
-  id: 'reads-one',
-  detect: (ctx) => ctx.tracked.filter((f) => f.endsWith('manifest.json'))
-    .some((f) => (ctx.read(f) ?? '').includes('manifest_version')),
-};
-const grepsSource = {
-  id: 'greps-source',
-  detect: (ctx) => ctx.tracked.filter((f) => f.endsWith('.ts'))
-    .some((f) => (ctx.read(f) ?? '').includes('jsonwebtoken')),
-};
+const pathOnly = { id: 'path-only', relevanceDetector: { about: 'p', paths: /^package\.json$/ } };
+const readsOne = { id: 'reads-one', relevanceDetector: { about: 'r', paths: /manifest\.json$/, text: /manifest_version/, search: ['manifest_version'] } };
+const grepsSource = { id: 'greps-source', relevanceDetector: { about: 'g', paths: /\.ts$/, text: /jsonwebtoken/, search: ['jsonwebtoken'] } };
 
 // --- the context itself -------------------------------------------------------
-
-test('makeRemoteContext: read serves the cache, returns null for a miss, and records both', () => {
-  // Null-for-a-miss is exactly what the real ctx.read does for an absent file, so a
-  // fingerprint cannot tell "not fetched" from "not there" — which is precisely why
-  // the evaluator below tracks the requests instead of trusting the verdict.
-  const ctx = makeRemoteContext({ tracked: ['a.ts', 'b.ts'], blobs: new Map([['a.ts', 'hello']]) });
-  assert.equal(ctx.read('a.ts'), 'hello');
-  assert.equal(ctx.read('b.ts'), null);
-  assert.deepEqual(ctx._requested, ['a.ts', 'b.ts']);
-});
 
 test('fetchTree: blobs only, and it surfaces GitHub\'s truncation flag', async () => {
   const gh = fakeGh({ tracked: ['package.json', 'src/a.ts'], truncated: true });
@@ -82,14 +64,14 @@ test('a path-only NON-match over a truncated tree is undecided, not false', asyn
   assert.match(res.why, /truncated/);
 });
 
-// --- the two-pass prefetch ----------------------------------------------------
+// --- reading the candidates ---------------------------------------------------
 
-test('a content-reading fingerprint resolves after the probe pass names its files', async () => {
+test('a text relevanceDetector reads only the files its paths name', async () => {
   const tracked = ['src/manifest.json', 'README.md'];
   const gh = fakeGh({ tracked, blobs: { 'src/manifest.json': '{"manifest_version":3}' } });
   const evaluate = makeRemoteEvaluator(gh, 'o/r', 'main', { tracked, truncated: false });
   assert.deepEqual(await evaluate(readsOne), { verdict: true, why: null });
-  // Exactly the one file the probe asked for — not the whole tree.
+  // Exactly the one file its paths name — not the whole tree.
   assert.equal(gh.calls.length, 1);
   assert.match(gh.calls[0], /src%2Fmanifest\.json|src\/manifest\.json/);
 });
@@ -110,36 +92,8 @@ test('a fingerprint that wants more reads than the budget is undecided, never fa
   const evaluate = makeRemoteEvaluator(gh, 'o/r', 'main', { tracked, truncated: false, budget: 5 });
   const res = await evaluate(grepsSource);
   assert.equal(res.verdict, null);
-  assert.match(res.why, /50 file reads \(budget 5\)/);
+  assert.match(res.why, /50 files could carry what it looks for \(budget 5\)/);
   assert.equal(gh.calls.length, 0);   // and it costs nothing to give up
-});
-
-test('a fingerprint reaching past the probe\'s file list is undecided, never false', async () => {
-  // `some` short-circuits: the probe pass stops at the first file (read → null →
-  // falsy is not enough to stop it here, but a hit in pass 2 changes which files get
-  // read). If pass 2 touches a file we never fetched, a `false` is under-detection.
-  const tracked = ['src/a.ts', 'src/b.ts'];
-  let pass = 0;
-  const reachesFurther = {
-    id: 'reaches',
-    detect: (ctx) => {
-      pass += 1;
-      // pass 1 asks for a.ts only; pass 2 asks for b.ts, which was never prefetched
-      return pass === 1 ? ctx.read('src/a.ts') === 'hit' : ctx.read('src/b.ts') === 'hit';
-    },
-  };
-  const gh = fakeGh({ tracked, blobs: { 'src/a.ts': 'miss' } });
-  const evaluate = makeRemoteEvaluator(gh, 'o/r', 'main', { tracked, truncated: false });
-  const res = await evaluate(reachesFurther);
-  assert.equal(res.verdict, null);
-  assert.match(res.why, /reached past the files the probe pass named/);
-});
-
-test('a fingerprint that throws is undecided, with the message kept', async () => {
-  const evaluate = makeRemoteEvaluator(fakeGh(), 'o/r', 'main', { tracked: [], truncated: false });
-  const res = await evaluate({ id: 'broken', detect() { throw new Error('bad predicate'); } });
-  assert.equal(res.verdict, null);
-  assert.match(res.why, /bad predicate/);
 });
 
 // --- the real fingerprints ----------------------------------------------------

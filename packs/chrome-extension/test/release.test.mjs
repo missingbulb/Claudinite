@@ -7,6 +7,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runRule } from '../../../engine/checks/helpers/work.mjs';
 import pack from '../pack.mjs';
+import * as detectorSpec from '../../../engine/pack_loader/relevance-detector.mjs';
 import releaseWorkflows, {
   shipsReleasePipeline, SHIPS_PIPELINE_PATH_RE, SHIPS_PIPELINE_TEXT_RE,
   ORCHESTRATOR_CALLS, VENDORED_WORKFLOWS,
@@ -342,7 +343,7 @@ test('shipping gate: a repo that only codes an extension carries the pack and no
   // sections this repo has no reason to have (#1057).
   const codingOnly = makeRepo({ base: { 'extension/manifest.json': MANIFEST } });
   try {
-    assert.equal(pack.detect(buildContext({ root: codingOnly, mode: 'all' })), true, 'the pack itself is active');
+    assert.equal(detectorSpec.detectsRelevance(pack.relevanceDetector, buildContext({ root: codingOnly, mode: 'all' })), true, 'the pack itself is active');
     assert.equal(shipsReleasePipeline(buildContext({ root: codingOnly, mode: 'all' })), false);
     for (const rule of RELEASE_RULES) {
       assert.deepEqual(run(rule, codingOnly), [], `rule ${rule.id} must be inert on a repo that does not publish`);

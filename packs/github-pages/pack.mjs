@@ -1,4 +1,4 @@
-import { adoptedPages, CONFIG_PATH } from './lib.mjs';
+import { CONFIG_PATH, DEPLOY_WORKFLOW_PATH } from './lib.mjs';
 
 // Serving a site from GitHub Pages: the nightly release that deploys the default
 // branch, the one vendored workflow that performs the deploy, the config naming what
@@ -7,14 +7,13 @@ import { adoptedPages, CONFIG_PATH } from './lib.mjs';
 // pack's `public/version.mjs` to advance it when the pack is declared.
 export default {
   version: '60927.1',
-  minEngineVersion: '60925.1',
+  minEngineVersion: '60927.1',
   ruleRoutingGuidance: {
     belongs: 'serving a site from GitHub Pages: the nightly release, the vendored deploy workflow, site.config, the serving subpath',
     excludes: 'the version scheme and the page stamp — public-website; markup — html',
   },
   pitch: 'A GitHub Pages site breaks in production when a root-relative link works locally and 404s under the repo path, or when a second workflow publishes behind everyone\'s back. This pack makes deployment a single scheduled release task that deploys the default branch, stamps the version and stops where a person must act. A couple of rules and a few checks keep the site config and the one deploy workflow honest, and the pipeline skill explains how to set it up, force a release, or roll one back.',
-  marker: CONFIG_PATH,
-  detect: adoptedPages,
+  relevanceDetector: { about: `${CONFIG_PATH}, or the vendored ${DEPLOY_WORKFLOW_PATH}`, paths: /^(\.github\/site\.config|\.github\/workflows\/github-pages-deploy\.yml)$/ },
   // The release is a work item: the queue owns its trigger, its gate and its park
   // lanes, which is the whole reason it is a task rather than a push-triggered
   // workflow.

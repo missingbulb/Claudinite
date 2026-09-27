@@ -1,12 +1,11 @@
 // Technology pack: iOS app development (Xcode project, Info.plist usage strings, entitlements, signing).
 export default {
   version: '60927.1',
-  minEngineVersion: '60925.1',
+  minEngineVersion: '60927.1',
   ruleRoutingGuidance: {
     belongs: 'app-target conventions for iOS — Xcode project, Info.plist usage strings, entitlements, code signing',
     excludes: 'shipping builds to the App Store — that is app-store-release; Android equivalents are android',
   },
   pitch: 'An iOS repo worked on by Claude Code sessions runs into two recurring traps, and this pack names both. Its couple of rules explain that a sandbox has no macOS or Swift toolchain, so a change counts as verified only once the macOS CI runner reports on it, and that Apple\'s developer documentation pages render in JavaScript, so sessions should read the JSON mirror instead. It is prose only, and is where the repo\'s further lessons about Xcode, signing and devices will accumulate.',
-  marker: 'ios/Runner/Info.plist',
-  detect: (ctx) => ctx.tracked.some((f) => f.endsWith('ios/Runner/Info.plist')),
+  relevanceDetector: { about: 'ios/Runner/Info.plist', paths: /ios\/Runner\/Info\.plist$/ },
 };

@@ -3,12 +3,11 @@
 // deploys: the gotchas any SAM project hits, as checks, prose and two skills.
 export default {
   version: '60927.2',
-  minEngineVersion: '60925.1',
+  minEngineVersion: '60927.1',
   ruleRoutingGuidance: {
     belongs: 'serverless AWS stacks: SAM template shape, Lambda handler paths, esbuild bundling, API Gateway and CloudFront gotchas',
     excludes: 'backend Google ID token validation — google-identity; generic Node packaging habits — node',
   },
   pitch: 'Keeps Claude Code sessions from breaking a SAM deployment in the ways that cost an afternoon. A few rules cover change sets that would replace a live resource, a failed first stack creation that has to be cleaned up, CloudFront verification on a new account and CORS preflights. Two skills, for shaping the template and one for build dependencies, load before any template or package edit, and a handful of blocking checks catch a wrong handler path, a missing esbuild dependency and CloudFront authorization mistakes before they reach AWS.',
-  marker: 'a SAM template (template.yaml/.yml)',
-  detect: (ctx) => ctx.tracked.includes('template.yaml') || ctx.tracked.includes('template.yml'),
+  relevanceDetector: { about: 'a SAM template (template.yaml/.yml) at the repo root', paths: /^template\.ya?ml$/ },
 };

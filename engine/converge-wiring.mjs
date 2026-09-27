@@ -313,8 +313,6 @@ export default {
     belongs: 'everything specific to this repository and portable nowhere else: its working rules, and the checks, skills and tasks carrying them',
     excludes: 'anything true beyond this repo — that belongs in a canon pack, proposed upstream',
   },
-  detect: null,
-  marker: null,
   worldRules: [],
 };
 `;

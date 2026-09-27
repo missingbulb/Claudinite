@@ -68,3 +68,9 @@
   declaration.
 - **Retire when:** #2323 takes the tolerances out.
 - **Landed:** #2322
+
+## 2026-09-27 · scope-changed · it names a local manifest still spelling `detect` or `marker`
+- **Reason:** the manifest spec tolerates the retired fingerprint fields only until members drop
+  them (#2374), and a tolerance needs the advisory that tells each holder.
+- **Actor:** @missingbulb (owner).
+- **Mechanism:** a clause of this advisory over `.claudinite/local/packs/*/pack.mjs`.

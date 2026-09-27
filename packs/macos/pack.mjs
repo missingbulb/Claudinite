@@ -5,20 +5,13 @@
 //
 // Fingerprint: a `Package.swift` at the repo root or one directory down (a
 // monorepo's `mac/` dir), never deeper.
-const hasMarkerNearRoot = (ctx, marker) =>
-  ctx.tracked.some((f) => {
-    const parts = f.split('/');
-    return parts[parts.length - 1] === marker && parts.length <= 2;
-  });
-
 export default {
   version: '60927.1',
-  minEngineVersion: '60925.1',
+  minEngineVersion: '60927.1',
   ruleRoutingGuidance: {
     belongs: 'native macOS apps: app-bundle assembly, TCC usage strings, Hardened Runtime entitlements, Developer ID signing, notarization and DMG distribution',
     excludes: 'Mac App Store submission — app-store-release; iPhone app targets — ios; workflow YAML mechanics — git-github',
   },
   pitch: 'Shipping a native Mac app means getting the bundle, signing, Hardened Runtime and notarization right, and each mistake surfaces late. This pack gives Claude Code sessions about two dozen rules covering app bundle assembly from SwiftPM, the Developer ID to notarization to DMG lane, CI signing identities, and privacy traps such as speech recognition streaming to Apple by default. Skills cover assembling the app bundle and deciding which gate a protected resource sits behind, and a handful of checks enforce steps such as notarizing then stapling.',
-  marker: 'Package.swift (at the repo root or one directory down)',
-  detect: (ctx) => hasMarkerNearRoot(ctx, 'Package.swift'),
+  relevanceDetector: { about: 'Package.swift (at the repo root or one directory down)', paths: /^([^/]+\/)?Package\.swift$/ },
 };
