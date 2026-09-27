@@ -4,23 +4,19 @@
 // Cloudflare account can do. The version is not here: public-website owns the scheme
 // and the page stamp, and the release reaches that pack's `public/version.mjs` to
 // advance it when the pack is declared.
-import { parseWranglerConfig, wranglerConfigPath } from './lib.mjs';
-
-const servesASite = (ctx) => {
-  const path = wranglerConfigPath(ctx.tracked);
-  return Boolean(path && parseWranglerConfig(ctx.read(path))?.assets?.directory);
-};
+// A near-root wrangler JSON config whose `assets` object names a `directory`. As a
+// pattern rather than a parse, so a reader that holds only text can judge it.
+const ASSETS_DIRECTORY = /"assets"\s*:\s*\{[^}]*"directory"\s*:\s*"[^"\s]/;
 
 export default {
   version: '60925.2',
-  minEngineVersion: '60925.1',
+  minEngineVersion: '60927.1',
   ruleRoutingGuidance: {
     belongs: 'serving a static site from Cloudflare: the published tree, custom domains, the nightly release that uploads it',
     excludes: 'Workers runtime and bindings — cloudflare-workers; the version scheme and the page stamp — public-website; markup — html',
   },
   pitch: 'Gives a site served from Cloudflare exactly one path to production. A nightly release task advances the version, uploads the published tree, and reports what the domain answered and whether it is serving that version, parking with a named reason when a person has to act. A skill covers releasing, forcing a release and rolling one back. A few rules and checks keep stray files out of the upload, links free of needless redirects, and any second publisher from quietly shipping around the release.',
-  marker: 'a near-root wrangler.json/.jsonc declaring assets.directory',
-  detect: servesASite,
+  locate: { about: 'a near-root wrangler.json/.jsonc declaring assets.directory', paths: /^([^/]+\/)?wrangler\.jsonc?$/, text: ASSETS_DIRECTORY, search: ['assets'] },
   // The release is a work item: the queue owns its trigger, its gate, its secrets
   // and its park lanes, which is the whole reason it is a task rather than a
   // workflow.

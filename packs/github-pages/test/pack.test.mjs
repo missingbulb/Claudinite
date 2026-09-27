@@ -9,6 +9,7 @@ import { CONFIG_PATH, DEPLOY_WORKFLOW_PATH, parseConfig, publishSet } from '../l
 import { assemble, main as buildSite, resolveBuildVars } from '../build-site.mjs';
 import siteConfig from '../worldRules/site-config.mjs';
 import deployWorkflow from '../worldRules/deploy-workflow.mjs';
+import * as locateSpec from '../../../engine/pack_loader/locate.mjs';
 
 const run = (rule, root) => rule.run(buildContext({ root, mode: 'all' }));
 
@@ -36,11 +37,11 @@ function without(path, overrides = {}) {
 
 test('the pack fingerprints a repo carrying the site config, and is inert without either signal', () => {
   const root = pagesRepo();
-  try { assert.equal(pack.detect(buildContext({ root, mode: 'all' })), true); } finally { cleanup(root); }
+  try { assert.equal(locateSpec.locateMatches(pack.locate, buildContext({ root, mode: 'all' })), true); } finally { cleanup(root); }
   const plain = makeRepo({ base: { 'index.html': '<!doctype html>\n' } });
   try {
     const ctx = buildContext({ root: plain, mode: 'all' });
-    assert.equal(pack.detect(ctx), false);
+    assert.equal(locateSpec.locateMatches(pack.locate, ctx), false);
     for (const rule of [siteConfig, deployWorkflow]) assert.deepEqual(rule.run(ctx), [], `${rule.id} fired on a repo that never adopted the standard`);
   } finally { cleanup(plain); }
 });

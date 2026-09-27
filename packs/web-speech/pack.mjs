@@ -10,17 +10,16 @@ const SOURCE = /\.(mjs|cjs|js|jsx|ts|tsx)$/;
 
 export default {
   version: '60925.1',
-  minEngineVersion: '60925.1',
+  minEngineVersion: '60927.1',
   ruleRoutingGuidance: {
     belongs: 'browser voice I/O gotchas — SpeechRecognition results and errors, speechSynthesis and chrome.tts, mic permission and lifecycle',
     excludes: 'general MV3 service-worker and content-script mechanics — that is chrome-extension; page markup is html',
   },
   pitch: 'Browser speech recognition and text-to-speech are full of undocumented behaviour, and this pack keeps Claude Code sessions ahead of it. Some fifteen rules cover microphones left open, listen cycles that settle twice, an empty voice list that only means not ready yet, recognition audio streamed to the cloud, and speak calls that never resolve. Several checks read the actual call sites and block those mistakes at every commit, and the web-speech-io skill guides wiring voice input and output, including in browser extensions.',
-  marker: 'a browser speech API (SpeechRecognition / speechSynthesis / chrome.tts) referenced in JS/TS source',
-  detect: (ctx) =>
-    ctx.tracked.some((f) => {
-      if (!SOURCE.test(f)) return false;
-      const text = ctx.read(f);
-      return text !== null && SPEECH_API.test(text);
-    }),
+  locate: {
+    about: 'a browser speech API (SpeechRecognition / speechSynthesis / chrome.tts) referenced in JS/TS source',
+    paths: SOURCE,
+    text: SPEECH_API,
+    search: ['SpeechRecognition', 'webkitSpeechRecognition', 'SpeechRecognitionPhrase', 'speechSynthesis', 'SpeechSynthesisUtterance', 'tts'],
+  },
 };

@@ -17,6 +17,7 @@ const sources = declaredCheck('packs/product-wiki', 'product-wiki-sources');
 const freshness = declaredCheck('packs/product-wiki', 'product-wiki-freshness');
 import wikiGrowthJson from '../tasks/wiki-growth/task.json' with { type: 'json' };
 import { normalizeTaskDeclaration } from '../../claudinite-tasks/public/task-declaration.mjs';
+import * as locateSpec from '../../../engine/pack_loader/locate.mjs';
 // The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
 const wikiGrowth = normalizeTaskDeclaration(wikiGrowthJson);
 // Built through the real path: a forbidReferences entry in the pack's own
@@ -67,8 +68,8 @@ test('the writing-wiki-pages skill scopes itself to the tree, and the weekly wor
 });
 
 test('detect fires exactly on the sink marker', () => {
-  assert.equal(pack.detect({ tracked: ['product-wiki/product-requirements/README.md'] }), true);
-  assert.equal(pack.detect({ tracked: ['product-wiki/Market/README.md'] }), false);
+  assert.equal(locateSpec.locateMatches(pack.locate, { tracked: ['product-wiki/product-requirements/README.md'], read: () => null }), true);
+  assert.equal(locateSpec.locateMatches(pack.locate, { tracked: ['product-wiki/Market/README.md'], read: () => null }), false);
 });
 
 // --- product-wiki-layout ------------------------------------------------------

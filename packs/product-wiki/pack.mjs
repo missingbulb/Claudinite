@@ -3,16 +3,17 @@
 // point, and fingerprinted on that sink.
 import { SINK_README } from './lib.mjs';
 
+const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 export default {
   version: '60925.2',
-  minEngineVersion: '60925.1',
+  minEngineVersion: '60927.1',
   ruleRoutingGuidance: {
     belongs: 'agent-maintained market, user and competitor research wikis — cited pages, growth logs, the reviewed product-requirements sink',
     excludes: 'how the product is built or specced — that is spec-driven-product; requirement proofs are executable-requirements',
   },
   pitch: 'Gives the repo a product research wiki that grows by itself: market, user and competitor findings kept as cited pages, each opening with a short list of key insights. A weekly task researches the wiki\'s own open questions and delivers the results as an unmerged pull request for review. Over a dozen checks enforce page structure, real source links and freshness, and wall the unreviewed research off from the code. The explore-link skill folds any URL into the right page, and writing-wiki-pages sets how pages are written.',
-  marker: SINK_README,
-  detect: (ctx) => ctx.tracked.includes(SINK_README),
+  locate: { about: SINK_README, paths: new RegExp(`^${escape(SINK_README)}$`) },
   // The isolation wall (product-wiki-isolation) and the skeleton check
   // (product-wiki-layout) are a designed pair, both declared in this pack's
   // declared-checks.json: the wall's glob target fails closed on an empty

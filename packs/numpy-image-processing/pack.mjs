@@ -4,13 +4,12 @@
 //
 // Fingerprint: `numpy` and `scipy` named together in a near-root Python
 // dependency manifest (`requirements*.txt` or `pyproject.toml`).
-const MANIFEST = /(^|\/)(requirements[^/]*\.txt|pyproject\.toml)$/;
 const NUMPY = /\bnumpy\b/i;
 const SCIPY = /\bscipy\b/i;
 
 export default {
   version: '60925.1',
-  minEngineVersion: '60925.1',
+  minEngineVersion: '60927.1',
   ruleRoutingGuidance: {
     belongs:
       'numeric image analysis in Python — deriving a mask/skeleton/threshold from a NumPy image array with SciPy ndimage and scikit-image',
@@ -18,12 +17,10 @@ export default {
       'Python packaging conventions — that is python; iterate-on-an-algorithm methodology — that is research-project; browser canvas — that is html',
   },
   pitch: 'Image-processing code built on NumPy and SciPy fails in ways that still produce a plausible picture. This pack gives Claude Code sessions about ten rules for exactly those traps: statistics skewed by padding, thresholds that miss saturated pixels, off-by-one windows around a float center, affine transforms that pull rather than push, labels smeared by upscaling, and annotations drawn in a color that hides the signal. The result is fewer wrong measurements that look right and less time spent chasing them.',
-  marker: 'numpy and scipy named together in a near-root Python dependency manifest (requirements*.txt or pyproject.toml)',
-  detect: (ctx) =>
-    ctx.tracked.some((f) => {
-      const parts = f.split('/');
-      if (parts.length > 2 || !MANIFEST.test(f)) return false;
-      const text = ctx.read(f);
-      return text !== null && NUMPY.test(text) && SCIPY.test(text);
-    }),
+  locate: {
+    about: 'numpy and scipy named together in a near-root Python dependency manifest (requirements*.txt or pyproject.toml)',
+    paths: /^([^/]+\/)?(requirements[^/]*\.txt|pyproject\.toml)$/,
+    text: [NUMPY, SCIPY],
+    search: ['scipy'],
+  },
 };
