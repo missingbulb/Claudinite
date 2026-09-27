@@ -25,3 +25,10 @@
 - **Actor:** @missingbulb (owner).
 - **Model:** Claude Opus 5, per the commit trailer.
 - **Landed:** #1315 (Closes #1312).
+
+## 2026-09-27 · retired · basics' writing-handover-issues now states both halves (#2353)
+- **Source:** the growth-dedup run over the window since 2026-09-20.
+- **Reason:** the canon skill carries the no-op clause near-verbatim ("A box that is usually a no-op
+  teaches the reader to skim exactly the list that exists to stop them skimming") and the link
+  clause under "Link the screen, don't describe the path", with nothing left over.
+- **Retire when:** already retired. It returns only if the canon skill drops either half.

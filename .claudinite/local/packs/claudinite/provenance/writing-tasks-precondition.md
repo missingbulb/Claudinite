@@ -20,3 +20,11 @@
 - **Actor:** @missingbulb (owner).
 - **Model:** Claude Opus 5, per the commit trailer.
 - **Landed:** #1315 (Closes #1312).
+
+## 2026-09-27 · retired · the writing-tasks skill now carries it, as the rule itself said it should (#2353)
+- **Source:** the growth-dedup run over the window since 2026-09-20; the rule carried its own
+  "(portable → claudinite-growth/skills/writing-tasks/SKILL.md)" marker.
+- **Reason:** that skill's "Three things are NOT preconditions" names repo shape and standing config
+  as the mistake, and its movement-conditions bullet names the built-in terms the rule paraphrased
+  as "a touched list, a tip-commit date".
+- **Retire when:** already retired. It returns only if the canon skill stops naming either half.
