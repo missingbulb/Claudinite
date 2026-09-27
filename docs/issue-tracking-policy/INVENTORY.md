@@ -33,11 +33,11 @@ Status: analysis, no code changed. Scope and direction set by the owner on 2026-
 
 ## Inventory
 
-### packs/basics/RULES.md — the lifecycle rules every repo loads
+### packs/basics/RULES.md: the lifecycle rules every repo loads
 
 | Location | Today | Kind | Change |
 |---|---|---|---|
-| :58-65 planning-migration | Points to writing-migration-plans. | — | Follows that skill. |
+| :58-65 planning-migration | Points to writing-migration-plans. |: | Follows that skill. |
 | :67-71 filing-issues-multi | "Filing the issues a … plan decomposes into." | R | Wording is neutral apart from "issues". |
 | :97-106 verifying-now-genuinely | The follow-up must be "a mechanism that comes to you, never a human's memory". | D | Under a non-GitHub policy no mechanism exists. State the fallback honestly: a tracker item a person owns. |
 | :108-115 finishing-larger-element | "phased tracking issue"; a scheduled review. | D | Same as above. |
@@ -55,7 +55,7 @@ Status: analysis, no code changed. Scope and direction set by the owner on 2026-
 
 | Location | Today | Kind | Change |
 |---|---|---|---|
-| committing/SKILL.md:3, :16-18 | "Reference the issue — `Refs #n`, or `Fixes #n` / `Closes #n`." | R+G | Use the policy's reference syntax. |
+| committing/SKILL.md:3, :16-18 | "Reference the issue: `Refs #n`, or `Fixes #n` / `Closes #n`." | R+G | Use the policy's reference syntax. |
 | do-later/SKILL.md (whole; :14-16, :22-23, :51-63, :77-82, :135-140) | An ad-hoc queue issue with a field block (`Blocked-by`, `Not-before`, `Model`, `Automerge`, `Task`) and the `task:origin:ad-hoc` label. | D+G | Split: the queue form when the policy is GitHub with the queue; otherwise a tracker item carrying the brief and what it waits on, reported as "will not run on its own". The description at :3 promises "queued behind it". |
 | verify-in-production/SKILL.md :75, :101-104, :113-238 | Coded and agentic queue forms; `Original-issue:` plus `sub_issue_write`; the human form is an "ordinary issue". | D+G | The human form becomes a tracker item per policy. The queue forms are GitHub-only. The "a GitHub read" probe class (:75) is unchanged. |
 | production-retrospective/SKILL.md :35, :54, :65, :84-123, :155 | An ad-hoc queue issue, a sub-issue of the tracking issue; findings "become issues". | D+G | Same split as do-later. Findings are filed per policy. |
@@ -65,14 +65,14 @@ Status: analysis, no code changed. Scope and direction set by the owner on 2026-
 | writing-migration-plans:192, verify-in-production:160 | Cite RULES.md *"Filing an issue that belongs under another"*. | S | That rule does not exist in basics/RULES.md. Only the `sub-issue-without-parent` check carries it. |
 | improve-comments/SKILL.md:55-56 | A TODO whose issue is closed is deleted; a live one gets "the issue number". | R | Use the policy's reference and state. |
 
-### packs/basics — checks and manifest
+### packs/basics: checks and manifest
 
 | Location | Today | Kind | Change |
 |---|---|---|---|
 | declared-checks.json:297-312 `sub-issue-without-parent` | Guard on `mcp__github__issue_write` body. | T+G | GitHub policy only. It never fires elsewhere, which is correct because there is nothing to attach. |
 | pack.mjs:18 `belongs` | "issue-branch-PR lifecycle". | N | Routing text only. |
 | README.md:21, :42, :48, :89 | Catalog rows. | R | Follow the renamed skills and rules. |
-| *(new)* | Nowhere to declare the policy. | — | Needs a config key, an adoption question and a session-start line that states it. |
+| *(new)* | Nowhere to declare the policy. |: | Needs a config key, an adoption question and a session-start line that states it. |
 
 ### packs/git-github
 
@@ -87,7 +87,7 @@ Status: analysis, no code changed. Scope and direction set by the owner on 2026-
 | declared-checks.json:165-174 `issue-labels-overwrite` | Guard on `issue_write` labels. | T | GitHub only; correct as is. |
 | README.md:10 | Cites the `task-lifecycle` check. | S | That check no longer exists. |
 
-### packs/claudinite-lifecycle — adoption
+### packs/claudinite-lifecycle: adoption
 
 | Location | Today | Kind | Change |
 |---|---|---|---|
