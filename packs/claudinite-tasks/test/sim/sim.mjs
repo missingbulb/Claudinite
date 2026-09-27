@@ -94,7 +94,7 @@ const ROOT = fileURLToPath(new URL('.', import.meta.url));
 // The whole of what a fake session costs, in the shape the invoker's config takes.
 const CONFIG = Object.freeze({
   taskScheduler: {
-    [ENDPOINTS_KEY]: { default: { url: 'https://example.invalid/fire', tokenSecret: 'CCR_TOKEN' } },
+    [ENDPOINTS_KEY]: { default: { tokenSecret: 'CCR_TOKEN' } },
   },
   packConfig: {},
 });

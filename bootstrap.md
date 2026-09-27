@@ -190,20 +190,23 @@ a. **Create the routine** — `create_trigger` on the Claude Code Remote MCP ser
    ending the session, and then creating it in thirty seconds when they ask for it anyway is the
    adoption this doc was corrected for (#1167).
 
-b. **Point the repo at it.** Take the routine's API trigger URL and add it to
-   `.claudinite-settings.json` under the key every task uses unless it names another:
+b. **Point the repo at it.** Take the routine's API trigger URL
+   (`https://api.anthropic.com/v1/claude_code/routines/<trigger-id>/fire`) and set it as the repo
+   Actions **variable** `CCR_ROUTINE_URL`: a routine's URL is deployment detail, so it lives in the
+   repo's Actions settings rather than in a tracked file. `.claudinite-settings.json` names only the
+   token's secret, under the key every task uses unless it names another:
 
    ```json
-   "taskScheduler": { "endpoints": { "default": {
-     "url": "https://api.anthropic.com/v1/claude_code/routines/<trigger-id>/fire",
+   "taskScheduler": { "agenticTaskInvocationEndpoints": { "default": {
      "tokenSecret": "CCR_ROUTINE_TOKEN"
    } } }
    ```
 
    `tokenSecret` is the **name** of a repo Actions secret, never a token — the config is tracked,
-   so nothing adjacent to a credential goes in it.
+   so nothing adjacent to a credential goes in it. An endpoint named anything other than `default`
+   reads its URL from `CCR_<NAME>_ROUTINE_URL`.
 
-c. **Hand over the secret.** `CCR_ROUTINE_TOKEN` is the one part of this no session can reach
+c. **Hand over the secret.** `CCR_ROUTINE_TOKEN` (with the `CCR_ROUTINE_URL` variable) is the one part of this no session can reach
    from either end: the create call returns no bearer token — the owner mints it on the routine,
    in the same UI visit the SETUP block asks for — and writing a repo Actions secret is console
    work. So it is a declared hand-over step: the script prints it in the HANDOVER block and the
@@ -212,7 +215,7 @@ c. **Hand over the secret.** `CCR_ROUTINE_TOKEN` is the one part of this no sess
    worth naming together.
 
 Neither half fails silently if it is missing: the hand-off names exactly what is unset — the
-endpoint, its `url`, its `tokenSecret`, or the secret itself — on the work item, and converges
+endpoint, its `tokenSecret`, the URL variable, or the secret itself, on the work item, and converges
 that item to `needs-human`. Agentless tasks keep working throughout, since they never reach this
 path.
 

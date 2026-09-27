@@ -245,11 +245,11 @@ test('loadConfig: an unknown schedule key is an error; the retired anchor keys a
 test('loadConfig: taskScheduler.dispatch and the endpoint map are validated', () => {
   const good = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({
     packs: ['acme-pack'],
-    taskScheduler: { dispatch: 'queue', agenticTaskInvocationEndpoints: { default: { url: 'https://x.invalid/s', tokenSecret: 'CCR_TOKEN' } } },
+    taskScheduler: { dispatch: 'queue', agenticTaskInvocationEndpoints: { default: { tokenSecret: 'CCR_TOKEN' } } },
   }) } });
   const bad = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({
     packs: ['acme-pack'],
-    taskScheduler: { dispatch: 'queues', agenticTaskInvocationEndpoints: { default: { url: 'https://x.invalid/s' } } },
+    taskScheduler: { dispatch: 'queues', agenticTaskInvocationEndpoints: { default: { tokenSecret: 7 } } },
   }) } });
   try {
     const cfg = loadConfig(good);
@@ -269,7 +269,7 @@ test('loadConfig: taskScheduler.dispatch and the endpoint map are validated', ()
     const errs = loadConfig(bad).errors;
     assert.equal(errs.length, 2);
     assert.match(errs[0].what, /"taskScheduler\.dispatch" must be one of queue/);
-    assert.match(errs[1].what, /"taskScheduler\.agenticTaskInvocationEndpoints\.default" must be \{ url, tokenSecret \}/);
+    assert.match(errs[1].what, /"taskScheduler\.agenticTaskInvocationEndpoints\.default" must be \{ tokenSecret \}/);
   } finally { cleanup(good); cleanup(bad); }
 });
 

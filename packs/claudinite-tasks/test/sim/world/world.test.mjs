@@ -296,7 +296,7 @@ test('a step output lands on its own run, and outside a run there is nowhere to 
 
 const CONFIG = {
   taskScheduler: {
-    [ENDPOINTS_KEY]: { default: { url: 'https://example.invalid/fire', tokenSecret: 'TOK' } },
+    [ENDPOINTS_KEY]: { default: { tokenSecret: 'TOK' } },
   },
 };
 const TASK = { pack: 'p', id: 'a', decl: {} };

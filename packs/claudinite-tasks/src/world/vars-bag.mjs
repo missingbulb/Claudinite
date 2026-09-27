@@ -24,6 +24,13 @@ export const VARS_BAG_ENV = 'CLAUDINITE_VARS';
 
 export const varsBag = (env = actionsEnv()) => parseBag(env[VARS_BAG_ENV]);
 
+// One variable's value, or undefined: a workflow naming it outright wins, as it does
+// in `varsEnv` below.
+export function varValue(name, env = actionsEnv()) {
+  if (name === VARS_BAG_ENV) return undefined;
+  return env[name] ?? varsBag(env)?.[name];
+}
+
 // The bag as an environment fragment: what a task's code-work should gain, and nothing
 // it should lose.
 //

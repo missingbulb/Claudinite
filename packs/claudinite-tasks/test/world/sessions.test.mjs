@@ -1,28 +1,57 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveEndpoint, agentInvoker, firePayload, DEFAULT_ENDPOINT, DEFAULT_HEADERS } from '../../src/world/sessions.mjs';
+import { resolveEndpoint, agentInvoker, firePayload, routineUrlVariable, DEFAULT_ENDPOINT, DEFAULT_HEADERS } from '../../src/world/sessions.mjs';
 
-// Spelled the CURRENT way (#1252) — the map says which endpoints these are.
+// Spelled the CURRENT way (#1252): the map says which endpoints these are, and the
+// URLs live in repository variables, never in the settings file.
 const CONFIG = {
   taskScheduler: {
     agenticTaskInvocationEndpoints: {
-      default: { url: 'https://example.invalid/routines/trig_1/fire', tokenSecret: 'CCR_TOKEN' },
-      fleet: { url: 'https://example.invalid/routines/trig_2/fire', tokenSecret: 'CCR_FLEET_TOKEN' },
+      default: { tokenSecret: 'CCR_TOKEN' },
+      fleet: { tokenSecret: 'CCR_FLEET_TOKEN' },
     },
   },
 };
+const URLS = {
+  CCR_ROUTINE_URL: 'https://example.invalid/routines/trig_1/fire',
+  CCR_FLEET_ROUTINE_URL: 'https://example.invalid/routines/trig_2/fire',
+};
+const VARS = { CLAUDINITE_VARS: JSON.stringify(URLS) };
 const task = (endpoint) => ({ pack: 'p', id: 't', decl: endpoint ? { invocation_endpoint: endpoint } : {} });
 const item = { number: 42 };
 
 test('a task with no declared endpoint rides the default one', () => {
-  assert.equal(resolveEndpoint(CONFIG, task(null)).name, DEFAULT_ENDPOINT);
-  assert.equal(resolveEndpoint(CONFIG, task(null)).url, 'https://example.invalid/routines/trig_1/fire');
+  assert.equal(resolveEndpoint(CONFIG, task(null), VARS).name, DEFAULT_ENDPOINT);
+  assert.equal(resolveEndpoint(CONFIG, task(null), VARS).url, 'https://example.invalid/routines/trig_1/fire');
+});
+
+test('an endpoint\'s URL variable is named for the endpoint', () => {
+  assert.equal(routineUrlVariable('default'), 'CCR_ROUTINE_URL');
+  assert.equal(routineUrlVariable('fleet'), 'CCR_FLEET_ROUTINE_URL');
+});
+
+test('the URL is read from the repository variable, bagged or plain', () => {
+  assert.equal(resolveEndpoint(CONFIG, task(null), { CCR_ROUTINE_URL: 'https://plain.invalid/fire' }).url, 'https://plain.invalid/fire');
+});
+
+// The settings file stopped carrying the URL: one still standing there is not a
+// second source, so an unset variable is reported even beside it.
+test('a URL left in the settings file is not read', () => {
+  const stale = { taskScheduler: { agenticTaskInvocationEndpoints: { default: { url: 'https://stale.invalid/fire', tokenSecret: 'CCR_TOKEN' } } } };
+  assert.equal(resolveEndpoint(stale, task(null), VARS).url, URLS.CCR_ROUTINE_URL);
+  assert.match(resolveEndpoint(stale, task(null), {}).error, /`CCR_ROUTINE_URL`/);
+});
+
+test('an unset URL variable names the variable and where it is set', () => {
+  const { error } = resolveEndpoint(CONFIG, task('fleet'), {});
+  assert.match(error, /repository variable `CCR_FLEET_ROUTINE_URL`/);
+  assert.match(error, /settings\/variables\/actions/);
 });
 
 // The whole of what replaced the fleet/self split: reach is a property of WHICH
 // endpoint a task names, and the URL and credential stay in repo config.
 test('a task needing wider reach names a different endpoint, and nothing else changes', () => {
-  const e = resolveEndpoint(CONFIG, task('fleet'));
+  const e = resolveEndpoint(CONFIG, task('fleet'), VARS);
   assert.equal(e.url, 'https://example.invalid/routines/trig_2/fire');
   assert.equal(e.tokenEnv, 'CCR_FLEET_TOKEN');
 });
@@ -32,13 +61,13 @@ test('a task needing wider reach names a different endpoint, and nothing else ch
 // resolving one it was not given.
 test('the retired "endpoints" spelling resolves nothing', () => {
   const legacy = { taskScheduler: { endpoints: CONFIG.taskScheduler.agenticTaskInvocationEndpoints } };
-  assert.match(resolveEndpoint(legacy, task('fleet')).error, /declare no invocation endpoint "fleet"/);
+  assert.match(resolveEndpoint(legacy, task('fleet'), VARS).error, /declare no invocation endpoint "fleet"/);
 });
 
 test('an unconfigured endpoint is reported, never thrown or guessed at', () => {
-  assert.match(resolveEndpoint(CONFIG, task('nowhere')).error, /declare no invocation endpoint "nowhere"/);
-  assert.match(resolveEndpoint({}, task(null)).error, /declare no invocation endpoint "default"/);
-  assert.match(resolveEndpoint({ taskScheduler: { agenticTaskInvocationEndpoints: { default: { url: 'u' } } } }, task(null)).error, /tokenSecret/);
+  assert.match(resolveEndpoint(CONFIG, task('nowhere'), VARS).error, /declare no invocation endpoint "nowhere"/);
+  assert.match(resolveEndpoint({}, task(null), VARS).error, /declare no invocation endpoint "default"/);
+  assert.match(resolveEndpoint({ taskScheduler: { agenticTaskInvocationEndpoints: { default: {} } } }, task(null), VARS).error, /tokenSecret/);
 });
 
 // The payload names an item and proves the call is the one the hand-off recorded
@@ -55,7 +84,7 @@ test('the fire payload names exactly one item and its nonce, and instructs nothi
 test('a fired routine returns its session id, and the beta header rides the call', async () => {
   const seen = [];
   const invoke = agentInvoker({
-    repo: 'o/r', config: CONFIG, env: { CCR_TOKEN: 'secret' },
+    repo: 'o/r', config: CONFIG, env: { ...VARS, CCR_TOKEN: 'secret' },
     fetchImpl: async (url, opts) => {
       seen.push({ url, body: JSON.parse(opts.body), headers: opts.headers });
       return { status: 200, json: async () => ({
@@ -82,12 +111,12 @@ test('a fired routine returns its session id, and the beta header rides the call
 // engine release the whole fleet waits for.
 test('an endpoint may override the dated beta header without an engine change', async () => {
   const config = { taskScheduler: { agenticTaskInvocationEndpoints: { default: {
-    url: 'https://example.invalid/routines/trig_1/fire', tokenSecret: 'CCR_TOKEN',
+    tokenSecret: 'CCR_TOKEN',
     headers: { 'anthropic-beta': 'experimental-cc-routine-2027-01-01' },
   } } } };
   let sent = null;
   const invoke = agentInvoker({
-    repo: 'o/r', config, env: { CCR_TOKEN: 't' },
+    repo: 'o/r', config, env: { ...VARS, CCR_TOKEN: 't' },
     fetchImpl: async (url, opts) => { sent = opts.headers; return { status: 200, json: async () => ({}) }; },
   });
   await invoke({ task: task(null), item, nonce: 'n' });
@@ -96,7 +125,7 @@ test('an endpoint may override the dated beta header without an engine change', 
 });
 
 test('a missing endpoint token names the secret to set rather than failing silently', async () => {
-  const invoke = agentInvoker({ repo: 'o/r', config: CONFIG, env: {}, fetchImpl: async () => { throw new Error('must not be called'); } });
+  const invoke = agentInvoker({ repo: 'o/r', config: CONFIG, env: VARS, fetchImpl: async () => { throw new Error('must not be called'); } });
   const res = await invoke({ task: task(null), item, nonce: 'n-1' });
   assert.equal(res.ok, false);
   assert.match(res.error, /`CCR_TOKEN`/);
@@ -110,7 +139,7 @@ test('the endpoint is called exactly once — no status is ever retried', async 
   for (const status of [422, 401, 500, 503]) {
     let calls = 0;
     const invoke = agentInvoker({
-      repo: 'o/r', config: CONFIG, env: { CCR_TOKEN: 't' },
+      repo: 'o/r', config: CONFIG, env: { ...VARS, CCR_TOKEN: 't' },
       fetchImpl: async () => { calls += 1; return { status, json: async () => ({}) }; },
     });
     const res = await invoke({ task: task(null), item, nonce: 'n' });
@@ -126,7 +155,7 @@ test('the endpoint is called exactly once — no status is ever retried', async 
 test('a call that gets no answer is UNKNOWN, not failed, and is not retried', async () => {
   let calls = 0;
   const invoke = agentInvoker({
-    repo: 'o/r', config: CONFIG, env: { CCR_TOKEN: 't' },
+    repo: 'o/r', config: CONFIG, env: { ...VARS, CCR_TOKEN: 't' },
     fetchImpl: async () => { calls += 1; throw new Error('socket timeout'); },
   });
   const res = await invoke({ task: task(null), item, nonce: 'n' });
@@ -137,7 +166,7 @@ test('a call that gets no answer is UNKNOWN, not failed, and is not retried', as
 });
 
 test('a configuration fault is answered-and-definite: nothing was fired', async () => {
-  const noToken = agentInvoker({ repo: 'o/r', config: CONFIG, env: {}, fetchImpl: async () => { throw new Error('must not be called'); } });
+  const noToken = agentInvoker({ repo: 'o/r', config: CONFIG, env: VARS, fetchImpl: async () => { throw new Error('must not be called'); } });
   assert.equal((await noToken({ task: task(null), item, nonce: 'n' })).answered, true);
   const noEndpoint = agentInvoker({ repo: 'o/r', config: {}, env: {}, fetchImpl: async () => { throw new Error('must not be called'); } });
   assert.equal((await noEndpoint({ task: task(null), item, nonce: 'n' })).answered, true);
@@ -149,7 +178,7 @@ test('the endpoint token is read from the secrets bag', async () => {
   let sent = null;
   const invoke = agentInvoker({
     repo: 'o/r', config: CONFIG,
-    env: { CLAUDINITE_SECRETS: JSON.stringify({ CCR_TOKEN: 'bagged' }) },
+    env: { ...VARS, CLAUDINITE_SECRETS: JSON.stringify({ CCR_TOKEN: 'bagged' }) },
     fetchImpl: async (_url, init) => { sent = init.headers.authorization; return { ok: true, status: 200, text: async () => '{}' }; },
   });
   assert.equal((await invoke({ task: task(null), item, nonce: 'n' })).ok, true);
@@ -160,7 +189,7 @@ test('the endpoint token is read from the secrets bag', async () => {
 // whole time; the workflow never passed it, and the reader went to the Secrets page
 // and had nowhere to go next.
 test('a missing endpoint token names BOTH causes, not just the one the code cannot rule out', async () => {
-  const invoke = agentInvoker({ repo: 'o/r', config: CONFIG, env: {}, fetchImpl: async () => { throw new Error('must not be called'); } });
+  const invoke = agentInvoker({ repo: 'o/r', config: CONFIG, env: VARS, fetchImpl: async () => { throw new Error('must not be called'); } });
   const { error } = await invoke({ task: task(null), item, nonce: 'n-1' });
   assert.match(error, /`CCR_TOKEN`/);
   assert.match(error, /executor workflow/, 'a stale executor workflow is the usual cause and must be named');

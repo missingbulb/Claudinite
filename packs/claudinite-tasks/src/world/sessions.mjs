@@ -18,6 +18,8 @@
 
 import { ENDPOINTS_KEY } from '../../../../engine/checks/helpers/repo-context.mjs';
 import { secretValue } from './secrets-bag.mjs';
+import { varValue } from './vars-bag.mjs';
+import { actionsEnv } from './actions.mjs';
 
 export const DEFAULT_ENDPOINT = 'default';
 
@@ -54,20 +56,30 @@ export const DEFAULT_HEADERS = Object.freeze({
   'anthropic-version': '2023-06-01',
 });
 
-// The endpoint a task's hand-off calls, resolved against the repo's config.
-// Returns `{ name, url, tokenEnv, headers }` or `{ name, error }` — a task naming
-// an endpoint the repo has not configured is a repo-configuration fact, reported
-// where the operator reads it, never a crash.
-export function resolveEndpoint(config, task) {
+// THE URL IS A REPOSITORY VARIABLE, named structurally for the endpoint. A routine's
+// URL is deployment detail each repo holds for itself, so it lives with the repo's
+// Actions configuration beside its token rather than in a committed file.
+export const routineUrlVariable = (name) =>
+  name === DEFAULT_ENDPOINT ? 'CCR_ROUTINE_URL' : `CCR_${name.toUpperCase()}_ROUTINE_URL`;
+
+// The endpoint a task's hand-off calls, resolved against the repo's config and its
+// variables. Returns `{ name, url, tokenEnv, headers }` or `{ name, error }`: a task
+// naming an endpoint the repo has not configured is a repo-configuration fact,
+// reported where the operator reads it, never a crash.
+export function resolveEndpoint(config, task, env = actionsEnv()) {
   const name = task?.decl?.invocation_endpoint ?? DEFAULT_ENDPOINT;
   const endpoints = config?.taskScheduler?.[ENDPOINTS_KEY] ?? {};
   const entry = endpoints[name];
   if (!entry) {
     return { name, error: `this repo's settings declare no invocation endpoint "${name}" (taskScheduler.${ENDPOINTS_KEY})` };
   }
-  if (!entry.url) return { name, error: `invocation endpoint "${name}" declares no url` };
   if (!entry.tokenSecret) return { name, error: `invocation endpoint "${name}" declares no tokenSecret (the NAME of the repo Actions secret holding its token)` };
-  return { name, url: entry.url, tokenEnv: entry.tokenSecret, headers: { ...DEFAULT_HEADERS, ...(entry.headers ?? {}) } };
+  const urlVariable = routineUrlVariable(name);
+  const url = varValue(urlVariable, env);
+  if (!url) {
+    return { name, error: `repository variable \`${urlVariable}\`, the routine URL for invocation endpoint "${name}", is not set. Add it at https://github.com/<owner>/<repo>/settings/variables/actions` };
+  }
+  return { name, url, tokenEnv: entry.tokenSecret, headers: { ...DEFAULT_HEADERS, ...(entry.headers ?? {}) } };
 }
 
 // The fire payload: which item, and the nonce that proves this call is the one
@@ -93,7 +105,7 @@ export const firePayload = ({ repo, item, nonce }) =>
 //                                         guess which.
 export function agentInvoker({ repo, config, env = process.env, fetchImpl = fetch, timeoutMs = 60e3 }) {
   return async function invoke({ task, item, nonce }) {
-    const endpoint = resolveEndpoint(config, task);
+    const endpoint = resolveEndpoint(config, task, env);
     // A configuration fault, decided before any call: definite, and no session.
     if (endpoint.error) return { ok: false, answered: true, error: endpoint.error };
     const token = secretValue(endpoint.tokenEnv, env);

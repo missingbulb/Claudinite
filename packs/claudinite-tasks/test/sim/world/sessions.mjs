@@ -20,8 +20,12 @@
 //               the executor cannot see and must never guess at.
 
 import {
-  DEFAULT_ENDPOINT, DEFAULT_HEADERS, firePayload, resolveEndpoint,
+  DEFAULT_ENDPOINT, DEFAULT_HEADERS, firePayload, resolveEndpoint, routineUrlVariable,
 } from '../../../src/world/sessions.mjs';
+
+// The repository variables the executor job sees: the default routine's URL, as an
+// adopted repo carries it.
+const REPO_VARS = { CLAUDINITE_VARS: JSON.stringify({ [routineUrlVariable(DEFAULT_ENDPOINT)]: 'https://example.invalid/fire' }) };
 
 export function makeSessions({ clock, agents = null, repo = 'o/r' } = {}) {
   const fired = [];
@@ -33,11 +37,12 @@ export function makeSessions({ clock, agents = null, repo = 'o/r' } = {}) {
     DEFAULT_ENDPOINT,
     DEFAULT_HEADERS,
     resolveEndpoint,
+    routineUrlVariable,
     firePayload,
-    agentInvoker: ({ repo: slug = repo, config } = {}) => async function invoke({ task, item, nonce }) {
+    agentInvoker: ({ repo: slug = repo, config, env = REPO_VARS } = {}) => async function invoke({ task, item, nonce }) {
       // The configuration faults are the real port's own, decided before any
       // call, so they are read from the real resolver rather than scripted here.
-      const endpoint = resolveEndpoint(config, task);
+      const endpoint = resolveEndpoint(config, task, env);
       if (endpoint.error) return { ok: false, answered: true, error: endpoint.error };
 
       const scripted = pending.shift() ?? { kind: 'fire' };

@@ -438,18 +438,19 @@ export function loadConfig(root) {
           fix: 'omit the key — the work-item queue is the only dispatch mechanism; "slots" named the slot scheduler, which is deleted',
         });
       }
-      // The endpoint map (docs/PRINCIPLES.md): a name → { url, tokenSecret }.
+      // The endpoint map (docs/PRINCIPLES.md): a name → { tokenSecret }.
       // `tokenSecret` is the NAME of a repo Actions secret and never a value —
       // that indirection is the whole reason a task may declare an endpoint at all,
       // since a task declaration is vendored verbatim into every consuming repo.
+      // The routine's URL is a repository variable, never a settings value.
       if (endpoints !== undefined) {
         if (endpoints === null || typeof endpoints !== 'object' || Array.isArray(endpoints)) {
-          errors.push({ what: `"taskScheduler.${ENDPOINTS_KEY}" must be an object of endpoint name → { url, tokenSecret }`, fix: 'e.g. { "default": { "url": "https://…", "tokenSecret": "CCR_SESSION_TOKEN" } }' });
+          errors.push({ what: `"taskScheduler.${ENDPOINTS_KEY}" must be an object of endpoint name → { tokenSecret }`, fix: 'e.g. { "default": { "tokenSecret": "CCR_ROUTINE_TOKEN" } }' });
         } else {
           for (const [epName, entry] of Object.entries(endpoints)) {
             if (entry === null || typeof entry !== 'object' || Array.isArray(entry)
-                || typeof entry.url !== 'string' || typeof entry.tokenSecret !== 'string') {
-              errors.push({ what: `"taskScheduler.${ENDPOINTS_KEY}.${epName}" must be { url, tokenSecret } (both strings)`, fix: 'give the endpoint an invocation URL and the NAME of the repo Actions secret holding its token — never the token itself' });
+                || typeof entry.tokenSecret !== 'string') {
+              errors.push({ what: `"taskScheduler.${ENDPOINTS_KEY}.${epName}" must be { tokenSecret } (a string)`, fix: 'name the repo Actions secret holding the endpoint\'s token, never the token itself' });
             }
           }
         }
