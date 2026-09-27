@@ -72,6 +72,7 @@ function makeCanon({ packs = [], skills = [], packDirectory = true } = {}) {
   writeAt(root, 'engine/pack_loader/mount-skills.mjs', 'stub\n');
   // the full pack directory: generated catalog, vendored unconditionally
   if (packDirectory) writeAt(root, 'packs/directory.GENERATED.md', 'stub catalog\n');
+  if (packDirectory) writeAt(root, 'packs/locators.GENERATED.mjs', 'export const PACKS = [];\n');
   // a top-level tree no engine root and no pack names: the set is what the
   // declaration reaches, never "everything that happens to be in the canon"
   writeAt(root, 'canon-only/notes.md', 'canon-side\n');
@@ -150,6 +151,7 @@ test('structural set: engine roots + machinery + declared pack + its skills, exa
     'packs/alpha/stubs/wf.yml',
     'packs/alpha/skills/s1/SKILL.md',
     'packs/directory.GENERATED.md',
+    'packs/locators.GENERATED.mjs',
     'engine/migrations/apply.mjs',
     'engine/migrations/registry.mjs',
     'engine/migrations/2026-01-01-seed/migration.mjs',
@@ -234,6 +236,7 @@ test('the full pack directory vendors regardless of declaration — a member see
   const { files, errors } = await vendorAt(root, []);
   assert.deepEqual(errors, []);
   assert.ok(files.includes('packs/directory.GENERATED.md'), 'the pack directory must ship with every mount, declared packs or none');
+  assert.ok(files.includes('packs/locators.GENERATED.mjs'), 'the pack locators must ship with every mount, declared packs or none');
 });
 
 test('a canon tree missing the pack directory is an error, before any write', async () => {
@@ -248,6 +251,7 @@ test('regression: the REAL canon tree carries the pack directory in every vendor
   const { files, errors } = await computeVendorSet([]);
   assert.deepEqual(errors, []);
   assert.ok(files.includes('packs/directory.GENERATED.md'), 'the live packs/directory.GENERATED.md must be in the vendor set');
+  assert.ok(files.includes('packs/locators.GENERATED.mjs'), 'the live packs/locators.GENERATED.mjs must be in the vendor set');
 });
 
 test('migrations: the applier + registry + RECENT record folders vendor; aged records, README, tests do not', async () => {

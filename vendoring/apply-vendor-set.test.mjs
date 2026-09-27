@@ -52,6 +52,7 @@ function makeCanon() {
   writeAt(root, 'engine/checks/check_the_world.mjs', 'engine v2\n');
   writeAt(root, 'engine/pack_loader/mount-skills.mjs', 'machinery\n');
   writeAt(root, 'packs/directory.GENERATED.md', 'stub catalog\n');
+  writeAt(root, 'packs/locators.GENERATED.mjs', 'export const PACKS = [];\n');
   writeAt(root, 'packs/alpha/pack.mjs', 'export default { id: "alpha", version: 4 };\n');
   writeAt(root, 'packs/alpha/RULES.md', 'rules\n');
   writeAt(root, 'packs/alpha/skills/s1/SKILL.md', 'skill\n');
@@ -187,6 +188,7 @@ test('#328: a canon tree nested in a FOREIGN git repo is rootless — upward .gi
   writeAt(canon, 'engine/checks/helpers/pattern-rules.mjs', 'stub\n');
   writeAt(canon, 'engine/checks/check_the_world.mjs', 'engine v2\n');
   writeAt(canon, 'packs/directory.GENERATED.md', 'stub catalog\n');
+  writeAt(canon, 'packs/locators.GENERATED.mjs', 'export const PACKS = [];\n');
   writeAt(canon, 'engine/migrations/apply.mjs', 'export const apply = 1;\n');
   writeAt(canon, 'engine/migrations/registry.mjs', 'export const registry = 1;\n');
   writeAt(canon, 'engine/migrations/2026-01-01-seed/migration.mjs', 'export default {\n  id: "seed",\n  version: 2,\n};\n');

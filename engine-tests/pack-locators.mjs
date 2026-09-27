@@ -15,6 +15,10 @@ import { dirname, join, relative, resolve } from 'node:path';
 // the render refuses one that is not rather than ship a file that fails in a browser.
 
 const PLACEHOLDER = 'claudinite-locator:';
+// JSON with every non-ASCII character escaped: the file carries other files' text,
+// and its own diff should show what changed in them, not their typography.
+const asciiJson = (value) => JSON.stringify(value, null, 2).replace(/[\u007f-\uffff]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`);
+
 const STATIC_IMPORT = /((?:import|export)\s[^'"]*?\sfrom\s*|import\s*)(['"])([^'"]+)\2/g;
 
 function collectModules(entry, root, modules) {
@@ -62,20 +66,17 @@ export function renderPackLocators(packs, root) {
     locator: typeof p.detect === 'function' ? collectModules(join(p.dir, 'pack.mjs'), root, modules) : null,
   }));
   const sources = Object.fromEntries(linkOrder(modules).map((k) => [k, modules.get(k).source]));
-  return `// GENERATED - do not hand-edit. Rendered from the pack manifests by the canon's
-// engine-tests/pack-locators.test.mjs; regenerate by running that test in a canon checkout.
-//
-// Every pack a repo can adopt from Claudinite, with its pitch, and a way to run each
+  return `// Every pack a repo can adopt from Claudinite, with its pitch, and a way to run each
 // pack's fingerprint against a repo: \`await loadLocators()\` answers a Map from pack id
 // to \`detect({ tracked, read })\`, where \`tracked\` lists the repo's paths and \`read\`
 // answers a path's text (or null) synchronously. A fingerprint only suspects a pack is
 // wanted; declaring it is the project's call.
 
-export const PACKS = ${JSON.stringify(entries, null, 2)};
+export const PACKS = ${asciiJson(entries)};
 
 // Each module's source, dependencies first, relative imports rewritten to
 // '${PLACEHOLDER}<module>' until loadLocators links them.
-const SOURCES = ${JSON.stringify(sources, null, 2)};
+const SOURCES = ${asciiJson(sources)};
 
 const asDataUrl = (source) => \`data:text/javascript;charset=utf-8,\${encodeURIComponent(source)}\`;
 

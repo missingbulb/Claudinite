@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, existsSync, copyFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadPacks, resolveDeclaredPacks, packEntryId, SHARED_SUBDIR, PACK_DIRECTORY_FILE } from '../engine/pack_loader/pack-registry.mjs';
+import { loadPacks, resolveDeclaredPacks, packEntryId, SHARED_SUBDIR, PACK_DIRECTORY_FILE, PACK_LOCATORS_FILE } from '../engine/pack_loader/pack-registry.mjs';
 import { PROVENANCE_DIR } from '../engine/pack_loader/pack-conventions.mjs';
 import { relativeImports, resolveRelative, ENGINE_DIR_ROOTS } from '../engine/checks/helpers/module-imports.mjs';
 import { migrationApplies, MIGRATIONS_SUBDIR } from '../engine/checks/helpers/active-migrations.mjs';
@@ -186,8 +186,11 @@ export async function computeVendorSet(declaredEntries, { today, installed = nul
   // a member session has no view of what else it could adopt (#726). Missing
   // is canon-side breakage — a mount silently without it would blind the whole
   // fleet to the catalog — so it aborts the update like any other set error.
-  if (existsSync(join(canonRoot, PACK_DIRECTORY_FILE))) files.add(PACK_DIRECTORY_FILE);
-  else errors.push({ what: `${PACK_DIRECTORY_FILE} is missing from the canon tree`, fix: 'regenerate it (its drift test in engine-tests/ renders it from the pack manifests) and commit it' });
+  // Its runnable companion, the pitches and fingerprints, ships on the same terms.
+  for (const file of [PACK_DIRECTORY_FILE, PACK_LOCATORS_FILE]) {
+    if (existsSync(join(canonRoot, file))) files.add(file);
+    else errors.push({ what: `${file} is missing from the canon tree`, fix: 'regenerate it (its drift test in engine-tests/ renders it from the pack manifests) and commit it' });
+  }
 
   const packs = await loadPacks();
   const byId = new Map(packs.map((p) => [p.id, p]));

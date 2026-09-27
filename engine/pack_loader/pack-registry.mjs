@@ -68,6 +68,11 @@ export const SHARED_SUBDIR = join('.claudinite', 'shared');
 // it, the prose injector points sessions at it.
 export const PACK_DIRECTORY_FILE = 'packs/directory.GENERATED.md';
 
+// Its runnable companion: every offered pack's pitch and fingerprint, as one ES module
+// any runtime can load (engine-tests/pack-locators.mjs renders it), vendored beside the
+// directory so a member, or a dashboard reading one, can ask which other packs fit.
+export const PACK_LOCATORS_FILE = 'packs/locators.GENERATED.mjs';
+
 // Load a directory of `<name>/pack.mjs` manifests, isolating each import so one
 // broken manifest can't sink the rest (a consumer-authored local pack.mjs must
 // never disable every other pack's prose/checks/skills). Each loaded pack is

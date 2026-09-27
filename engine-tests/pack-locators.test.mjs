@@ -1,12 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { loadPacks, PACK_LOCATORS_FILE } from '../engine/pack_loader/pack-registry.mjs';
 import { renderPackLocators } from './pack-locators.mjs';
+import { removeTree } from '../engine/remove-tree.mjs';
 
 // packs/locators.GENERATED.mjs is rendered from the manifests and vendored into every
 // mount. Like the directory, this test maintains the committed file: locally it
@@ -31,19 +32,19 @@ function contexts(packs) {
   const tracked = execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' }).trim().split('\n');
   const own = { tracked, read: (f) => { try { return readFileSync(join(ROOT, f), 'utf8'); } catch { return null; } } };
   const synthetic = {
-    'android/app/src/main/AndroidManifest.xml': '<manifest/>',
+    'android/app/src/main/AndroidManifest.xml': '<manifest/>', // @real-entity the marker this pack's real fingerprint looks for
     'template.yaml': 'Transform: AWS::Serverless-2016-10-31',
     'manifest.json': '{"manifest_version": 3, "name": "x"}',
     'wrangler.json': '{"name": "x", "assets": {"directory": "./site"}}',
     'dev/requirements/requirements.md': '# requirements',
     'firebase.json': '{}',
     'pubspec.yaml': 'name: x',
-    'ios/Runner/Info.plist': '<plist/>',
+    'ios/Runner/Info.plist': '<plist/>', // @real-entity the marker this pack's real fingerprint looks for
     'Package.swift': '// swift',
     'package.json': '{}',
     'pyproject.toml': '[project]',
     'requirements.txt': 'numpy\nscipy\n',
-    'product-wiki/product-requirements/README.md': '# r',
+    'product-wiki/product-requirements/README.md': '# r', // @real-entity the marker this pack's real fingerprint looks for
     'src/a.js': "import { chromium } from 'playwright'; import jwt from 'jsonwebtoken'; const r = new SpeechRecognition(); L.map('m');",
     'index.html': '<footer title="version 1.2.3">x</footer>',
   };
@@ -76,7 +77,7 @@ test('each generated locator answers what its pack\'s own detect answers', async
     assert.deepEqual(PACKS.map((p) => p.id), packs.filter((p) => !p.hidden).map((p) => p.id).sort());
     for (const p of PACKS) assert.equal(typeof p.pitch, 'string', `${p.id} carries no pitch`);
   } finally {
-    rmSync(dir, { recursive: true, force: true });
+    removeTree(dir);
   }
 });
 
@@ -87,6 +88,6 @@ test('a locator importing something a browser cannot load is refused at render',
     const pack = { id: 'acme-pack', dir, detect: () => true, ruleRoutingGuidance: { belongs: 'b', excludes: 'e' } };
     assert.throws(() => renderPackLocators([pack], dir), /imports "node:fs"/);
   } finally {
-    rmSync(dir, { recursive: true, force: true });
+    removeTree(dir);
   }
 });
