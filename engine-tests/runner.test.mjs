@@ -259,8 +259,7 @@ test('--list emits the machine-readable rule catalog', () => {
     // explanation of why is thrown away.
     assert.equal(r.status, 0, `--list failed (signal ${r.signal}); stderr was:\n${r.stderr}`);
     for (const id of ['reference-integrity', 'markdown-link-labels', // @real-entity the real check ids the catalog must carry, and the real closure the seed writes
-                      'warning-suppression', // @real-entity the real check ids the catalog must carry, and the real closure the seed writes
-                      'squash-merge-history']) { // @real-entity the real check ids the catalog must carry, and the real closure the seed writes
+                      'warning-suppression']) { // @real-entity the real check ids the catalog must carry, and the real closure the seed writes
       assert.match(r.stdout, new RegExp(`^${id}\t`, 'm'),
         `${id} is absent from the catalog. stderr was:\n${r.stderr}`);
     }

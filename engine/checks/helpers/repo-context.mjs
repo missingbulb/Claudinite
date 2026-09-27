@@ -45,10 +45,9 @@ const FETCH_WINDOW_MS = 5 * 60_000;
 // A remote-tracking base ref is only as fresh as the last fetch, and a cloud session's
 // clone freezes it at container-creation time — so every commit the base branch gained
 // since lands inside `mergeBase..HEAD` and gets billed to the work. That is a wrong
-// verdict, not a stale one: the delta rules (squash-merge-history above all, a *blocking*
-// rule) report other people's commits as introduced by this change, and `--changed`
-// widens to files the change never touched. Refreshing the ref once per run is what makes
-// "the work" mean the work.
+// verdict, not a stale one: the delta rules report other people's commits as introduced by
+// this change, and `--changed` widens to files the change never touched. Refreshing the
+// ref once per run is what makes "the work" mean the work.
 //
 // Best-effort by construction — no network, no remote, a lock held, a slow server: the
 // fetch fails or times out and the run continues against the ref as it stands, exactly as

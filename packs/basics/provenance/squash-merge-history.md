@@ -15,3 +15,9 @@
 - **Reason:** owner decision, 2026-09-25: the field names what happens when the check fails, and
   *severity* keeps its impact sense; what this element enforces is unchanged.
 - **Actor:** @missingbulb (owner).
+
+## 2026-09-27 · retired · a squash discards the merge commits it forbade
+- **Reason:** since #908 scoped it to the work, it judged the branch's own commits, which squash
+  merging erases; it verified no setting and blocked harmless base merges. Both landing paths
+  already squash explicitly.
+- **Actor:** @missingbulb (owner).

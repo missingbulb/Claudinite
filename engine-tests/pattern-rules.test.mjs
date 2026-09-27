@@ -2109,3 +2109,41 @@ test('the shared sweep reads only the files the planned rules scan, and a rule o
     assert.deepEqual(unplanned.run(ctx).map((f) => f.file), ['b.log']);
   } finally { cleanup(root); }
 });
+
+test('forbidIntroducedMergeCommits: flags a merge the work introduces, silent on linear history and pre-existing main merges', () => {
+  const rule = patternRule({ ...meta('fx-merges'), scope: 'work', forbidIntroducedMergeCommits: { what: 'merge commit introduced by this change: {subject}', fix: 'f' } });
+  const run = (r, root) => runRule(r, buildContext({ root, mode: 'changed' }));
+  const linear = makeRepo({ changed: { 'f.txt': 'x\n' } });
+
+  // A merge commit on the feature branch itself — the current change introduces it → fires.
+  const introduced = makeRepo({ changed: { 'f.txt': 'x\n' } });
+  git(introduced, 'checkout', '-q', '-b', 'side');
+  writeFiles(introduced, { 's.txt': 'x\n' });
+  git(introduced, 'add', '-A');
+  git(introduced, 'commit', '-q', '-m', 'side work');
+  git(introduced, 'checkout', '-q', 'feature');
+  git(introduced, 'merge', '-q', '--no-ff', '-m', 'merge side into feature', 'side');
+
+  // A merge commit already on main, before the branch's work — the repo's history, not the work → silent.
+  const preexisting = makeRepo({ changed: {} });
+  git(preexisting, 'checkout', '-q', 'main');
+  git(preexisting, 'checkout', '-q', '-b', 'side');
+  writeFiles(preexisting, { 's.txt': 'x\n' });
+  git(preexisting, 'add', '-A');
+  git(preexisting, 'commit', '-q', '-m', 'side work');
+  git(preexisting, 'checkout', '-q', 'main');
+  git(preexisting, 'merge', '-q', '--no-ff', '-m', 'merge side', 'side');
+  git(preexisting, 'checkout', '-q', '-B', 'feature', 'main'); // branch fresh off post-merge main
+  writeFiles(preexisting, { 'w.txt': 'x\n' });
+  git(preexisting, 'add', '-A');
+  git(preexisting, 'commit', '-q', '-m', 'feature work');
+
+  try {
+    const findings = run(rule, introduced);
+    assert.equal(findings.length, 1);
+    assert.match(findings[0].what, /merge side into feature/);
+    assert.match(findings[0].file, /^feature@/);
+    assert.equal(run(rule, linear).length, 0);
+    assert.equal(run(rule, preexisting).length, 0);
+  } finally { cleanup(linear); cleanup(introduced); cleanup(preexisting); }
+});

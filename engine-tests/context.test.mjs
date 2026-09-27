@@ -292,8 +292,8 @@ test('buildContext: the shared mount is structurally out of scope; local packs s
 
 // A remote-tracking base ref goes stale the moment the base branch moves, and a cloud
 // session's clone freezes it at container-creation time. Everything the base gained since
-// then sits in `mergeBase..HEAD` and gets billed to the work — squash-merge-history (a
-// blocking rule) reporting other people's merge commits as introduced by this change.
+// then sits in `mergeBase..HEAD` and gets billed to the work — a delta rule reporting other
+// people's merge commits as introduced by this change.
 test('buildContext: a stale remote base ref is refreshed, so the base branch\'s own merges are not the work\'s', () => {
   const origin = mkdtempSync(join(tmpdir(), 'claudinite-origin-'));
   git(origin, 'init', '-q', '-b', 'main');
