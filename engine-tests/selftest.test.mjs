@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   report, probeMount, probeStamp, probePackManifests, probeHookTargets,
-  probeSkillLinks, probeScheduler, probeMigrations, MOUNT, CHECKS, SETTINGS, SCHEDULER,
+  probeSkillLinks, probeScheduler, probeMigrations, readLoadedInstructions, probeRulesLoaded, MOUNT, CHECKS, SETTINGS, SCHEDULER,
 } from '../engine/selftest.mjs';
 
 // An in-memory repo: a path->content map. Absent key = absent file. The probes
@@ -151,4 +151,70 @@ test('migrations: a registry that throws fails, quoting the reason', () => {
 test('migrations: a loadable registry passes, and an unreachable one is not-applicable', () => {
   assert.equal(probeMigrations(true).ok, true);
   assert.equal(probeMigrations(null).ok, null);
+});
+
+// --- rules-loaded ----------------------------------------------------------
+// The one probe over a RESULT: what the harness recorded it put in the session,
+// against what the active packs' prose says on disk.
+
+const LOADED_AT = Date.parse('2026-01-01T00:00:10Z');
+const BEFORE = LOADED_AT - 60_000;
+const instructions = (files, timestamp = '2026-01-01T00:00:10Z') => JSON.stringify({
+  type: 'attachment', timestamp, attachment: { type: 'instructions', files },
+});
+const otherAttachment = JSON.stringify({ type: 'attachment', attachment: { type: 'date' } });
+const rules = (pack, content, modifiedAt = BEFORE) => ({ pack, path: `/r/${pack}/RULES.md`, content, modifiedAt });
+
+test('readLoadedInstructions: a transcript recording no attachments at all cannot be read, so it is null', () => {
+  const text = JSON.stringify({ type: 'user', message: { content: 'hi' } }) + '\n';
+  assert.equal(readLoadedInstructions(text), null);
+});
+
+test('readLoadedInstructions: every instructions attachment is folded into one path->content map', () => {
+  const text = [
+    otherAttachment,
+    instructions([{ path: '/r/a/RULES.md', content: 'A' }], '2026-01-01T00:00:05Z'),
+    'not json',
+    instructions([{ path: '/r/b/RULES.md', content: 'B' }]),
+  ].join('\n');
+  const loaded = readLoadedInstructions(text);
+  assert.deepEqual([...loaded.files], [['/r/a/RULES.md', 'A'], ['/r/b/RULES.md', 'B']]);
+  assert.equal(loaded.at, Date.parse('2026-01-01T00:00:05Z'));
+});
+
+test('readLoadedInstructions: attachments present but none of them instructions reads as nothing loaded', () => {
+  const loaded = readLoadedInstructions(otherAttachment + '\n');
+  assert.equal(loaded.files.size, 0);
+});
+
+test('rules-loaded: every active pack\'s prose recorded as loaded, byte for byte bar the ends, passes', () => {
+  const loaded = { at: LOADED_AT, files: new Map([['/r/acme-pack/RULES.md', '# rules\n- one']]) };
+  assert.equal(probeRulesLoaded([rules('acme-pack', '# rules\n- one\n')], loaded).ok, true);
+});
+
+test('rules-loaded: a pack whose prose the harness never loaded fails, naming the pack', () => {
+  const loaded = { at: LOADED_AT, files: new Map([['/r/acme-pack/RULES.md', 'x']]) };
+  const p = probeRulesLoaded([rules('acme-pack', 'x'), rules('acme-other', 'y')], loaded);
+  assert.equal(p.ok, false);
+  assert.match(p.detail, /acme-other/);
+  assert.doesNotMatch(p.detail, /acme-pack/);
+});
+
+test('rules-loaded: a pack whose loaded prose differs from disk fails, naming the pack', () => {
+  const loaded = { at: LOADED_AT, files: new Map([['/r/acme-pack/RULES.md', '- one']]) };
+  const p = probeRulesLoaded([rules('acme-pack', '- one\n- two')], loaded);
+  assert.equal(p.ok, false);
+  assert.match(p.detail, /acme-pack/);
+});
+
+test('rules-loaded: prose edited after it was loaded is the session\'s own work, not a failed load', () => {
+  const loaded = { at: LOADED_AT, files: new Map([['/r/acme-pack/RULES.md', '- one']]) };
+  assert.equal(probeRulesLoaded([rules('acme-pack', '- one\n- two', LOADED_AT + 1)], loaded).ok, true);
+  // On the load instant itself it is still judged: the write landed no later than the read.
+  assert.equal(probeRulesLoaded([rules('acme-pack', '- one\n- two', LOADED_AT)], loaded).ok, false);
+});
+
+test('rules-loaded: no readable record, or no prose to expect, is not-applicable', () => {
+  assert.equal(probeRulesLoaded([rules('acme-pack', 'x')], null).ok, null);
+  assert.equal(probeRulesLoaded([], { at: LOADED_AT, files: new Map() }).ok, null);
 });
