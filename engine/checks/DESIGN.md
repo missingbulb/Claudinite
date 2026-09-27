@@ -226,7 +226,8 @@ in the consumer's `.claude/settings.json` (the same mechanism as the existing Se
 
 1. The Stop hook fires when the agent finishes a turn.
 2. It **fast-exits in milliseconds** when no tracked file differs from `main` — conversational
-   turns cost nothing.
+   turns cost nothing. The one exception is the session's first stop, which first runs the
+   self-test's rules-loaded probe (see `engine/checks/README.md` "Enforcement wiring").
 3. Otherwise it runs the **work** sweep (`check_the_work.mjs`, with the session transcript); on
    findings it exits 2 with them on stderr. Claude Code blocks the stop and feeds that text back
    to the agent, which fixes the violations **in the same session**. A clean run stops silently.

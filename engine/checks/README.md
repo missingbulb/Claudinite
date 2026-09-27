@@ -141,6 +141,10 @@ the change in front of the session, one about the repo as a whole:
   loop, judging what the session just did (and the conversation-surface rules, which only exist
   at Stop). On blocking findings it exits 2 so the session fixes them before stopping.
   Self-limiting: after blocking twice on identical findings it lets the stop through.
+  Before any of that, once per session and clean tree or not, it runs the self-test's
+  rules-loaded probe ([../selftest.mjs](../selftest.mjs)): the pack prose the harness recorded
+  loading, against every active pack's prose on disk. A miss blocks the first stop once, then
+  only advises.
 - **Action scope → the PreToolUse hook, and the Stop hook again.** A declaration with
   `scope: "action"` (`guardToolCalls`) is judged by [../hooks/pretooluse-command.mjs](../hooks/pretooluse-command.mjs)
   against the call about to run — a blocking finding denies it and hands the agent the text, an
