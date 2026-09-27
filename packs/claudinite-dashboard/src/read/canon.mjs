@@ -8,16 +8,14 @@
 //
 // The reference is VERSIONS, never a sha: the versioned flows stamp members with
 // `engineVersion`/`packVersions` only, so the canon side is the live `ENGINE_VERSION`
-// out of `engine/version.mjs` plus each pack's `version:` out of its `pack.mjs` —
-// lifted as text like every declaration field, sha-cached like every content read.
-//
-// Pack versions are fetched LAZILY, only for packs some member actually stamps: a
-// fleet's union of declared packs is around a dozen reads where the full canon catalog
-// is three times that, and a warm load pays for none of them.
+// out of `engine/version.mjs` plus each pack's version out of the shelf's catalog, whose
+// Version column prices every offered pack in one read, lifted as text like every
+// declaration field, sha-cached like every content read. A pack the catalog does not
+// offer is read off its own `pack.mjs`, and only when some member actually stamps it.
 
 import * as gh from './github.mjs';
 import { installedVersions } from '../../../../engine/installed-versions.mjs';
-import { parseEngineVersion, parsePackVersion } from '../derive/fleet.mjs';
+import { parseEngineVersion, parsePackVersion, parseDirectoryVersions } from '../derive/fleet.mjs';
 
 export async function readCanon(config, token) {
   if (!config?.canonRepo) return null;
@@ -33,12 +31,16 @@ export async function readCanon(config, token) {
     const engineVersion = parseEngineVersion(await at('engine/version.mjs'));
     const packVersions = {};
     const pending = new Map();
+    let catalog = null;
     const packVersion = (id) => {
       // A local pack lives in the member's own tree — the canon has no version for it.
       if (!id || id.startsWith('local/')) return Promise.resolve(null);
       if (!pending.has(id)) {
+        catalog ??= at('packs/directory.GENERATED.md').then(parseDirectoryVersions, () => null);
         pending.set(id, (async () => {
-          const v = parsePackVersion(await at(`packs/${id}/pack.mjs`).catch(() => null));
+          // A pack the catalog does not offer is priced off its own manifest.
+          const listed = (await catalog)?.[id];
+          const v = listed ?? parsePackVersion(await at(`packs/${id}/pack.mjs`).catch(() => null));
           if (v != null) packVersions[id] = v;
           return v;
         })());

@@ -15,10 +15,8 @@
   *severity* keeps its impact sense; what this element enforces is unchanged.
 - **Actor:** @missingbulb (owner).
 
-## 2026-09-27 · scope-changed · a generated file is judged at its sources
-- **Reason:** packs/directory.GENERATED.md carries manifest text verbatim, so a row regenerated
-  because its activation changed re-fired on every dash its routing guidance already held, where no
-  edit to the generated file could clear it.
+## 2026-09-27 · scope-changed · a GENERATED file is out of scope
+- **Reason:** its lines come from sources the check already judges; regenerating the pack catalog
+  re-added 36 manifest dashes as new lines.
 - **Actor:** @missingbulb (owner).
-- **Mechanism:** `inFilesMatching` skips `*.GENERATED.*`; the dash is still caught where its source
-  is written.
+- **Mechanism:** a negative lookahead on `.GENERATED.` in `inFilesMatching`.

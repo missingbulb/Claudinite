@@ -469,3 +469,30 @@ test('discoverPacks: the copied root is opt-in — a reader that did not ask nev
     assert.equal((await loadPacks({ localRoot: root, session: true })).filter((p) => p.temp).length, 1);
   } finally { removeTree(root); }
 });
+
+// A runner that will only run the declared packs' checks need not import the rest:
+// `checksFor` names the packs whose checks load, and every other pack still arrives
+// with its manifest, since a rule may read any pack's metadata.
+test('discoverPacks: checksFor loads the checks of only the packs it names, and every manifest still', async () => {
+  const root = makeLocalRoot({ 'acme-pack': 'export default {};', 'acme-other': 'export default {};' });
+  try {
+    for (const id of ['acme-pack', 'acme-other']) {
+      const dir = join(root, '.claudinite', 'local', 'packs', id);
+      mkdirSync(join(dir, 'workRules'), { recursive: true });
+      writeFileSync(join(dir, 'workRules', 'coded.mjs'),
+        `export default { id: '${id}-coded', on_fail: 'advise', scope: 'work', description: 'd', doc: 'd', why: 'w', run: () => [] };\n`);
+      writeFileSync(join(dir, 'declared-checks.json'),
+        JSON.stringify([{ id: `${id}-declared`, on_fail: 'advise', failureMessage: 'm', scanFiles: '/\\.txt$/', matchLines: [{ match: '/x/', what: 'w', fix: 'f' }] }]));
+    }
+    const checksOf = (packs, id) => {
+      const p = packs.find((q) => q.id === id);
+      return p && [...p.worldRules, ...p.workRules, ...(p.skillChecks ?? [])].map((r) => r.id).sort();
+    };
+    const every = (await discoverPacks({ localRoot: root })).packs;
+    assert.deepEqual(checksOf(every, 'acme-other'), ['acme-other-coded', 'acme-other-declared']);
+    const { packs } = await discoverPacks({ localRoot: root, checksFor: (id) => id === 'acme-pack' });
+    assert.deepEqual(checksOf(packs, 'acme-pack'), ['acme-pack-coded', 'acme-pack-declared']);
+    assert.deepEqual(checksOf(packs, 'acme-other'), [], 'a pack checksFor does not name still loaded its checks');
+    assert.ok(packs.some((p) => p.id === A_CANON_PACK), 'a canon pack went missing');
+  } finally { removeTree(root); }
+});

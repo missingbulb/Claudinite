@@ -4,6 +4,9 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadPacks, PACK_DIRECTORY_FILE } from '../engine/pack_loader/pack-registry.mjs';
+import { withDirectoryVersions } from '../packs/claudinite-canon-curation/pack-versions.mjs';
+import { parseDirectoryVersions } from '../packs/claudinite-dashboard/src/derive/fleet.mjs';
+import { directoryVersions } from '../packs/claudinite-fleet-sheepdog/tasks/fleet-roster/freshness.mjs';
 
 // packs/directory.GENERATED.md is the full catalog of adoptable packs, vendored
 // into every consumer's mount regardless of declaration (compute-vendor-set
@@ -36,7 +39,7 @@ export function renderPackDirectory(packs) {
   const rows = [...packs]
     .filter((p) => !p.hidden)
     .sort((a, b) => a.id.localeCompare(b.id))
-    .map((p) => `| \`${p.id}\` | ${cell(p.ruleRoutingGuidance?.belongs ?? '')} | ${cell(p.ruleRoutingGuidance?.excludes ?? '')} | ${activation(p)} | ${p.requires?.length ? p.requires.map((r) => `\`${r}\``).join(', ') : '—'} |`);
+    .map((p) => `| \`${p.id}\` | ${cell(p.version ?? '—')} | ${cell(p.ruleRoutingGuidance?.belongs ?? '')} | ${cell(p.ruleRoutingGuidance?.excludes ?? '')} | ${activation(p)} | ${p.requires?.length ? p.requires.map((r) => `\`${r}\``).join(', ') : '—'} |`);
   return `# Claudinite packs — the full directory
 
 Every pack this repo can adopt from Claudinite, whether or not it is declared here yet. A pack
@@ -47,8 +50,8 @@ pack is wanted — declaring it is always the project's call.
 GENERATED — do not hand-edit. Rendered from the pack manifests by the canon's
 \`engine-tests/pack-directory.test.mjs\`; regenerate by running that test in a canon checkout.
 
-| Pack | What it covers | Not this pack | Activation | Requires |
-|---|---|---|---|---|
+| Pack | Version | What it covers | Not this pack | Activation | Requires |
+|---|---|---|---|---|---|
 ${rows.join('\n')}
 `;
 }
@@ -86,4 +89,24 @@ test('renderPackDirectory omits a hidden pack', () => {
   const rendered = renderPackDirectory([pack('visible-pack'), pack('hidden-pack', { hidden: true })]);
   assert.match(rendered, /^\| `visible-pack` \|/m);
   assert.doesNotMatch(rendered, /hidden-pack/);
+});
+
+// The Version column has one writer beside this renderer and two readers, each in its
+// own pack and so each its own copy: the bump commit patches the column in place, and
+// the dashboard and the fleet roster price canon's packs off it in one read. All three
+// are held to the renderer over the real shelf, in both directions — every offered
+// pack read back at its manifest's version, and a patched catalog byte-identical to a
+// fresh render of the bumped manifests.
+test('the catalog\'s Version column reads back and patches exactly as the renderer writes it', async () => {
+  const packs = await loadPacks();
+  const rendered = renderPackDirectory(packs);
+  const offered = Object.fromEntries(packs.filter((p) => !p.hidden).map((p) => [p.id, p.version]));
+  assert.deepEqual(parseDirectoryVersions(rendered), offered, 'the dashboard reads the column differently from how it is rendered');
+  assert.deepEqual(directoryVersions(rendered), offered, 'the fleet roster reads the column differently from how it is rendered');
+
+  const bumped = new Set(packs.filter((p, i) => i % 2 === 0).map((p) => p.id));
+  const next = packs.map((p) => (bumped.has(p.id) ? { ...p, version: '99999.9' } : p));
+  const bumps = [...bumped].map((id) => ({ id, to: '99999.9' }));
+  assert.equal(withDirectoryVersions(rendered, bumps), renderPackDirectory(next),
+    'the bump commit\'s patch of the catalog differs from a fresh render of the bumped manifests');
 });

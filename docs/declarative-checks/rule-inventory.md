@@ -317,7 +317,7 @@ the `checkParsedFiles` keys a row names carry only what a schema cannot state.
 | 153 | Editing JSON config as anchored text | D | Bash/`node -e` that `JSON.stringify`s back into a settings file | action guard (advisory) — → `settings-json-reserialized` (2026-09-06) |
 | 154 | JSON target inside an array | G | — | — |
 | 155 | Returning to a branch that waited | G | — | — |
-| 156 | Re-verify on moved main — rebase never merge | D | Bash `git merge origin/main` | action guard (block); `squash-merge-history` is the backstop — → `merge-main-into-branch` (#1711) |
+| 156 | Re-verify on moved main: rebase never merge | D | Bash `git merge origin/main` | action guard (block); `squash-merge-history` is the backstop, → `merge-main-into-branch` (#1711). 2026-09-27: both retired, since a squash lands a base merge and a rebase alike |
 | 157 | Merging a long-open PR — `mergeable_state` | F | `merge_pull_request` | tool-call-triggered (merge-to-main) |
 | 158 | After squash-merge — prune | G | — | — |
 | 159 | `RULES.md` is append-only | C | removed lines in a `RULES.md` | work: `forbidRemovedLinesIn` — → `rules-append-only` (#1711) |

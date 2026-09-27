@@ -112,9 +112,7 @@ checks point at a skill, so it is **not** the classifier):
 
 Only the third — *the artifact would not exist had the action never run* — earns a home in the
 skill. `routine-structure` is the sole current case: a routine folder exists only because
-someone authored a routine. `squash-merge-history` points at the merge skill but stays
-in the baseline, because git history exists in every repo and is disturbed by any merge, not only that
-skill's action; `claude-md-length`, `generated-merge-driver`, and the placement check likewise
+someone authored a routine. `claude-md-length`, `generated-merge-driver`, and the placement check likewise
 inspect artifacts every repo has, so they stay in the baseline despite naming a skill in `doc`.
 
 **Not every pack-machinery concern is a check.** The `.claudinite-settings.json` *settings* are
@@ -226,7 +224,8 @@ in the consumer's `.claude/settings.json` (the same mechanism as the existing Se
 
 1. The Stop hook fires when the agent finishes a turn.
 2. It **fast-exits in milliseconds** when no tracked file differs from `main` — conversational
-   turns cost nothing.
+   turns cost nothing. The one exception is the session's first stop, which first runs the
+   self-test's rules-loaded probe (see `engine/checks/README.md` "Enforcement wiring").
 3. Otherwise it runs the **work** sweep (`check_the_work.mjs`, with the session transcript); on
    findings it exits 2 with them on stderr. Claude Code blocks the stop and feeds that text back
    to the agent, which fixes the violations **in the same session**. A clean run stops silently.
@@ -269,13 +268,10 @@ bypassed, and nothing notices. So every setting rung pairs with a check that ver
 order of strength:
 
 - **Effect check (preferred)** — offline and deterministic, it verifies the *outcome* the
-  setting guarantees rather than the setting itself: squash-only ⇒ the change lands squashed,
-  so its own commits carry no merge commit (`squash-merge-history` in the baseline pack). It
-  is scoped to the work — the merge commits the current change introduces on HEAD's first-parent
-  chain since the merge-base — not the repo's whole history: it catches the setting being off or
-  bypassed *for this change* without re-auditing (and demanding acceptances for) legacy merges
-  already on `main` that the work never touched. Testing the work, not the world, is what keeps
-  the check from firing on every unrelated session.
+  setting guarantees rather than the setting itself. The outcome has to be one the work can
+  show: squash-only merging guarantees nothing about a branch's own commits, which the squash
+  discards, so a check forbidding merge commits on the branch verified no setting at all and
+  was retired.
 
   **A work-scoped rule is only as honest as the ref it scopes against.** "Since the merge-base"
   is a correct definition that silently becomes a wrong verdict when the base ref is stale —
