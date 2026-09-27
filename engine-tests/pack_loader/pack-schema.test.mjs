@@ -38,6 +38,8 @@ test('an undeclared field is an error — the vocabulary is closed', () => {
 test('a declared field of the wrong type is an error', () => {
   assert.match(whats({ ...valid, requires: 'barriers' }), /"requires" is not a valid value/);
   assert.match(whats({ ...valid, detect: 'yes' }), /"detect" is not a valid value/);
+  assert.match(whats({ ...valid, locate: [] }), /"locate" is not a valid value/);
+  assert.match(whats({ ...valid, locate: { about: 'x', paths: /x/, text: /y/ } }), /locate\.search/);
   assert.match(whats({ ...valid, worldRules: [{ id: 'x' }] }), /"worldRules" is not a valid value/);
 });
 
