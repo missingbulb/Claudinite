@@ -7,6 +7,9 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60925.1 | 2026-09-25 | Rename a check's severity to on_fail: block \| advise; retire the baseline/converge vocabulary (#2318) |
+| 60922.2 | 2026-09-22 | Provenance: backfill research-project (#2252) |
+| 60922.1 | 2026-09-22 | Growth promote: lessons from 5 members, deduplicated against #1886 (#2032) |
 | 60920.1 | 2026-09-20 | Provenance: the marking pass, every rule marked and every references.md converted (#2178) |
 | 60913.2 | 2026-09-13 | State a rule's prose size as a band, not an exact word count (#2009) |
 | 60913.1 | 2026-09-13 | Wrap RULES.md prose at 100 columns and separate every pack's rules (#1998) |

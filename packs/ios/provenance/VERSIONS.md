@@ -7,6 +7,8 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60925.1 | 2026-09-25 | Rename a check's severity to on_fail: block \| advise; retire the baseline/converge vocabulary (#2318) |
+| 60921.1 | 2026-09-21 | Provenance: backfill jwt, python, ios (#2216) |
 | 60920.1 | 2026-09-20 | Provenance: the marking pass, every rule marked and every references.md converted (#2178) |
 | 60913.1 | 2026-09-13 | State a rule's prose size as a band, not an exact word count (#2009) |
 | 60906.1 | 2026-09-06 | Claudinite: pack version history (#1730); Promote the reviewed survivors of nine growth-promote PRs (#1671) |

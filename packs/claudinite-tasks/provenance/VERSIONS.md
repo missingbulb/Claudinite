@@ -7,6 +7,26 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60925.4 | 2026-09-25 | Flatten pack declarations into .claudinite/flat/, move rolling usage files into .claudinite/usage/ (#2322) |
+| 60925.3 | 2026-09-25 | Claudinite tidy: improve comments (#2326) |
+| 60925.2 | 2026-09-25 | Rename a check's severity to on_fail: block \| advise; retire the baseline/converge vocabulary (#2318) |
+| 60925.1 | 2026-09-25 | Landing poll: a run parked at action_required is not a dispatched run (#2302) |
+| 60924.1 | 2026-09-24 | Executor workflow: hold through the vars bag, default endpoint token in the stub (#2300) |
+| 60923.3 | 2026-09-23 | Record the scheduler run's repair phase in its cost line (#2275) |
+| 60923.2 | 2026-09-23 | Fold the task janitor into the scheduler run's repair phase (#2262) |
+| 60923.1 | 2026-09-23 | Name the queue mark literally, and guard the label an issue is filed with (#2264) |
+| 60922.10 | 2026-09-22 | Let the runner wrap every task's worker, and guard print-then-exit (#2225) |
+| 60922.9 | 2026-09-22 | Retire the frequency door: a declaration states its cadence as a condition (#2138) |
+| 60922.8 | 2026-09-22 | Retire the task contract and queue vocabulary legacy tolerances (#1920) |
+| 60922.7 | 2026-09-22 | Retire the member declaration and stamp legacy shapes (#1919) |
+| 60922.6 | 2026-09-22 | Dissolve docs/skill-usage-metrics/DESIGN.md into the packs that own its subjects (#1513) |
+| 60922.5 | 2026-09-22 | Two artifact-noise fixes: the janitor declines a healthy queue, and amend never forks (#2249) |
+| 60922.4 | 2026-09-22 | Promote 6 portable lessons from CrosswordChat, GCEC, LaughCounter, MissingBulbWebsite, Shepherd (#1886) |
+| 60922.3 | 2026-09-22 | Require the executor's target hand-off, retiring both fallbacks (#1943) |
+| 60922.2 | 2026-09-22 | Provenance: fix the brief's derivations, give the backfill its own lane, repoint a stale README (#2248) |
+| 60922.1 | 2026-09-22 | Usage review: skills declare their expected usage, rules read it back (#2214) |
+| 60921.2 | 2026-09-21 | Define the payload-absent branch for a queue fire (#2001); A task declaration states its own trigger; the door derives none (#2187) |
+| 60921.1 | 2026-09-21 | Provenance: backfill claudinite-tasks, claudinite-dashboard, claude-code-web-users-support (#2220) |
 | 60920.4 | 2026-09-20 | A task cadence measures whole UTC periods, not a per-repo anchor (#2182) |
 | 60920.3 | 2026-09-20 | _no pull request is attributed to this version_ |
 | 60920.2 | 2026-09-20 | Delete the retired claudinite-tasks public/ shims (#2167) |

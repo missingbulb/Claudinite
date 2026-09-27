@@ -7,6 +7,14 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60925.2 | 2026-09-25 | Cut skill descriptions out of session-start context (#2325) |
+| 60925.1 | 2026-09-25 | Rename a check's severity to on_fail: block \| advise; retire the baseline/converge vocabulary (#2318) |
+| 60922.5 | 2026-09-22 | Growth promote: lessons from 5 members, deduplicated against #1886 (#2032) |
+| 60922.4 | 2026-09-22 | Promote 6 portable lessons from CrosswordChat, GCEC, LaughCounter, MissingBulbWebsite, Shepherd (#1886) |
+| 60922.3 | 2026-09-22 | Retire the 2026-08-19 pack id tolerances from the rename map (#1916) |
+| 60922.2 | 2026-09-22 | Usage review: skills declare their expected usage, rules read it back (#2214) |
+| 60922.1 | 2026-09-22 | Provenance: backfill the six Claudinite-facing and process packs (#2227) |
+| 60921.2 | 2026-09-21 | Growth: promote lessons from members' local packs (2026-09-21) (#2206) |
 | 60921.1 | 2026-09-21 | merge-to-main: conditional main sync, and drop the LGTM prompt trigger (#2186) |
 | 60920.2 | 2026-09-20 | Provenance: the marking pass, every rule marked and every references.md converted (#2178) |
 | 60920.1 | 2026-09-20 | Claudinite canon: rule revalidation (#2157) |
