@@ -4,8 +4,6 @@
 //
 // Fingerprint: `numpy` and `scipy` named together in a near-root Python
 // dependency manifest (`requirements*.txt` or `pyproject.toml`).
-const NUMPY = /\bnumpy\b/i;
-const SCIPY = /\bscipy\b/i;
 
 export default {
   version: '60925.1',
@@ -20,7 +18,7 @@ export default {
   locate: {
     about: 'numpy and scipy named together in a near-root Python dependency manifest (requirements*.txt or pyproject.toml)',
     paths: /^([^/]+\/)?(requirements[^/]*\.txt|pyproject\.toml)$/,
-    text: [NUMPY, SCIPY],
+    text: [/\bnumpy\b/i, /\bscipy\b/i],
     search: ['scipy'],
   },
 };

@@ -1,13 +1,6 @@
-
 // Leaflet pack: portable runtime gotchas for the Leaflet web-mapping library
 // (map init, tile layers, markers/divIcons, and CDN-loaded plugins like
 // Leaflet.markercluster).
-
-// `leaflet` in any case, spelled out: one pattern carries both halves, and only this one
-// may ignore case.
-const LEAFLET_ASSET = /\b[lL][eE][aA][fF][lL][eE][tT](\.[jJ][sS]|\.[cC][sS][sS]|@[\d.]|[-/][dD][iI][sS][tT])/;
-const LEAFLET_API = /\bL\.(map|tileLayer|markerClusterGroup)\s*\(/;
-const SOURCE = /\.(html?|mjs|cjs|jsx?|tsx?)$/;
 
 export default {
   version: '60925.1',
@@ -21,8 +14,9 @@ export default {
   // terms still reach the repo.
   locate: {
     about: 'a Leaflet reference (CDN asset, or an L.map/L.tileLayer/L.markerClusterGroup call) in HTML/JS source',
-    paths: SOURCE,
-    text: new RegExp(`${LEAFLET_ASSET.source}|${LEAFLET_API.source}`),
+    paths: /\.(html?|mjs|cjs|jsx?|tsx?)$/,
+    // `leaflet` in any case, spelled out: the `L.map(` half must not ignore case.
+    text: /\b[lL][eE][aA][fF][lL][eE][tT](\.[jJ][sS]|\.[cC][sS][sS]|@[\d.]|[-/][dD][iI][sS][tT])|\bL\.(map|tileLayer|markerClusterGroup)\s*\(/,
     search: ['leaflet', 'tileLayer', 'markerClusterGroup'],
   },
 };

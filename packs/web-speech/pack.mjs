@@ -4,9 +4,6 @@
 // Mostly prose, with the call-site contracts in worldRules/, the web-speech-io
 // skill's rules and the voice-cache declaration beside this file as checks.
 // Fingerprinted by an actual speech-API reference in JS/TS source.
-const SPEECH_API =
-  /\b(webkitSpeechRecognition|SpeechRecognition|SpeechRecognitionPhrase|speechSynthesis|SpeechSynthesisUtterance|chrome\.tts)\b/;
-const SOURCE = /\.(mjs|cjs|js|jsx|ts|tsx)$/;
 
 export default {
   version: '60925.1',
@@ -18,8 +15,8 @@ export default {
   pitch: 'Browser speech recognition and text-to-speech are full of undocumented behaviour, and this pack keeps Claude Code sessions ahead of it. Some fifteen rules cover microphones left open, listen cycles that settle twice, an empty voice list that only means not ready yet, recognition audio streamed to the cloud, and speak calls that never resolve. Several checks read the actual call sites and block those mistakes at every commit, and the web-speech-io skill guides wiring voice input and output, including in browser extensions.',
   locate: {
     about: 'a browser speech API (SpeechRecognition / speechSynthesis / chrome.tts) referenced in JS/TS source',
-    paths: SOURCE,
-    text: SPEECH_API,
+    paths: /\.(mjs|cjs|js|jsx|ts|tsx)$/,
+    text: /\b(webkitSpeechRecognition|SpeechRecognition|SpeechRecognitionPhrase|speechSynthesis|SpeechSynthesisUtterance|chrome\.tts)\b/,
     search: ['SpeechRecognition', 'webkitSpeechRecognition', 'SpeechRecognitionPhrase', 'speechSynthesis', 'SpeechSynthesisUtterance', 'tts'],
   },
 };
