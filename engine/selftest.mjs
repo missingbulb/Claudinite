@@ -228,7 +228,7 @@ export function probeRulesLoaded(expected, loaded) {
   const parts = [];
   if (missing.length) parts.push(`never loaded: ${missing.join(', ')}`);
   if (differs.length) parts.push(`loaded but different from disk: ${differs.join(', ')}`);
-  return fail('rules-loaded', `this session's context is missing pack rules — ${parts.join('; ')}`,
+  return fail('rules-loaded', `this session's context is missing pack rules: ${parts.join('; ')}`,
     'start a new session; if it recurs, the CLAUDE.md import of the rules index is not reaching the harness');
 }
 
@@ -300,7 +300,7 @@ export async function runSelfTest(root) {
   ]);
 }
 
-// The expected side is every ACTIVE pack's prose as the session would load it —
+// The expected side is every ACTIVE pack's prose as the session would load it,
 // the copied per-person pack included, which is why the loader runs with `session`.
 export async function runRulesLoaded(root, transcriptPath) {
   let transcriptText;
@@ -332,7 +332,7 @@ export async function runRulesLoaded(root, transcriptPath) {
     return probeRulesLoaded(expected, { at: loaded.at, files });
   } catch (e) {
     return fail('rules-loaded', `the pack set could not be read to compare against: ${e.message}`,
-      'the engine is broken or half-vendored — re-run the update task');
+      'the engine is broken or half-vendored; re-run the update task');
   }
 }
 

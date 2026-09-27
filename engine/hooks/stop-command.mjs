@@ -1,7 +1,7 @@
 // The one Stop command a consumer's .claude/settings.json wires. The settings
 // file must be as clean as possible and change as seldom as possible (#385), so
 // this address is the stable contract. Once per session it first runs the
-// self-test's rules-loaded probe (../selftest.mjs). It then gates — fast-exiting when the session
+// self-test's rules-loaded probe (../selftest.mjs). It then gates, fast-exiting when the session
 // changed nothing — then runs the WORK sweep (../checks/check_the_work.mjs: the
 // rules judging this change, with the session transcript) and blocks the stop
 // (exit 2) while blocking findings remain, feeding them back into the session.
@@ -60,7 +60,7 @@ if (transcriptPath) {
       process.exit(2);
     }
   } else if (judged.ok === false) {
-    console.log(`claudinite: ${judged.detail} — ${judged.fix}`);
+    console.log(`claudinite: ${judged.detail}. ${judged.fix}`);
   }
 }
 
