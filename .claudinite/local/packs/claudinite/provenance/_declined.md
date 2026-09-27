@@ -170,3 +170,13 @@
   rule's own prose still names `basics/baselining` as the deliberate exception, which no longer
   exists.
 - **Actor:** the `claudinite-growth/prose-to-checks-sweep` run on work item #2354.
+
+## 2026-09-27 · declined · a pack manifest inlines its own literals, as a world check over `pack.mjs`
+- **Source:** the owner on #2369, "Inline these constants. Here and in other packs.", after
+  each relevance detector's pattern had been factored into a named top-level const in its
+  `pack.mjs`; the sweep in 10da6fb removed all of them, so the tree carries none and a `matchLines`
+  forbidding `^const ` over `pack.mjs` would land green.
+- **Reason:** routing, not strength. The rule is about the shelf's manifests, which this local
+  pack's `ruleRoutingGuidance` excludes and routes to `claudinite-canon-curation`, and a
+  growth-extract run may write only the repo's own local packs.
+- **Actor:** run 36347796455, work item #2377.

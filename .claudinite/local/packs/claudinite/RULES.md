@@ -154,6 +154,11 @@ Below are rules on how to work on this repo.
   The guard reads syntax, not intent, so a loop, a heredoc, or `$(...)` around the same call
   keeps failing exactly the same way. (bash-command-refused)
 
+- **Bundling a file write into a Bash command that also runs a guarded call** (`node --test`, a
+  `git commit`, a `curl`) - split them: a PreToolUse guard reads the whole command string, matches
+  a token inside heredoc data as readily as a command, and blocks the call before any of it runs, so
+  the write is lost. (bundling-write-guarded)
+
 - **Calling `EnterWorktree` in an unattended queue session** — nobody is present to approve it,
   so it is denied after about a minute; go straight to `git worktree add`/`git checkout -b`
   instead. (calling-enterworktree-unattended)
@@ -601,6 +606,10 @@ Below are rules on how to work on this repo.
   `mergeable_state`, not an old green CI run. A structural change on `main` since (a directory
   move, a renamed path) can turn a once-clean branch conflicted without a new run ever failing.
   (merging-pr-has)
+
+- **A PR head showing no check runs at all** - read its mergeability before its triggers: GitHub
+  starts no `pull_request` run while the branch conflicts with its base, and merging the base in is
+  what starts CI. (pr-head-no-checks)
 
 - **Resolving a conflict in a `declared-checks.json`** — take the base branch's whole file and
   re-append your one entry rather than hand-merging the markers, since the collision is a
