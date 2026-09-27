@@ -14,6 +14,7 @@ export default {
     belongs: 'widget-tree architecture, ports and fakes, widget-test and golden mechanics, pub and analyze toolchain habits for Flutter',
     excludes: 'native Android or iOS module concerns — android and ios; store shipping — play-store-release, app-store-release',
   },
+  pitch: 'Flutter code drifts toward widgets that call plugins directly and golden tests that hang or render boxes. This pack gives Claude Code sessions about a dozen rules for keeping plugins behind ports, making anything that fetches injectable, guarding async lifecycles, and keeping flutter analyze at zero issues. Its skills cover widget and golden test mechanics and telling a real dependency change from pubspec lockfile churn, while a few checks catch network fetches inside the widget tree before they reach review.',
   marker: 'pubspec.yaml (at the repo root or one directory down)',
   detect: (ctx) => hasMarkerNearRoot(ctx, 'pubspec.yaml'),
   // The Flutter SDK isn't in the Claude Code Web base image, so a cloud session
