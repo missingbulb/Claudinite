@@ -27,3 +27,13 @@
 - **Actor:** @missingbulb (owner).
 - **Model:** Claude, per the commit trailer.
 - **Landed:** #248, closing #247.
+
+## 2026-09-27 · reworded · Claudinite canon: rule revalidation
+- **Reason:** re-probed 2026-09-27: `/root/.claude/projects/<project>/<session>.jsonl` reads fine
+  from the shell with `head`, so "inaccessible to shell commands" was the wrong reason for the right
+  directive. What the path holds is the transcript as typed JSONL entries, which is what makes a
+  `cp` produce escaped JSON records instead of the captured output.
+- **Actor:** the canon-rule-revalidation task, running as work item #2349.
+- **Model:** claude-opus-5
+- **Retire when:** the transcript stops being the only thing at those paths, or a copy of one yields
+  the file content.

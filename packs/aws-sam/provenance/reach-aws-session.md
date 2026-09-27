@@ -13,3 +13,12 @@
 - **Actor:** @missingbulb (owner).
 - **Model:** Claude Opus 5, per the commit trailer.
 - **Landed:** #467 (Closes #466) · pack version 1.
+
+## 2026-09-27 · reworded · Claudinite canon: rule revalidation
+- **Reason:** re-probed 2026-09-27: the sandbox already exports `AWS_CA_BUNDLE` at
+  `/root/.ccr/ca-bundle.crt`, alongside `SSL_CERT_FILE`, `REQUESTS_CA_BUNDLE` and
+  `NODE_EXTRA_CA_CERTS`, so the rule's remedy was a no-op and sent a TLS failure down a dead path.
+  `aws`, `sam` and `boto3` are all still absent, which the rule's other half claims.
+- **Actor:** the canon-rule-revalidation task, running as work item #2349.
+- **Model:** claude-opus-5
+- **Retire when:** the sandbox stops exporting `AWS_CA_BUNDLE`, or ships the AWS CLI.
