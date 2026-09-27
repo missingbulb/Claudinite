@@ -78,6 +78,22 @@ export function withPackVersion(text, version) {
   return text.replace(PACK_VERSION_RE, (whole, old) => whole.replace(old, String(version)));
 }
 
+// The shelf's catalog, whose Version column is what fleet readers price canon's packs
+// off in one read — so the bump commit moves it beside the manifests, or the catalog
+// is stale from the moment the bump lands.
+export const DIRECTORY_PATH = `${SHELF}/directory.GENERATED.md`;
+
+// The catalog text with each bumped pack's Version cell moved, and nothing else: a
+// pack the catalog does not offer has no row, and a catalog with no Version column
+// second in its header has no cell to move.
+export function withDirectoryVersions(text, bumps) {
+  if (!/^\| Pack \| Version \|/m.test(text)) return text;
+  return bumps.reduce((out, { id, to }) => out.replace(
+    new RegExp(`^(\\| \`${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\` \\| )[^|]*( \\|)`, 'm'),
+    (whole, head, tail) => `${head}${to}${tail}`,
+  ), text);
+}
+
 // --- reading the shelf --------------------------------------------------------
 
 // The pack ids whose manifest exists at `ref`, from the tree rather than the

@@ -10,7 +10,8 @@
 // push without force, and try again from the new tip when the branch moved under
 // the push. Nothing here touches the checkout: one executor run drains several items
 // from one working tree, so the commit is built in a throwaway index against the
-// fetched tip, exactly as the generated-file lane does.
+// fetched tip, exactly as the generated-file lane does. The shelf's catalog rides the
+// same commit, its Version cells moved to match.
 
 import { execFileSync } from 'node:child_process';
 import { rmSync } from 'node:fs';
@@ -18,7 +19,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { remoteUrl } from '../../../claudinite-tasks/public/delivery.mjs';
 import { withTaskTrailer } from '../../../claudinite-tasks/public/work-item-grammar.mjs';
-import { planBumps, bumpSubject, BUMP_TASK } from '../../pack-versions.mjs';
+import { planBumps, bumpSubject, fileAt, withDirectoryVersions, BUMP_TASK, DIRECTORY_PATH } from '../../pack-versions.mjs';
 
 // The run's own logger, under the task's name and its item. Module-level because the
 // helpers below log too; `worker` takes the one the runner built.
@@ -81,6 +82,9 @@ export async function run({ root, remote, base, today = new Date(), attempts = 3
     }
     for (const b of bumps) say(`${b.id}: ${b.from} → ${b.to} (${b.changed.length} shipping file(s) changed since ${b.from})`);
     const files = Object.fromEntries(bumps.map((b) => [b.manifest, b.text]));
+    const directory = fileAt(git, tip, DIRECTORY_PATH);
+    const patched = directory === null ? null : withDirectoryVersions(directory, bumps);
+    if (patched !== null && patched !== directory) files[DIRECTORY_PATH] = patched;
     const commit = pushOnto(git, { remote, baseSha: tip, branch: base, files, message: withTaskTrailer(bumpSubject(bumps), BUMP_TASK) });
     if (commit) {
       say(`pushed ${commit.slice(0, 10)} onto ${base}`);

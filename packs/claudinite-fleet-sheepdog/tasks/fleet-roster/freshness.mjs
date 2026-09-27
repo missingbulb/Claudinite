@@ -115,15 +115,33 @@ export function classifyFreshness({ hasScheduler, installed, canon }) {
 // the caller turns that into UNKNOWN for the member, which fails the run, and a
 // guessed version would silently reclassify the fleet.
 //
-// Memoized per reader, promise and all: one reader is built per sweep and every
-// member consults it, so canon is read once per distinct pack rather than once per
-// member per pack.
+// Pack numbers come off the shelf's catalog, whose Version column prices every
+// offered pack in one read; a pack it does not offer, or a catalog that cannot be read
+// or has no such column, falls back to that pack's own manifest. Memoized per reader,
+// promise and all: one reader is built per sweep and every member consults it.
 const ENGINE_VERSION_RE = new RegExp(String.raw`^export const ENGINE_VERSION = '?(${VERSION_SOURCE})'?;$`, 'm');
 const PACK_VERSION_RE = new RegExp(String.raw`^ {2}version: '?(${VERSION_SOURCE})'?,$`, 'm');
+
+// Every pack the catalog offers, at the version its Version column carries; null when
+// it has no such column.
+export function directoryVersions(text) {
+  const rows = String(text ?? '').split('\n').filter((l) => l.startsWith('|'))
+    .map((l) => l.split(/(?<!\\)\|/).slice(1, -1).map((c) => c.trim()));
+  const col = rows.find((r) => r[0] === 'Pack')?.indexOf('Version') ?? -1;
+  if (col < 1) return null;
+  const out = {};
+  for (const r of rows) {
+    const id = /^`([^`]+)`$/.exec(r[0] ?? '')?.[1];
+    const v = id ? versionFromLiteral(r[col]) : null;
+    if (v !== null) out[id] = v;
+  }
+  return out;
+}
 
 export function canonVersions(gh, canonRepo) {
   const packs = new Map();
   let engine = null;
+  let catalog = null;
   const source = async (path) => {
     const res = await gh(`/repos/${canonRepo}/contents/${encodeURI(path)}`);
     if (res.status === 404) return null;
@@ -144,7 +162,11 @@ export function canonVersions(gh, canonRepo) {
     // has retired. Distinct from a manifest that is there and unreadable, which throws.
     pack(id) {
       if (!packs.has(id)) {
+        catalog ??= source('packs/directory.GENERATED.md').then(directoryVersions, () => null);
         packs.set(id, (async () => {
+          // A pack the catalog does not offer is priced off its own manifest.
+          const listed = (await catalog)?.[id];
+          if (listed != null) return listed;
           const text = await source(`packs/${id}/pack.mjs`);
           if (text === null) return null;
           const m = PACK_VERSION_RE.exec(text);
