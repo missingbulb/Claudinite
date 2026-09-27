@@ -56,6 +56,13 @@ ruleTester(captureWithoutFontWait, {
         'capture/shoot.mjs': "await page.screenshot({ path: '/tmp/debug.png' });\n",
       },
     },
+    "the check's own fixtures, whose job is to spell a capture (FP guard)": {
+      files: {
+        ...GOLDEN,
+        'packs/headless-browser/test/capture-without-font-wait.test.mjs':
+          "'capture/shoot.mjs': \"await page.screenshot({ path: 'home.png' });\\n\",\n",
+      },
+    },
     'a harness that drives the page without capturing it (FP guard)': {
       files: {
         ...GOLDEN,
