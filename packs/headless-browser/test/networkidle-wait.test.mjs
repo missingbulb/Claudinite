@@ -49,5 +49,12 @@ ruleTester(networkidleWait, {
     'prose about the wait, outside the scanned sources (FP guard)': {
       files: { 'docs/capture.md': 'Never wait on `networkidle`.\n' },
     },
+    "the check's own fixtures, whose job is to spell the banned wait (FP guard)": {
+      files: {
+        'packs/headless-browser/test/networkidle-wait.test.mjs':
+          "at: [{ file: 'capture/shoot.mjs', line: 1 }],\n"
+          + "'capture/shoot.mjs': \"await page.waitForLoadState('networkidle');\\n\",\n",
+      },
+    },
   },
 });

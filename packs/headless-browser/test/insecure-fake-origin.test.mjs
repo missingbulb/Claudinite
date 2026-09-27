@@ -67,6 +67,13 @@ ruleTester(insecureFakeOrigin, {
         'scrape/read.mjs': "await page.goto('http://acme.test/prices');\n",
       },
     },
+    "the check's own fixtures, whose job is to spell the insecure origin (FP guard)": {
+      files: {
+        'packs/headless-browser/test/insecure-fake-origin.test.mjs':
+          "const ROUTE = \"await page.route('**/*', (r) => r.fulfill({ body: '' }));\\n\";\n"
+          + "'capture/shoot.mjs': ROUTE + \"await page.goto('http://fake.test/home');\\n\",\n",
+      },
+    },
     'a comment quoting the scheme it warns against (FP guard)': {
       files: {
         'capture/shoot.mjs':
