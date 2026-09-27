@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import { patternRule, loadDeclaredChecks, unplacedSpecKeys, guardFindings } from '../engine/checks/helpers/pattern-rules.mjs';
 import { runRule } from '../engine/checks/helpers/work.mjs';
 import { removeTree } from '../engine/remove-tree.mjs';
+import { runActivePackRules } from '../engine/checks/run-active-pack-rules.mjs';
 
 // The declarative engine's own contract, proven over fixture rules — the pack
 // declarations built on it are proven by their packs' existing tests.
@@ -2079,4 +2080,32 @@ test('action scope: the authoring errors', () => {
   assert.throws(() => patternRule({ ...meta('fx-a4'), scope: 'action', guardToolCalls: [{ tool: 'Bash', what: 'w', fix: 'f' }] }), /names a condition/);
   assert.throws(() => patternRule({ ...meta('fx-a5'), scope: 'action', guardToolCalls: [{ tool: 'Bash', match: /x/, what: 'w', fix: 'f' }] }), /name the field/);
   assert.throws(() => patternRule({ ...meta('fx-a6'), scope: 'action', guardToolCalls: [{ tool: 'Bash', atMostPerSession: 0, what: 'w', fix: 'f' }] }), /positive whole number/);
+});
+
+// The shared sweep visits each file once for every declared rule it serves, so a run
+// that serves rules it will never report — an undeclared pack's, a scope the runner
+// filtered out — pays for reading their files. The runner's plan bounds the sweep; a
+// rule run outside it is still answered, by a sweep of its own.
+test('the shared sweep reads only the files the planned rules scan, and a rule outside the plan still gets its findings', () => {
+  const planned = patternRule({ ...meta('fx-planned'), scanFiles: /\.txt$/, matchLines: [{ match: /TOK/, what: 'w', fix: 'f' }] });
+  const unplanned = patternRule({ ...meta('fx-unplanned'), scanFiles: /\.log$/, matchLines: [{ match: /TOK/, what: 'w', fix: 'f' }] });
+  const root = makeRepo({ changed: {
+    '.claudinite-settings.json': JSON.stringify({ packs: ['acme-pack'] }),
+    'a.txt': 'TOK\n', 'b.log': 'TOK\n',
+  } });
+  try {
+    const ctx = ctxOf(root);
+    const read = ctx.read.bind(ctx);
+    const seen = [];
+    ctx.read = (path) => { seen.push(path); return read(path); };
+    const packs = [
+      { id: 'acme-pack', rules: [planned] },
+      { id: 'acme-undeclared', rules: [unplanned] },
+    ];
+    const findings = runActivePackRules(ctx, packs, { includeRule: () => true });
+    assert.deepEqual(findings.map((f) => f.file), ['a.txt']);
+    assert.ok(seen.includes('a.txt'), `the planned rule's file was never read: ${seen.join(', ')}`);
+    assert.ok(!seen.includes('b.log'), 'the sweep read a file only an unplanned rule scans');
+    assert.deepEqual(unplanned.run(ctx).map((f) => f.file), ['b.log']);
+  } finally { cleanup(root); }
 });

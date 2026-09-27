@@ -168,7 +168,7 @@ async function ruleModulesIn(packDir, scope, label, errors) {
   return rules;
 }
 
-async function scanPackDir(dir, { local, temp, subdir }, errors) {
+async function scanPackDir(dir, { local, temp, subdir, checksFor }, errors) {
   const out = [];
   if (!existsSync(dir)) return out;
   const label = subdir ?? (local ? LOCAL_PACKS_SUBDIR : 'packs');
@@ -254,7 +254,11 @@ async function scanPackDir(dir, { local, temp, subdir }, errors) {
     // A coded rule's scope is the list it sits in; a declaration has no list, so
     // its own `scope` picks the list it joins — and normalizeManifest stamps the
     // same answer back either way.
-    const declared = await declaredChecksIn(packDir, rel, errors);
+    // A caller that will run only some packs' checks names them (`checksFor`, over the
+    // pack's id), and the rest skip the imports: every manifest still loads, since a
+    // rule may read any pack's metadata. A copied pack is active by being there.
+    const wantChecks = !checksFor || temp || checksFor(ownNamespace ? mod.id : canonicalPackId(mod.id));
+    const declared = wantChecks ? await declaredChecksIn(packDir, rel, errors) : [];
     // The pack's CODED rules, discovered the same way its declared ones already
     // were: `<pack>/worldRules/*.mjs` and `<pack>/workRules/*.mjs`, each module
     // default-exporting one rule. A manifest that declares the list overrides the
@@ -262,7 +266,7 @@ async function scanPackDir(dir, { local, temp, subdir }, errors) {
     // only for a scope the manifest left unspoken.
     const scanned = {};
     for (const scope of RULE_DIRS) {
-      if (mod[scope] !== undefined) continue;
+      if (mod[scope] !== undefined || !wantChecks) continue;
       scanned[scope] = await ruleModulesIn(packDir, scope, rel, errors);
     }
     // A CANON pack's own id is canonicalized like a declared one. A member's mount
@@ -281,8 +285,8 @@ async function scanPackDir(dir, { local, temp, subdir }, errors) {
       ...(ownNamespace ? {} : { id: canonicalPackId(mod.id), rawId: mod.id }),
       // A declaration judging the session — scope "work" or "action" — rides the
       // work list: both run at Stop, over the change and the transcript.
-      worldRules: [...(mod.worldRules ?? scanned.worldRules ?? []), ...declared.filter((r) => r.scope !== 'work' && r.scope !== 'action')],
-      workRules: [...(mod.workRules ?? scanned.workRules ?? []), ...declared.filter((r) => r.scope === 'work' || r.scope === 'action')],
+      worldRules: wantChecks ? [...(mod.worldRules ?? scanned.worldRules ?? []), ...declared.filter((r) => r.scope !== 'work' && r.scope !== 'action')] : [],
+      workRules: wantChecks ? [...(mod.workRules ?? scanned.workRules ?? []), ...declared.filter((r) => r.scope === 'work' || r.scope === 'action')] : [],
     }), dir: packDir, local: Boolean(local), temp: Boolean(temp) };
     // A task is scheduled work over a repository, picked up by a runner reading the
     // repo's tracked packs. A copied pack is neither tracked nor there tomorrow, so a
@@ -294,7 +298,7 @@ async function scanPackDir(dir, { local, temp, subdir }, errors) {
         dir: packDir,
       });
     }
-    pack.skillChecks = await scanSkillChecks(packDir, errors);
+    pack.skillChecks = wantChecks ? await scanSkillChecks(packDir, errors) : [];
     out.push(pack);
   }
   return out;
@@ -344,9 +348,9 @@ async function scanSkillChecks(packDir, errors) {
 // SessionStart hooks just skip the offending pack. Canon is scanned first, so a
 // local pack may not shadow a canon id — the collision is reported and the local
 // one dropped (a consumer extends the canon, never silently overrides it).
-export async function discoverPacks({ localRoot, session = false } = {}) {
+export async function discoverPacks({ localRoot, session = false, checksFor = null } = {}) {
   const errors = [];
-  const canon = await scanPackDir(packsDir, { local: false }, errors);
+  const canon = await scanPackDir(packsDir, { local: false, checksFor }, errors);
   // Re-resolve each canon id now the whole tree is known, so an ABSORBED pack's
   // leftover directory keeps its own id instead of colliding with the survivor
   // sitting beside it (#1186). scanPackDir cannot make this call alone: it sees
@@ -354,7 +358,7 @@ export async function discoverPacks({ localRoot, session = false } = {}) {
   const rawCanonIds = new Set(canon.map((p) => p.rawId));
   for (const pack of canon) pack.id = canonicalPackIdAmong(pack.rawId, rawCanonIds);
   const local = localRoot
-    ? await scanPackDir(localPacksDir(localRoot), { local: true, subdir: LOCAL_PACKS_SUBDIR }, errors)
+    ? await scanPackDir(localPacksDir(localRoot), { local: true, subdir: LOCAL_PACKS_SUBDIR, checksFor }, errors)
     : [];
   // ASKED FOR, never assumed. A copied pack governs the SESSION - its prose, its skills,
   // its checks - and says nothing about the repository: a conformance sweep over the
