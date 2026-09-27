@@ -47,3 +47,10 @@
   it.
 - **Mechanism:** the description, as before.
 - **Actor:** @missingbulb (owner).
+
+## 2026-09-27 · reworded · cited a RULES.md rule that was converted to a check (#2372)
+- **Reason:** *Filing an issue that belongs under another* became `sub-issue-without-parent` in
+  #1779; the citation now names the check.
+- **Actor:** @missingbulb (owner).
+- **Model:** claude-opus-5-5
+- **Landed:** #2372

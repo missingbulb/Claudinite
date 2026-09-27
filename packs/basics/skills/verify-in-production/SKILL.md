@@ -157,8 +157,8 @@ already closed and there is nothing left to wait on but the release itself.
   the run reopens if the verification fails. Make the verification that issue's **sub-issue**
   too (`mcp__github__sub_issue_write`, method `add`, `issue_number` the original,
   `sub_issue_id` the **id** the create call returned, not its number), so the change it proves
-  shows what is still unproven about it — [RULES.md](../../RULES.md)' *Filing an issue that
-  belongs under another*, applied where there is no PR left to carry the link.
+  shows what is still unproven about it: the `sub-issue-without-parent` check,
+  applied where there is no PR left to carry the link.
 - **`In-production-when:`** names a thing to *read*, never a duration to wait.
   "`missingbulb/Shepherd`'s `.claudinite-settings.json` stamps `packVersions.basics` at 60906.12 or
   higher." "Any session started after this

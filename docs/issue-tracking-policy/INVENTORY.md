@@ -150,6 +150,10 @@ Status: analysis, no code changed. Scope and direction set by the owner on 2026-
 
 ## Stale today, whatever the policy
 
+Fixed in #2372: the gate's citations are removed, adoption is keyed to its PR (the capture uses
+`--pr`), and both skills now cite the `sub-issue-without-parent` check that the rule became in #1779.
+The rows marked **S** above are therefore done; the policy work does not need to touch them.
+
 1. **The `task-lifecycle` gate is cited but no longer exists.** Only test fixtures still name it. Cited at:
    - adopt-claudinite/SKILL.md:12-13
    - bootstrap.md:245

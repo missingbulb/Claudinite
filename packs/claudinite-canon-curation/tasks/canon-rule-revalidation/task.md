@@ -29,8 +29,7 @@ here. This worker frames the unattended run around it and names the corpus.
 3. **Correct what is stale**, as far as each probe reaches and no further.
 4. **Deliver by the shared procedure —
    [deliver-pr.md](../../../claudinite-tasks/src/deliver/deliver-pr.md)**, under the title
-   `Claudinite canon: rule revalidation`. The commit references the tracking issue so the
-   `task-lifecycle` gate passes, and the whole suite is green before you push.
+   `Claudinite canon: rule revalidation`, and the whole suite is green before you push.
 5. **Report every verdict in the PR body** — every claim probed, its verdict and the probe behind it.
    This task rewrites the rules every member's sessions obey, on evidence a reviewer cannot re-derive
    from the diff, so the body carries that evidence in full whether or not anyone reads it. Never

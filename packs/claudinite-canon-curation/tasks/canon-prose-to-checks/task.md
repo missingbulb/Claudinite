@@ -28,8 +28,7 @@ don't re-derive it here. This worker frames the unattended run around it and nam
    one. Then apply the skill's **deletion test** to the prose the check now stands beside.
 3. **Deliver by the shared procedure —
    [deliver-pr.md](../../../claudinite-tasks/src/deliver/deliver-pr.md)**, under the title
-   `Claudinite canon: prose to checks`. The commit references the tracking issue so the
-   `task-lifecycle` gate passes, and the whole suite is green before you push.
+   `Claudinite canon: prose to checks`, and the whole suite is green before you push.
 4. **Say what converted in the PR body** — the prose converted and the check id it became, per
    conversion. That, and the commit, are the record; there is no standing issue. Never bump a pack's
    version or write a `VERSIONS.md` row — both are derived on the base branch after the change lands.

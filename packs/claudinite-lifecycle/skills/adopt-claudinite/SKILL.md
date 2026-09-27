@@ -9,13 +9,13 @@ metadata:
 
 Follow [bootstrap.md](../../../../bootstrap.md)'s **fast path** — canonical there, and idempotent
 by design. Everything mechanical is one `bootstrap.mjs` invocation from the fetched canon, so the
-adoption is seven steps: open the adoption issue **first** (the work-scope sweep blocks a commit
-that references no issue), fetch the canon and run the script, ask **every** pending interview
+adoption is seven steps: the adoption PR is its tracker (no adoption issue), fetch the canon and
+run the script, ask **every** pending interview
 question it reports in one batched `AskUserQuestion` pass (up to 4 per call, the project-class
 question folded in, and the instruction-conversion offers below) and record the answers via
 `--answer` re-runs, **create the executor routine
 and write its endpoint into the declaration** (Part 6 — this session's work, and before the
-commit so it lands in the same PR), land the adoption as one commit referencing the issue,
+commit so it lands in the same PR), land the adoption as one commit and open its PR,
 capture the adoption session itself once the PR lands (the fast path's capture step — no
 SessionEnd hook was loaded when this session started, so nothing else will), then file **one
 issue** carrying the script's HANDOVER block, a checkbox per step. Never re-enact the doc's parts
