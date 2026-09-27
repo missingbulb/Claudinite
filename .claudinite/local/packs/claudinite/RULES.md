@@ -121,9 +121,9 @@ Below are rules on how to work on this repo.
 
 
 
-- **Reading a tool result the harness saved to a file** — it is one unbroken line, so `Read`'s
-  `offset`/`limit` won't shrink it; parse it with `python3 -c 'json.load(...)'` or `jq` instead.
-  (reading-tool-result)
+- **Reading a tool result the harness saved to a file** - an MCP result is one unbroken line, so
+  `Read`'s `offset`/`limit` won't shrink it; parse it with `python3 -c 'json.load(...)'` or `jq`
+  instead. A saved Bash result is ordinary lines and slices normally. (reading-tool-result)
 
 - **Re-waiting on a signal that already failed to move** — read the code that governs when it
   *can* change before waiting a second time on the same premise. (re-waiting-signal)

@@ -12,10 +12,11 @@ metadata:
 # Running the suite
 
 - **The whole suite is one command** — `node --test $(git ls-files '*.test.mjs')`. There is no test
-  script; `ci.yml`'s array is not authoritative. A bash glob without `globstar` is the dangerous
-  substitute — `packs/*/test/*.test.mjs` reports nothing wrong over 125 of 314 files — while
-  `node --test <dir>` fails outright and a glob matching nothing exits 1, so only a glob that
-  matches a subset leaves you believing a green run. (whole-suite-command)
+  script; `ci.yml`'s array is not authoritative. Every glob is a dangerous substitute, because
+  `node --test` expands one itself and calls no match a clean green: `packs/*/test/*.test.mjs`
+  without `globstar` reports nothing wrong over 134 of 345 files, and a pattern matching nothing
+  exits 0 having run no test at all. Only `node --test <dir>`, and a literal path carrying no `*`,
+  fail outright. (whole-suite-command)
 - **Read a run's output from a file** — redirect one run and grep that file for the slice you need;
   never re-run the ~55s suite to re-slice unchanged output. (read-runs-output)
 - **`git add` a new test file before certifying a run green** — `git ls-files` excludes an unstaged
