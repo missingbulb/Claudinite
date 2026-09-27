@@ -8,3 +8,12 @@
 - **Mechanism:** a RULES.md rule, triggered on "Wait on something the page itself produces, never on
   the network going quiet.".
 - **Landed:** #905 (tracker #642) · pack version 1.
+
+## 2026-09-27 · retired · converted whole into two declared checks
+- **Reason:** both halves of the bullet read off the tree, so the findings carry what it said, and
+  the deletion test cleared the paragraph. The font half is a second check rather than a second
+  assertion because its relevance gate is narrower - tracked reference images - and a declaration's
+  gate is whole-spec.
+- **Actor:** the canon-prose-to-checks task.
+- **Mechanism:** checks headless-browser/networkidle-wait and
+  headless-browser/capture-without-font-wait, in the pack's `declared-checks.json`.

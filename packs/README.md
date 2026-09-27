@@ -29,7 +29,7 @@ declares `hidden: true` and is withheld from that catalog; this table still carr
 | <img src="numpy-image-processing/badge.svg" width="18" height="18" alt=""> [numpy-image-processing](numpy-image-processing/README.md) | numpy + scipy named together in a near-root manifest | 0 | 9 |
 | <img src="web-speech/badge.svg" width="18" height="18" alt=""> [web-speech](web-speech/README.md) | speech API in JS/TS source | 6 (+ 3 in its skill) | 17 |
 | <img src="leaflet/badge.svg" width="18" height="18" alt=""> [leaflet](leaflet/README.md) | Leaflet reference in HTML/JS source | 2 | 4 |
-| <img src="headless-browser/badge.svg" width="18" height="18" alt=""> [headless-browser](headless-browser/README.md) | driver reference in JS/TS source | 0 | 18 |
+| <img src="headless-browser/badge.svg" width="18" height="18" alt=""> [headless-browser](headless-browser/README.md) | driver reference in JS/TS source | 3 | 20 |
 | <img src="host-page/badge.svg" width="18" height="18" alt=""> [host-page](host-page/README.md) | declared (opt-in) | 3 | 11 |
 | <img src="aws-sam/badge.svg" width="18" height="18" alt=""> [aws-sam](aws-sam/README.md) | SAM template | 3 | 6 (+ 2 skills: sam-template, sam-build-and-deps) |
 | <img src="google-identity/badge.svg" width="18" height="18" alt=""> [google-identity](google-identity/README.md) | declared | 0 (3 in its skill) | 0 |

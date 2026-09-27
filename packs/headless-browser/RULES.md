@@ -59,11 +59,6 @@
   the run loudly instead of quietly adding real network to a run meant to be hermetic.
   (serve-page-fake)
 
-- **Use an `https` fake origin.** Geolocation and several other capabilities exist only on a
-  secure origin, and a page served over `http` silently takes the denied path instead. Routes
-  are fulfilled before any connection is attempted, so no certificate is involved and nothing
-  has to be trusted. (use-https-fake)
-
 - **Route a vendored third-party asset host-agnostically.** A stylesheet you serve in place of a
   CDN copy still resolves *its own* relative URLs against the host it was served from, so the
   font or image files it references arrive addressed to that CDN. Match those follow-up requests
@@ -118,12 +113,6 @@
   one machine. (ask-browser-reproducible)
 
 ## Capturing
-
-- **Wait on something the page itself produces, never on the network going quiet.** A selector
-  that only exists once data rendered, or text that only appears once an async read returned, is
-  a real signal; "no requests for a moment" is a guess that is wrong in both directions. Await
-  font readiness too — text laid out before the fonts land is a different image.
-  (wait-something-page)
 
 - **Clip at an element's box rather than screenshotting the element.** An element screenshot
   scrolls the element into view first, and a scroll dismisses whatever hover or focus opened the
