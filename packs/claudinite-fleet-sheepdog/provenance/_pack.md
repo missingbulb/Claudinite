@@ -84,3 +84,9 @@
   so it outlives the pack's growth.
 - **Actor:** @missingbulb (owner).
 - **Mechanism:** the manifest's `pitch` field, beside `ruleRoutingGuidance`.
+
+## 2026-09-27 · scope-changed · the pack requires engine 60927.1
+- **Reason:** its missing-packs sweep reads the `relevanceDetector` spec, which no older engine
+  carries.
+- **Actor:** @missingbulb (owner).
+- **Mechanism:** `minEngineVersion`, which the pack update enforces.
