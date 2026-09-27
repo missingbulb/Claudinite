@@ -27,6 +27,10 @@ import { isDeclaredVersion } from '../version.mjs';
 // a boundary and a pointer to the pack that owns the other side.
 export const MAX_ROUTING_WORDS = 20;
 
+// The pitch budget. A pitch is the paragraph a repo that does not run Claudinite reads
+// when a dashboard says the pack would fit it: one paragraph, so it stays read.
+export const MAX_PITCH_WORDS = 100;
+
 // The two conformance scopes. A rule's scope is its PLACEMENT on the manifest —
 // `worldRules` audit repo state, `workRules` judge the change and session in
 // front of you — so the two runners' partition is declared where a reader of the
@@ -88,6 +92,7 @@ export const PACK_FIELDS = {
   ruleRoutingGuidance: { required: true, describe: 'what belongs in this pack and what does not, each at most 20 words', valid: isPlainObject },
   badge: { describe: 'the pack badge filename, resolved off the pack directory — badge.svg by convention where one is present', valid: (v) => typeof v === 'string' },
   hidden: { describe: 'whether the pack is withheld from the adoptable-pack catalog (packs/directory.GENERATED.md) — for a pack that exists to serve the corpus itself rather than to be adopted', valid: (v) => typeof v === 'boolean' },
+  pitch: { describe: `what adopting the pack gains a repo, in one paragraph of at most ${MAX_PITCH_WORDS} words for a reader who does not run Claudinite: its main skills and process gains, and rough counts rather than exact ones, so the paragraph outlives the pack's growth`, valid: (v) => typeof v === 'string' && v.trim() !== '' },
   detect: { describe: 'a fingerprint predicate over the repo context, or null', valid: (v) => v === null || typeof v === 'function' },
   marker: { describe: 'a human-readable glob naming what detect looks for, or null', valid: (v) => v === null || typeof v === 'string' },
   prose: { describe: 'the filename injected at session start, or null — RULES.md by convention where one is present, so declare it only to name another file or to suppress it', valid: (v) => v === null || typeof v === 'string' },
@@ -147,6 +152,10 @@ export function validateManifest(mod, { label, skillDirs = [] } = {}) {
           `cut it to ${MAX_ROUTING_WORDS} words — it is one row of a table every session loads`);
       }
     }
+  }
+
+  if (typeof mod.pitch === 'string' && wordCount(mod.pitch) > MAX_PITCH_WORDS) {
+    err(`pitch is ${wordCount(mod.pitch)} words, over the ${MAX_PITCH_WORDS}-word cap`, `cut it to ${MAX_PITCH_WORDS} words, since it is one paragraph a newcomer reads`);
   }
 
   // A rule's scope is where it is declared; the manifest is the authority. A
