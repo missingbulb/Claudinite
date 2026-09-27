@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { discoverPacks } from '../engine/pack_loader/pack-registry.mjs';
 
-// A locate's `search` terms are what a reader holding only GitHub's API searches for
+// A relevance detector's `search` terms are what a reader holding only GitHub's API searches for
 // before it reads anything, so a file its `text` matches but no term finds is a pack
 // that reader never suggests. Each sample below is a file the pack's own text pattern
 // matches; every one must carry a term, as GitHub's code search matches them: whole
@@ -20,14 +20,14 @@ const SAMPLES = { // @real-entity each real pack's own search terms are what is 
 
 const words = (text) => new Set(text.toLowerCase().split(/[^a-z0-9_]+/).filter(Boolean));
 
-test('every text locate on the shelf is found by its own search terms', async () => {
+test('every text relevanceDetector on the shelf is found by its own search terms', async () => {
   const { packs } = await discoverPacks();
-  const withText = packs.filter((p) => p.locate?.text);
-  assert.deepEqual(withText.map((p) => p.id).sort(), Object.keys(SAMPLES).sort(), 'a pack gained or lost a text locate - give it samples here');
+  const withText = packs.filter((p) => p.relevanceDetector?.text);
+  assert.deepEqual(withText.map((p) => p.id).sort(), Object.keys(SAMPLES).sort(), 'a pack gained or lost a text relevanceDetector - give it samples here');
   for (const pack of withText) {
-    const terms = pack.locate.search.map((t) => t.toLowerCase());
+    const terms = pack.relevanceDetector.search.map((t) => t.toLowerCase());
     for (const sample of SAMPLES[pack.id]) {
-      const matched = [].concat(pack.locate.text).every((r) => r.test(sample));
+      const matched = [].concat(pack.relevanceDetector.text).every((r) => r.test(sample));
       assert.ok(matched, `${pack.id}: the sample ${JSON.stringify(sample)} is not one its text matches`);
       const found = words(sample);
       assert.ok(terms.some((t) => found.has(t)), `${pack.id}: no search term finds ${JSON.stringify(sample)}`);

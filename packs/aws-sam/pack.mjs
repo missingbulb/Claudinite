@@ -9,5 +9,5 @@ export default {
     excludes: 'backend Google ID token validation — google-identity; generic Node packaging habits — node',
   },
   pitch: 'Keeps Claude Code sessions from breaking a SAM deployment in the ways that cost an afternoon. A few rules cover change sets that would replace a live resource, a failed first stack creation that has to be cleaned up, CloudFront verification on a new account and CORS preflights. Two skills, for shaping the template and one for build dependencies, load before any template or package edit, and a handful of blocking checks catch a wrong handler path, a missing esbuild dependency and CloudFront authorization mistakes before they reach AWS.',
-  locate: { about: 'a SAM template (template.yaml/.yml) at the repo root', paths: /^template\.ya?ml$/ },
+  relevanceDetector: { about: 'a SAM template (template.yaml/.yml) at the repo root', paths: /^template\.ya?ml$/ },
 };

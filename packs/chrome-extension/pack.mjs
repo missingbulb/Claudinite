@@ -27,7 +27,7 @@ export default {
     excludes: 'generic workflow lint rules — git-github; shipping to a different store — the app-store-release and play-store-release packs',
   },
   pitch: 'For a repo that builds a Manifest V3 extension, this carries the gotchas that otherwise surface as silent failures: service worker paths, re-injected content scripts, host permissions, sign-in tokens and extension UI surfaces. About twenty rules and some twenty checks catch them while code is being written. Two skills cover host permissions and the Chrome Web Store release standard, and once the repo ships the release pipeline, a daily task builds and publishes the store release by itself, with conformance checks keeping the pipeline intact.',
-  locate: { about: 'a manifest.json declaring manifest_version', paths: /manifest\.json$/, text: /"manifest_version"/, search: ['manifest_version'] },
+  relevanceDetector: { about: 'a manifest.json declaring manifest_version', paths: /manifest\.json$/, text: /"manifest_version"/, search: ['manifest_version'] },
   // Delivery, not state: the tree always carries a version, and only the diff
   // says whether it moved with the shipped files beside it.
   // Pack-contributed task: `tasks/store-release/` — the scheduler's filesystem scan

@@ -133,8 +133,8 @@ stray (a single rule joins the nearest existing pack, or waits as a handoff note
   with the facet's one-line definition and "a default to adapt, not a contract". Principle-first, each
   rule carrying its why. It loads at session start for every declaring project, so every line pays
   rent — cover the facet, not everything you noticed.
-- **`pack.mjs`**: the manifest. Class/domain/aspect packs: `always: false` and no `locate`
-  (declaration is authoritative). Technology packs: add the `locate`
+- **`pack.mjs`**: the manifest. Class/domain/aspect packs: `always: false` and no `relevanceDetector`
+  (declaration is authoritative). Technology packs: add the `relevanceDetector`
   fingerprint when the repo carries a reliable one, so `--init` seeds the pack into a fresh
   declaration; the marker only *suspects* a pack is wanted, it never forces its declaration.
   Discovery is structural — the directory is the registration.

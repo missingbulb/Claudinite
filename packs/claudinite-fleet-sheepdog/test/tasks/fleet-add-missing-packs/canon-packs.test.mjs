@@ -48,9 +48,9 @@ test('loadCanonPacks: returns the WHOLE canon corpus, not the caller\'s mount', 
   assert.ok(packs.length >= 20, `expected the full corpus, got ${packs.length}`);
   const ids = new Set(packs.map((p) => p.id));
   for (const id of ['node', 'python', 'firebase', 'jwt']) assert.ok(ids.has(id), `missing ${id}`); // @real-entity asserted against the real canon shelf
-  // And the fingerprints came with them — a corpus of manifests with no `locate` would
+  // And the fingerprints came with them — a corpus of manifests with no `relevanceDetector` would
   // sweep the fleet and find nothing, by construction.
-  assert.ok(packs.filter((p) => p.locate).length >= 10);
+  assert.ok(packs.filter((p) => p.relevanceDetector).length >= 10);
 });
 
 test('loadCanonPacks: refuses a corpus too small to be canon', async (t) => {

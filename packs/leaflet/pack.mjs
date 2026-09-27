@@ -12,7 +12,7 @@ export default {
   pitch: 'Maps built with Leaflet fail in small, visible ways: a plugin missing from the CDN takes the whole map down, an embedded map hijacks page scrolling, or the tile provider\'s required attribution disappears. This pack gives Claude Code sessions a few rules for feature-detecting plugins with a fallback to core, disabling scroll-wheel zoom on embedded maps, keeping attribution, and transforming markers correctly. A couple of checks block CDN assets without integrity hashes and tile layers without attribution.',
   // A page calling only L.map( loads Leaflet from a file that names it, so the search
   // terms still reach the repo.
-  locate: {
+  relevanceDetector: {
     about: 'a Leaflet reference (CDN asset, or an L.map/L.tileLayer/L.markerClusterGroup call) in HTML/JS source',
     paths: /\.(html?|mjs|cjs|jsx?|tsx?)$/,
     // `leaflet` in any case, spelled out: the `L.map(` half must not ignore case.

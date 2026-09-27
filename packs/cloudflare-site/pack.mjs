@@ -13,7 +13,7 @@ export default {
   },
   pitch: 'Gives a site served from Cloudflare exactly one path to production. A nightly release task advances the version, uploads the published tree, and reports what the domain answered and whether it is serving that version, parking with a named reason when a person has to act. A skill covers releasing, forcing a release and rolling one back. A few rules and checks keep stray files out of the upload, links free of needless redirects, and any second publisher from quietly shipping around the release.',
   // A pattern rather than a parse, so a reader that holds only text can judge it.
-  locate: { about: 'a near-root wrangler.json/.jsonc declaring assets.directory', paths: /^([^/]+\/)?wrangler\.jsonc?$/, text: /"assets"\s*:\s*\{[^}]*"directory"\s*:\s*"[^"\s]/, search: ['assets'] },
+  relevanceDetector: { about: 'a near-root wrangler.json/.jsonc declaring assets.directory', paths: /^([^/]+\/)?wrangler\.jsonc?$/, text: /"assets"\s*:\s*\{[^}]*"directory"\s*:\s*"[^"\s]/, search: ['assets'] },
   // The release is a work item: the queue owns its trigger, its gate, its secrets
   // and its park lanes, which is the whole reason it is a task rather than a
   // workflow.

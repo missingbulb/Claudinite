@@ -64,10 +64,10 @@ bespoke checking code**: the `pack-independence` barrier is contributed as manif
 vendor writer's coherence guard holding the same invariant at vendoring time on consumers' behalf.
 
 Activation is the project's declaration in `.claudinite-settings.json` — **no pack runs undeclared,
-basics included.** A technology pack carries a `locate` fingerprint so `--init` seeds it into a
+basics included.** A technology pack carries a `relevanceDetector` fingerprint so `--init` seeds it into a
 fresh declaration when the technology is present; the fingerprint only *suspects* a pack is wanted,
 never forcing or forbidding its declaration afterward. A declared-by-policy pack (basics and
-the default-on maintenance packs) declares no `locate` and is seeded by `--init`
+the default-on maintenance packs) declares no `relevanceDetector` and is seeded by `--init`
 and/or a one-time migration.
 
 ### Two homes for a pack: the canon, and a project's own `local/packs/`
@@ -105,7 +105,7 @@ Ask what *kind* of thing you're adding; each kind has exactly one home, and none
    ladder owns *which* mechanism — this doc only says the answer is never "hardcode it into the
    engine," and (for a project-specific rule) never "always-loaded `CLAUDE.md` prose" when a local
    pack's check or skill can carry it.
-2. **A new technology's conventions** → a new technology pack, with a `locate` fingerprint so
+2. **A new technology's conventions** → a new technology pack, with a `relevanceDetector` fingerprint so
    `--init` seeds it when the technology is present (declaring it stays the project's call).
 3. **A new scheduled maintenance behavior** → a `tasks/<name>/` directory on the owning pack (a
    `task.json` declaration plus its worker). Every declaring repo's scheduler discovers it

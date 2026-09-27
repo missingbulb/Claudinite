@@ -1,9 +1,9 @@
-// Judging a pack's `locate` against a repo the enforcer has not cloned, over the REST
-// API: one tree listing, and the contents of only the files a locate's `paths` name.
+// Judging a pack's `relevanceDetector` against a repo the enforcer has not cloned, over the REST
+// API: one tree listing, and the contents of only the files a relevance detector's `paths` name.
 //
-// A path-only locate is decided by the listing alone. A locate with `text` needs the
+// A path-only relevance detector is decided by the listing alone. A relevance detector with `text` needs the
 // candidate files' contents, one round trip each, so it is read within a budget: a
-// locate whose paths name more candidates than that (every source file, for a
+// relevanceDetector whose paths name more candidates than that (every source file, for a
 // library reference) is reported UNDECIDED, never false. "We did not look" and "we
 // looked and it isn't there" are different facts, and only one of them is safe to act
 // on; the agent stage, which has the member checked out, settles the undecided ones.
@@ -14,7 +14,7 @@
 
 // A namespace import: the pack and engine lanes deliver on separate cadences, and this
 // pack's minEngineVersion is what keeps it off an engine without the module.
-import * as locateSpec from '../../../../engine/pack_loader/locate.mjs';
+import * as detectorSpec from '../../../../engine/pack_loader/relevance-detector.mjs';
 
 export const DEFAULT_READ_BUDGET = 24;
 
@@ -45,14 +45,14 @@ async function fetchBlob(gh, repo, ref, path) {
   }
 }
 
-// Evaluate ONE pack's locate against a remote repo. Returns { verdict, why }, with
+// Evaluate ONE pack's relevanceDetector against a remote repo. Returns { verdict, why }, with
 // verdict true / false / null (undecided): exactly the `evaluate` contract its sibling
 // fingerprint-fit.mjs expects.
 export function makeRemoteEvaluator(gh, repo, ref, { tracked, truncated, budget = DEFAULT_READ_BUDGET } = {}) {
   return async function evaluate(pack) {
-    const { locate } = pack;
-    const candidates = locateSpec.locateCandidates(locate, tracked);
-    const text = [].concat(locate.text ?? []);
+    const detector = pack.relevanceDetector;
+    const candidates = detectorSpec.detectorCandidates(detector, tracked);
+    const text = [].concat(detector.text ?? []);
     const absent = truncated
       ? { verdict: null, why: 'the tree listing was truncated - a non-match here is not evidence' }
       : { verdict: false, why: null };

@@ -24,7 +24,7 @@ looked at a member from the **outside**: self-maintenance cannot detect its own 
 What is still split is the two **issue families**, which close on unrelated
 conditions, and not the walk.
 
-**Missing-packs** exists because a pack's `locate` fingerprint is consulted **once**, at
+**Missing-packs** exists because a pack's `relevanceDetector` fingerprint is consulted **once**, at
 bootstrap's `--init`: the update backfills the seeded packs and each declared pack's `requires`
 closure, but never re-fingerprints, so a member that grows into a pack after adoption is never told
 the pack exists and the owner has to already know what to ask for. **Pack-seeds** is the only one that **writes** to a

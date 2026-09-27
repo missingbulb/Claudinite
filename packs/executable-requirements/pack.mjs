@@ -10,7 +10,7 @@ export default {
     excludes: 'doc-first judgment, owner-owned expecteds and honest-gap tracking — spec-driven-product; general test practice — basics writing-tests',
   },
   pitch: 'Turns the repo\'s requirements document into a spec that runs as tests. Every requirement line gets a case in a standard layout, and the project\'s own gates prove each one is covered and that rendered outputs stay byte-stable. Three skills do the authoring work: writing a requirement leaf and picking its case kind, writing a saga that captures a multi-step story as a golden storyboard, and making rendered expected outputs deterministic. A couple of rules and a check keep the case layout consistent.',
-  locate: { about: 'dev/requirements/requirements.md', paths: /^dev\/requirements\/requirements\.md$/ },
+  relevanceDetector: { about: 'dev/requirements/requirements.md', paths: /^dev\/requirements\/requirements\.md$/ },
   questions: [
     {
       id: 'ui_testing',

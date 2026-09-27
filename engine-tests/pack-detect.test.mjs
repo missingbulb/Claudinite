@@ -5,7 +5,7 @@ import { buildContext } from '../engine/checks/helpers/repo-context.mjs';
 import flutter from '../packs/flutter/pack.mjs';
 import node from '../packs/node/pack.mjs';
 import firebase from '../packs/firebase/pack.mjs';
-import { locateMatches } from '../engine/pack_loader/locate.mjs';
+import { detectsRelevance } from '../engine/pack_loader/relevance-detector.mjs';
 
 // Deliberately stays in engine/test/, not co-located into any one pack: each
 // test asserts the *shared* marker-depth detect convention (marker at the repo
@@ -15,7 +15,7 @@ import { locateMatches } from '../engine/pack_loader/locate.mjs';
 function detect(pack, files) {
   const root = makeRepo({ base: files });
   try {
-    return locateMatches(pack.locate, buildContext({ root, mode: 'all' }));
+    return detectsRelevance(pack.relevanceDetector, buildContext({ root, mode: 'all' }));
   } finally {
     cleanup(root);
   }

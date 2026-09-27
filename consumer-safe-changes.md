@@ -52,7 +52,7 @@ checks, in one Claudinite-only change:
    that says how to align (usually "re-copy the stub"). A consumer's own next session then
    raises a blocking finding and performs the migration in that repo — no per-repo PR from
    here.
-3. Keep the pack's `locate` fingerprint **tolerant of the legacy shape** while copies migrate
+3. Keep the pack's `relevanceDetector` fingerprint **tolerant of the legacy shape** while copies migrate
    (e.g. a `LEGACY_*` list beside the current constant), so a fresh `--init` still recognizes a
    not-yet-migrated repo and seeds the pack.
 

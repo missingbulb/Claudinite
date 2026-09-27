@@ -29,7 +29,7 @@ test('the tree answers for id, prose, badge and skills, and silence for the fing
     assert.deepEqual(packConventions(dir, 'demo'), {
       id: 'demo',
       skills: ['alpha', 'beta'],
-      locate: null,
+      relevanceDetector: null,
       prose: 'RULES.md',
       badge: 'badge.svg',
     });
@@ -40,7 +40,7 @@ test('a file that is not there contributes no field at all', () => {
   const dir = packDir({ 'pack.mjs': 'export default {};\n' });
   try {
     const c = packConventions(dir, 'bare');
-    assert.deepEqual(c, { id: 'bare', skills: [], locate: null });
+    assert.deepEqual(c, { id: 'bare', skills: [], relevanceDetector: null });
     assert.equal('prose' in c, false);
     assert.equal('badge' in c, false);
   } finally { removeTree(dir); }
@@ -177,7 +177,7 @@ test('real corpus: no canon pack restates what its directory already says', asyn
   const restated = [];
   for (const pack of packs) {
     const src = readFileSync(join(pack.dir, 'pack.mjs'), 'utf8');
-    for (const field of ['id', 'badge', 'prose', 'skills', 'worldRules', 'workRules', 'locate: null', 'detect', 'marker']) {
+    for (const field of ['id', 'badge', 'prose', 'skills', 'worldRules', 'workRules', 'relevanceDetector: null', 'detect', 'marker']) {
       const pattern = field.includes(':') ? String.raw`^\s{2}${field},` : String.raw`^\s{2}${field}:`;
       if (new RegExp(pattern, 'm').test(src)) restated.push(`${pack.id}: ${field}`);
     }

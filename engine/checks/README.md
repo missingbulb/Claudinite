@@ -194,7 +194,7 @@ would be a suppression wearing a creation date. A project that sets the rule to 
 its own settings overrides the grace and gets enforcement from day one. The window is measured from the
 declared date, not from the day a consumer received the rule — so a canon rule's grace is spent by the time
 a member converges onto it, and a rule going out to the fleet still has to be one the fleet can satisfy. A whole
-new pack is just a `../packs/<name>/` directory with a `pack.mjs` (its fingerprint `locate` and its
+new pack is just a `../packs/<name>/` directory with a `pack.mjs` (its fingerprint `relevanceDetector` and its
 rules; the id, prose, badge and bundled skills come from the directory itself) —
 [engine/pack_loader/pack-registry.mjs](../pack_loader/pack-registry.mjs) discovers it structurally,
 no list to edit.
@@ -250,7 +250,7 @@ at the top of `run`.
 an unknown *pack name* (only it holds the registry). Each surfaces as a blocking `config` error, because a
 wrong pack name is as much a settings error as invalid JSON. This deliberately replaced a `pack-declaration`
 conformance check: whether a repo declares a pack its fingerprint suggests, or drops one whose marker is
-gone, is the **project's** call: a `locate` is a way to *suspect* a pack is needed, never proof it must (or
+gone, is the **project's** call: a `relevanceDetector` is a way to *suspect* a pack is needed, never proof it must (or
 must not) be declared — so the checker no longer second-guesses it.
 
 Pack **dependencies** are likewise *not* a check: a pack can't be imported without the packs it requires, so

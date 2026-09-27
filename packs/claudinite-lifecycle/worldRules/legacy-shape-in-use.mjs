@@ -154,7 +154,7 @@ const rule = {
       }
     }
 
-    // The fingerprint fields `locate` replaced (#2374). A local pack is declared by hand and
+    // The fingerprint fields `relevanceDetector` replaced (#2374). A local pack is declared by hand and
     // never fingerprinted, so its lines say nothing; the manifest spec tolerates them
     // only until no member still carries them.
     for (const path of (ctx.files ?? []).filter((f) => LOCAL_MANIFEST.test(f))) {

@@ -42,9 +42,9 @@
 - **Actor:** @missingbulb (owner), who asked why every task re-implements one runner's job.
 - **Model:** Opus 5
 
-## 2026-09-27 · policy-changed · the fit sweep judges a pack's `locate`
-- **Reason:** fingerprints became data, so the remote sweep reads only the files a locate's paths
+## 2026-09-27 · policy-changed · the fit sweep judges a pack's `relevanceDetector`
+- **Reason:** fingerprints became data, so the remote sweep reads only the files a relevance detector's paths
   name, rather than probing a function for what it asks.
 - **Actor:** @missingbulb (owner).
-- **Mechanism:** fingerprint-fit.mjs and remote-context.mjs evaluate `locate`; the budget still
+- **Mechanism:** fingerprint-fit.mjs and remote-context.mjs evaluate `relevanceDetector`; the budget still
   turns an over-wide read into undecided.

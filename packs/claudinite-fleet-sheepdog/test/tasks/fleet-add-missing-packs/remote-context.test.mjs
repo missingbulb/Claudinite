@@ -27,9 +27,9 @@ function fakeGh({ tracked = [], truncated = false, blobs = {} } = {}) {
   return gh;
 }
 
-const pathOnly = { id: 'path-only', locate: { about: 'p', paths: /^package\.json$/ } };
-const readsOne = { id: 'reads-one', locate: { about: 'r', paths: /manifest\.json$/, text: /manifest_version/, search: ['manifest_version'] } };
-const grepsSource = { id: 'greps-source', locate: { about: 'g', paths: /\.ts$/, text: /jsonwebtoken/, search: ['jsonwebtoken'] } };
+const pathOnly = { id: 'path-only', relevanceDetector: { about: 'p', paths: /^package\.json$/ } };
+const readsOne = { id: 'reads-one', relevanceDetector: { about: 'r', paths: /manifest\.json$/, text: /manifest_version/, search: ['manifest_version'] } };
+const grepsSource = { id: 'greps-source', relevanceDetector: { about: 'g', paths: /\.ts$/, text: /jsonwebtoken/, search: ['jsonwebtoken'] } };
 
 // --- the context itself -------------------------------------------------------
 
@@ -66,7 +66,7 @@ test('a path-only NON-match over a truncated tree is undecided, not false', asyn
 
 // --- reading the candidates ---------------------------------------------------
 
-test('a text locate reads only the files its paths name', async () => {
+test('a text relevanceDetector reads only the files its paths name', async () => {
   const tracked = ['src/manifest.json', 'README.md'];
   const gh = fakeGh({ tracked, blobs: { 'src/manifest.json': '{"manifest_version":3}' } });
   const evaluate = makeRemoteEvaluator(gh, 'o/r', 'main', { tracked, truncated: false });

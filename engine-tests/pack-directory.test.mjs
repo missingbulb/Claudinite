@@ -25,7 +25,7 @@ const cell = (s) => String(s).replace(/\|/g, '\\|').replace(/\s+/g, ' ').trim();
 function activation(pack) {
   const parts = [];
   if (pack.seededByDefault) parts.push('seeded by bootstrap `--init`');
-  if (pack.locate) parts.push(`fingerprinted: ${cell(pack.locate.about)}`);
+  if (pack.relevanceDetector) parts.push(`fingerprinted: ${cell(pack.relevanceDetector.about)}`);
   return parts.length ? parts.join('; ') : 'declared by hand (opt-in)';
 }
 
