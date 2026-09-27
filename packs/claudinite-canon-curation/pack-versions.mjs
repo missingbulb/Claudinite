@@ -79,7 +79,7 @@ export function withPackVersion(text, version) {
 }
 
 // The shelf's catalog, whose Version column is what fleet readers price canon's packs
-// off in one read — so the bump commit moves it beside the manifests, or the catalog
+// off in one read, so the bump commit moves it beside the manifests, or the catalog
 // is stale from the moment the bump lands.
 export const DIRECTORY_PATH = `${SHELF}/directory.GENERATED.md`;
 

@@ -82,7 +82,7 @@ test('buildRoster: the declaration is read once per repo, and both questions use
   // The per-member canon compare is gone with the ref it compared (#1252): freshness
   // is a version comparison, so a read per member for a state that can no longer
   // happen is a read nobody needs.
-  assert.equal(seen.length, 4, 'declaration + scheduler workflow + canon engine + canon acme-pack');
+  assert.equal(seen.length, 5, 'declaration + scheduler workflow + canon engine + canon catalog + canon acme-pack');
 });
 
 // THE RENAME'S WINDOW (#1252). A member is a member under either settings-file name

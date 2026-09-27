@@ -56,7 +56,7 @@ const ms = (t) => (t == null ? null : new Date(t).getTime());
 const ENGINE_VERSION_RE = new RegExp(String.raw`ENGINE_VERSION\s*=\s*'?(${VERSION_SOURCE})'?`);
 const PACK_VERSION_RE = new RegExp(String.raw`(?:^|[{,\s])version:\s*'?(${VERSION_SOURCE})'?`, 'm');
 
-// Every pack the canon's catalog offers, at the version its Version column carries —
+// Every pack the canon's catalog offers, at the version its Version column carries:
 // the whole canon side priced in one read. Null when the catalog has no such column,
 // so the reader falls back to manifests rather than reading an empty map as no packs.
 export function parseDirectoryVersions(text) {

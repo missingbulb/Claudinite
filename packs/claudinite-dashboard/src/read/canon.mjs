@@ -9,7 +9,7 @@
 // The reference is VERSIONS, never a sha: the versioned flows stamp members with
 // `engineVersion`/`packVersions` only, so the canon side is the live `ENGINE_VERSION`
 // out of `engine/version.mjs` plus each pack's version out of the shelf's catalog, whose
-// Version column prices every offered pack in one read — lifted as text like every
+// Version column prices every offered pack in one read, lifted as text like every
 // declaration field, sha-cached like every content read. A pack the catalog does not
 // offer is read off its own `pack.mjs`, and only when some member actually stamps it.
 
