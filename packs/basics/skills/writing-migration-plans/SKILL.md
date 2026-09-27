@@ -189,8 +189,7 @@ to read whether the design survived contact.
 [production-retrospective](../production-retrospective/SKILL.md) owns what that brief answers and
 its horizon.
 
-Each link is a **sub-issue of the tracking issue** ([RULES.md](../../RULES.md)' *Filing an issue
-that belongs under another*), so the plan and its chain are one hierarchy read two ways rather
+Each link is a **sub-issue of the tracking issue** (the `sub-issue-without-parent` check), so the plan and its chain are one hierarchy read two ways rather
 than two lists that can disagree. Where a link is a PR's merge rather than a run, that PR's body
 closes **the link**, never the tracker: a phase PR carrying `Closes #<tracker>` ends the whole
 migration on its first merge.

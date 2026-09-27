@@ -23,9 +23,8 @@ frames the unattended run around it.
 2. **Probe each**, per the skill's two probe rules, and record what you ran and what came back.
 3. **Correct what is stale**, as far as each probe reaches and no further.
 4. **Deliver by the shared procedure — [deliver-pr.md](../../../claudinite-tasks/src/deliver/deliver-pr.md)**.
-   Title the commit and the PR `Claudinite growth: rule revalidation`; the commit references the
-   tracking issue so the `task-lifecycle` gate passes, and the repo's offline test suite is green
-   before you push.
+   Title the commit and the PR `Claudinite growth: rule revalidation`, and keep the repo's offline
+   test suite green before you push.
 5. **Report every verdict in the PR body** — every claim probed, its verdict and the probe behind it.
    This task rewrites the rules sessions obey, on evidence a reviewer cannot re-derive from the diff,
    so the body carries that evidence in full whether or not anyone reads it. Never bump a pack's

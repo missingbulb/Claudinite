@@ -44,9 +44,9 @@ interview waits on a human. Don't re-enact the parts below by hand — they are 
 4. **Create the executor routine** (Part 6) — before the commit, so its endpoint lands in the
    adoption PR rather than a second one.
 5. **Land it** (Part 8): clear or accept what the world sweep reported, commit the adoption as
-   one change referencing the issue, push, PR.
+   one change, push, PR.
 6. **Capture the adoption session** once the PR lands: from the repo root,
-   `node .claudinite/shared/packs/claudinite-growth/capture-log.mjs --issue <adoption-issue>`.
+   `node .claudinite/shared/packs/claudinite-growth/capture-log.mjs --pr <adoption-pr>`.
    This session started with no Claudinite loaded, so the SessionEnd capture hook it just wired
    fires only in *later* sessions — nothing captures this one unless bootstrap does. The
    adoption log is the repo's first growth input, and what the canon reads to judge real
@@ -241,8 +241,8 @@ node .claudinite/shared/engine/checks/ci-work-scope.mjs --branch "$BRANCH"   # t
 ```
 
 The **world** sweep is a whole-repo invariant assertion — the same shape as a test suite. The
-**work** sweep judges this branch's diff against the base branch: whether a commit references its
-issue, whether a merge commit slipped in, whether an edit that must carry something with it did.
+**work** sweep judges this branch's diff against the base branch: whether a merge commit slipped
+in, whether an edit that must carry something with it did.
 The Stop hook runs the work scope too, but only where a session runs — an unattended commit or a
 hand-pushed branch reaches `main` unjudged otherwise. `ci-work-scope.mjs` owns everything that
 makes its sweep meaningful (fetching the base branch, refusing an empty scope, skipping the
@@ -261,7 +261,7 @@ The script already ran the world sweep and printed its findings. On a repo with 
 would otherwise fail every future run. Fix causes, or record a reasoned `accept` in
 `.claudinite-settings.json` for the deliberate keeps. Don't reach for `--changed` to hide the
 backlog — it is a transitional aid, never the enforcement default. Commit the adoption as one
-change referencing the adoption issue, and push it through the normal PR flow.
+change, and push it through the normal PR flow.
 
 ## Part 9 — cloud environment setup (Claude Code on the web)
 

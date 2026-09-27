@@ -73,9 +73,7 @@ worker only frames the unattended run around it.
   whether and how the PR lands. What holds the prune bar is the quote-the-canon-line discipline above, the
   `dedup-prune-integrity` and `growth-write-scope` checks, and CI — never a reviewer's second look, which a
   wrongful prune is easy to wave through anyway. **Put the issue reference in the commit message** —
-  `Refs #<n>` for this task's tracking issue (below), in the commit itself, not only the PR body. The repo's
-  `basics` `task-lifecycle` check gates a PR on its commits referencing an issue, so a prune commit that cites
-  none reds the repo's CI and blocks the merge.
+  `Refs #<n>` for this task's tracking issue (below), in the commit itself, not only the PR body.
 - If an edit touches something a test reads, run the repo's offline test suite and keep it green before pushing.
 
 ## The brief, and the record

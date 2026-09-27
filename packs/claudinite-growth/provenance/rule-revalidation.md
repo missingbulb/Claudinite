@@ -54,3 +54,10 @@
 - **Reason:** owner decision: the mechanism that re-vendors a mount is called update; "converge"
   stays only for a work item reaching its end state.
 - **Actor:** @missingbulb (owner).
+
+## 2026-09-27 · reworded · cited a check and an adoption issue that no longer exist (#2372)
+- **Reason:** the `task-lifecycle` gate is gone and the adoption PR is its tracker, so the text
+  named a gate that blocks nothing and an issue nobody opens.
+- **Actor:** @missingbulb (owner).
+- **Model:** claude-opus-5-5
+- **Landed:** #2372

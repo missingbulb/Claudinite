@@ -11,3 +11,10 @@
   shelf whether or not this repo was touched. It declares `amend_existing_or_create_new_pr`, per the
   rule that a run recomputing the whole answer accumulates one pull request.
 - **Landed:** #2047 (Closes #2044) · pack version 60915.3.
+
+## 2026-09-27 · reworded · cited a check and an adoption issue that no longer exist (#2372)
+- **Reason:** the `task-lifecycle` gate is gone and the adoption PR is its tracker, so the text
+  named a gate that blocks nothing and an issue nobody opens.
+- **Actor:** @missingbulb (owner).
+- **Model:** claude-opus-5-5
+- **Landed:** #2372
