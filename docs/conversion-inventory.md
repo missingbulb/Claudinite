@@ -49,7 +49,7 @@ engineeringPractices judgment core.
 | task-lifecycle: the PR tracks a change worked on now; an issue only for work not starting now | stays (2026-09-13; the `task-lifecycle` check was retired with the issue-first rule) |
 | task-lifecycle: update issue status as work progresses, when the change has one | stays — flow lives in the merge skill |
 | merge-to-main: the recipe (~4 calls) | **skill** (trigger stays the owner's "LGTM" preference) |
-| merge-to-main: squash as the method | **setting** — GitHub "allow squash merging" only — verified by **check** `basics/squash-merge-history`: the change introduces no merge commits (scoped to the work — its own commits since the merge-base — not the repo's whole history), plus a CI-surface config check later |
+| merge-to-main: squash as the method | **setting**: GitHub "allow squash merging" only. The check that verified it by the change's own merge commits (`basics/squash-merge-history`) was retired on 2026-09-27: a squash discards those commits, so they prove nothing about the setting |
 | merge-to-main: gate on CI only if the repo has it | folds into the skill |
 | merge-to-main: lessons pass on every merge | folds into the skill (deterministic step, not a remembered trigger); later became the conversation capture step — extraction moved to the growth pack's nightly |
 | merge-to-main: don't re-read the issue; don't fight branch deletion | folds into the skill |

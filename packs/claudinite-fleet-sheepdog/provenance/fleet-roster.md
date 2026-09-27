@@ -63,3 +63,10 @@
   same work runs, exits the same way and prints the same markers.
 - **Actor:** @missingbulb (owner), who asked why every task re-implements one runner's job.
 - **Model:** Opus 5
+
+## 2026-09-27 · policy-changed · canon's pack versions come off the catalog in one read
+- **Reason:** one `pack.mjs` read per distinct pack per sweep, where the catalog now carries every
+  offered pack's version.
+- **Actor:** @missingbulb (owner).
+- **Mechanism:** `canonVersions` reads `packs/directory.GENERATED.md` once; a pack it does not
+  offer, or a catalog it cannot read, falls back to the manifest.

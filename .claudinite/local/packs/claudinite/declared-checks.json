@@ -77,22 +77,6 @@
     ]
   },
   {
-    "id": "merge-main-into-branch",
-    "on_fail": "block",
-    "since": "2026-09-06",
-    "scope": "action",
-    "failureMessage": "a merge commit trips the blocking squash-merge-history check; the branch re-verifies against a moved main by rebasing",
-    "guardToolCalls": [
-      {
-        "tool": "Bash",
-        "inputField": "command",
-        "match": "/(^|[;&|]\\s*|\\n\\s*)git\\s+merge\\s+(origin\\/)?(main|master)\\b/",
-        "what": "a merge of main into the branch",
-        "fix": "git rebase origin/main"
-      }
-    ]
-  },
-  {
     "id": "github-api-via-shell",
     "on_fail": "block",
     "since": "2026-09-06",
@@ -483,7 +467,7 @@
     ],
     "forbidAddedLinesMatching": [
       {
-        "inFilesMatching": "/^(?!\\.claudinite\\/shared\\/).*$/",
+        "inFilesMatching": "/^(?!\\.claudinite\\/shared\\/)(?!.*\\.GENERATED\\.).*$/",
         "match": "/[\u2013\u2014]|\\\\u201[34]/",
         "unlessLineMatches": "/^\\s*\"match\": /",
         "what": "adds a long dash: \"{match}\"",

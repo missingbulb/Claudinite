@@ -76,3 +76,8 @@
 - **Actor:** the canon-rule-revalidation task, running as work item #2349.
 - **Model:** claude-opus-5
 - **Retire when:** `get_job_logs` distinguishes an unfinished run from a green one.
+
+## 2026-09-27 · weakened · base-sync no longer "rebase, never merge"
+- **Reason:** the rule rested on squash-merge-history, now retired; under squash merging a base
+  merge lands the same commit and rewrites no shared branch.
+- **Actor:** @missingbulb (owner).
