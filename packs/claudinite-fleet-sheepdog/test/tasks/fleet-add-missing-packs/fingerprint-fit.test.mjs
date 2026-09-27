@@ -6,19 +6,19 @@ import { fitCandidates, undeclaredFits, localFits } from '../../../tasks/fleet-a
 // the module is pack-agnostic, and a test that reached for real canon packs would
 // couple this test to whichever packs happen to carry a fingerprint today.
 
-const pack = (id, over = {}) => ({ id, detect: () => false, local: false, ...over });
+const pack = (id, over = {}) => ({ id, locate: { about: id, paths: /^never$/ }, local: false, ...over });
 
 // --- candidacy ----------------------------------------------------------------
 
 test('fitCandidates: only undeclared canon packs that carry a fingerprint', () => {
   const packs = [
     pack('has-fingerprint'),
-    pack('declaration-authoritative', { detect: null }),
+    pack('declaration-authoritative', { locate: null }),
     pack('already-declared'),
     pack('a-local-pack', { local: true }),
   ];
   // Dropped, each for its own reason: already declared; declaration-authoritative
-  // (detect: null); a local pack, which is declared by hand and never fingerprinted.
+  // (locate: null); a local pack, which is declared by hand and never fingerprinted.
   assert.deepEqual(fitCandidates(packs, ['already-declared']).map((p) => p.id), ['has-fingerprint']);
 });
 
@@ -29,10 +29,10 @@ test('fitCandidates: a declaration entry may be an object, not just a string', (
   assert.deepEqual(fitCandidates(packs, [{ id: 'configured', config: {} }]), []);
 });
 
-test('fitCandidates: a pack with detect:null is never a candidate, declared or not', () => {
+test('fitCandidates: a pack with locate:null is never a candidate, declared or not', () => {
   // Declaration is authoritative in BOTH directions for these — their absence from a
   // declaration says nothing at all, so suspecting them would be noise by construction.
-  assert.deepEqual(fitCandidates([pack('prose-only', { detect: null })], []), []);
+  assert.deepEqual(fitCandidates([pack('prose-only', { locate: null })], []), []);
 });
 
 // --- the three verdicts -------------------------------------------------------
@@ -58,8 +58,8 @@ test('undeclaredFits: a fingerprint that throws is undecided, never a clean flee
   // The failure this guards: a broken predicate returning nothing looks exactly like
   // "this repo needs nothing", and a sweep would report the fleet as fitted.
   const res = await undeclaredFits({
-    packs: [pack('broken', { detect() { throw new Error('boom'); } })],
-    evaluate: (p) => p.detect(),
+    packs: [pack('broken')],
+    evaluate: () => { throw new Error('boom'); },
   });
   assert.deepEqual(res.fits, []);
   assert.match(res.undecided[0].why, /fingerprint threw: boom/);
@@ -90,9 +90,9 @@ test('undeclaredFits: both lists come back sorted, so a converged issue body is 
 test('localFits: a real ctx decides every fingerprint — nothing is deferred', async () => {
   const ctx = { tracked: ['package.json', 'src/a.ts'], read: () => 'contents' };
   const packs = [
-    pack('by-path', { detect: (c) => c.tracked.includes('package.json') }),
-    pack('by-content', { detect: (c) => c.read('src/a.ts').includes('contents') }),
-    pack('absent', { detect: (c) => c.tracked.includes('firebase.json') }),
+    pack('by-path', { locate: { about: 'p', paths: /^package\.json$/ } }),
+    pack('by-content', { locate: { about: 'c', paths: /\.ts$/, text: /contents/, search: ['contents'] } }),
+    pack('absent', { locate: { about: 'a', paths: /^firebase\.json$/ } }),
   ];
   const res = await localFits({ ctx, packs, declared: [] });
   assert.deepEqual(res.fits, ['by-content', 'by-path']);

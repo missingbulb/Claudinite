@@ -1,32 +1,20 @@
-// A repo context built over the REST API instead of a checkout — enough of one for a
-// pack's `detect` fingerprint to run against a member the enforcer has not cloned.
+// Judging a pack's `locate` against a repo the enforcer has not cloned, over the REST
+// API: one tree listing, and the contents of only the files a locate's `paths` name.
 //
-// WHY it can only ever be an approximation. `buildContext` (engine/checks/helpers/
-// repo-context.mjs) is backed by git and a real working tree, and `ctx.read` is
-// SYNCHRONOUS. Over REST, a file's contents are a round trip. A fingerprint that only
-// walks `ctx.tracked` (a package.json near the root, a workflow file, a tracked path)
-// is therefore answerable from one cheap tree listing; a fingerprint that reads
-// CONTENTS (a JWT library referenced in source, a manifest.json carrying
-// "manifest_version") is not, until the files it wants have been fetched.
-//
-// So this resolves in two passes:
-//
-//   1. PROBE — run the fingerprint against a context whose `read` returns null and
-//      RECORDS what was asked for. The verdict from this pass is discarded; the
-//      recorded path list is the point.
-//   2. RESOLVE — fetch those paths (at most `budget` of them), rebuild the context
-//      with them warm, and run the fingerprint again. That answer is real.
-//
-// A fingerprint that asked for more files than the budget allows is reported
-// UNDECIDED, never false: "we did not look" and "we looked and it isn't there" are
-// different facts, and only one of them is safe to act on. A fingerprint that reads a
-// handful of well-known paths (manifests, workflow files) resolves inside the budget;
-// one that greps every source file in the repo does not, and the agent stage — which
-// has the member checked out and can answer it exactly — is where it gets settled.
+// A path-only locate is decided by the listing alone. A locate with `text` needs the
+// candidate files' contents, one round trip each, so it is read within a budget: a
+// locate whose paths name more candidates than that (every source file, for a
+// library reference) is reported UNDECIDED, never false. "We did not look" and "we
+// looked and it isn't there" are different facts, and only one of them is safe to act
+// on; the agent stage, which has the member checked out, settles the undecided ones.
 //
 // The budget is per pack, per repo. It is a cost ceiling on a weekly sweep across
 // every repo an owner has, not a correctness knob: raising it buys more resolved
 // fingerprints and more API calls, and lowering it defers more to the agent.
+
+// A namespace import: the pack and engine lanes deliver on separate cadences, and this
+// pack's minEngineVersion is what keeps it off an engine without the module.
+import * as locateSpec from '../../../../engine/pack_loader/locate.mjs';
 
 export const DEFAULT_READ_BUDGET = 24;
 
@@ -45,25 +33,6 @@ export async function fetchTree(gh, repo, ref) {
   };
 }
 
-// A context over a known path list and an already-fetched blob cache. `read` serves
-// the cache, returns null for anything absent (exactly what the real ctx.read does
-// for a file that isn't there), and records every path asked for so the caller can
-// see what a fingerprint wanted.
-export function makeRemoteContext({ tracked, blobs = new Map() }) {
-  const requested = [];
-  return {
-    tracked,
-    files: tracked,
-    read(path) {
-      requested.push(path);
-      return blobs.has(path) ? blobs.get(path) : null;
-    },
-    // Not part of the ctx surface a fingerprint uses — the caller's window onto the
-    // probe pass.
-    _requested: requested,
-  };
-}
-
 // One file's contents, or null when it cannot be read (absent, too large for the
 // contents API, a submodule). Null is a legitimate answer here and matches ctx.read.
 async function fetchBlob(gh, repo, ref, path) {
@@ -76,53 +45,25 @@ async function fetchBlob(gh, repo, ref, path) {
   }
 }
 
-// Evaluate ONE pack's fingerprint against a remote repo, resolving file reads on
-// demand within the budget. Returns true / false / null (undecided), which is exactly
-// the `evaluate` contract its sibling fingerprint-fit.mjs expects.
+// Evaluate ONE pack's locate against a remote repo. Returns { verdict, why }, with
+// verdict true / false / null (undecided): exactly the `evaluate` contract its sibling
+// fingerprint-fit.mjs expects.
 export function makeRemoteEvaluator(gh, repo, ref, { tracked, truncated, budget = DEFAULT_READ_BUDGET } = {}) {
   return async function evaluate(pack) {
-    // Pass 1 — probe. The verdict is thrown away; what the fingerprint ASKED FOR is
-    // what we came for.
-    const probe = makeRemoteContext({ tracked });
-    let probeVerdict;
-    try {
-      probeVerdict = pack.detect(probe) === true;
-    } catch (e) {
-      return { verdict: null, why: `fingerprint threw during the probe: ${e.message}` };
+    const { locate } = pack;
+    const candidates = locateSpec.locateCandidates(locate, tracked);
+    const text = [].concat(locate.text ?? []);
+    const absent = truncated
+      ? { verdict: null, why: 'the tree listing was truncated - a non-match here is not evidence' }
+      : { verdict: false, why: null };
+    if (!text.length) return candidates.length ? { verdict: true, why: null } : absent;
+    if (candidates.length > budget) {
+      return { verdict: null, why: `${candidates.length} files could carry what it looks for (budget ${budget}) - it greps source rather than probing paths` };
     }
-    const wanted = [...new Set(probe._requested)];
-
-    // A fingerprint that never touched `read` is decided by the path listing alone —
-    // unless the listing itself was truncated, in which case a `false` is not a fact.
-    if (wanted.length === 0) {
-      if (truncated && probeVerdict === false) {
-        return { verdict: null, why: 'the tree listing was truncated — a non-match here is not evidence' };
-      }
-      return { verdict: probeVerdict, why: null };
+    for (const path of candidates) {
+      const body = await fetchBlob(gh, repo, ref, path);
+      if (body !== null && text.every((r) => r.test(body))) return { verdict: true, why: null };
     }
-    if (wanted.length > budget) {
-      return {
-        verdict: null,
-        why: `the fingerprint wanted ${wanted.length} file reads (budget ${budget}) — it greps source rather than probing paths`,
-      };
-    }
-
-    // Pass 2 — resolve. Fetch what was asked for, then re-run for the real answer.
-    const blobs = new Map();
-    for (const path of wanted) blobs.set(path, await fetchBlob(gh, repo, ref, path));
-    const resolved = makeRemoteContext({ tracked, blobs });
-    try {
-      const verdict = pack.detect(resolved) === true;
-      // The second pass can ask for files the first did not reach (a `some` that
-      // short-circuits on a hit it did not get the first time). Anything newly
-      // requested came back null, so a `false` may be under-detection, not absence.
-      const stillMissing = resolved._requested.some((p) => !blobs.has(p));
-      if (verdict === false && stillMissing) {
-        return { verdict: null, why: 'the fingerprint reached past the files the probe pass named' };
-      }
-      return { verdict, why: null };
-    } catch (e) {
-      return { verdict: null, why: `fingerprint threw: ${e.message}` };
-    }
+    return absent;
   };
 }
