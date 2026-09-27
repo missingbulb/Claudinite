@@ -14,3 +14,11 @@
 - **Reason:** owner decision, 2026-09-25: the field names what happens when the check fails, and
   *severity* keeps its impact sense; what this element enforces is unchanged.
 - **Actor:** @missingbulb (owner).
+
+## 2026-09-27 · scope-changed · a generated file is judged at its sources
+- **Reason:** packs/directory.GENERATED.md carries manifest text verbatim, so a row regenerated
+  because its activation changed re-fired on every dash its routing guidance already held, where no
+  edit to the generated file could clear it.
+- **Actor:** @missingbulb (owner).
+- **Mechanism:** `inFilesMatching` skips `*.GENERATED.*`; the dash is still caught where its source
+  is written.
