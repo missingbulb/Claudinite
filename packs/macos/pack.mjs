@@ -6,7 +6,7 @@
 // Fingerprint: a `Package.swift` at the repo root or one directory down (a
 // monorepo's `mac/` dir), never deeper.
 export default {
-  version: '60927.1',
+  version: '60927.2',
   minEngineVersion: '60927.1',
   ruleRoutingGuidance: {
     belongs: 'native macOS apps: app-bundle assembly, TCC usage strings, Hardened Runtime entitlements, Developer ID signing, notarization and DMG distribution',

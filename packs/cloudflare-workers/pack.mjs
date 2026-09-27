@@ -4,7 +4,7 @@
 // the binding boundary that forces everything else into plain, fake-tested
 // modules.
 export default {
-  version: '60927.1',
+  version: '60927.2',
   minEngineVersion: '60927.1',
   ruleRoutingGuidance: {
     belongs: 'the Cloudflare Workers platform: Wrangler, D1, R2, Vectorize, Workflows, Workers AI and Containers',

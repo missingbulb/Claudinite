@@ -2,7 +2,7 @@
 // Conventions for a Node/npm project. Fingerprint: a package.json at the repo
 // root or one directory down, never deeper.
 export default {
-  version: '60927.1',
+  version: '60927.2',
   minEngineVersion: '60927.1',
   ruleRoutingGuidance: {
     belongs: 'conventions for a Node/npm project — module resolution, ESM vs CJS, dependency justification, jsdom test divergences',

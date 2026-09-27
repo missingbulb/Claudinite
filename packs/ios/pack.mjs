@@ -1,6 +1,6 @@
 // Technology pack: iOS app development (Xcode project, Info.plist usage strings, entitlements, signing).
 export default {
-  version: '60927.1',
+  version: '60927.2',
   minEngineVersion: '60927.1',
   ruleRoutingGuidance: {
     belongs: 'app-target conventions for iOS — Xcode project, Info.plist usage strings, entitlements, code signing',

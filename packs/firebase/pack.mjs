@@ -4,7 +4,7 @@
 // root or one directory down, never deeper.
 
 export default {
-  version: '60927.1',
+  version: '60927.2',
   minEngineVersion: '60927.1',
   ruleRoutingGuidance: {
     belongs: 'building on Firebase: Firestore rules, callable Cloud Function patterns, FCM, emulator testing, deploy layout, dev/prod release split',

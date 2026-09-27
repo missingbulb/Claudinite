@@ -5,7 +5,7 @@ import { STAMP } from './public/version.mjs';
 // stale. A hosting pack's release reaches `public/version.mjs` to advance the version
 // as part of cutting a release, and goes out without a bump when the file is absent.
 export default {
-  version: '60927.1',
+  version: '60927.2',
   minEngineVersion: '60927.1',
   ruleRoutingGuidance: {
     belongs: 'being a public website whatever serves it: the version scheme and page stamp, client-side caching and data freshness',
