@@ -5,7 +5,7 @@
 // and the page stamp, and the release reaches that pack's `public/version.mjs` to
 // advance it when the pack is declared.
 export default {
-  version: '60925.2',
+  version: '60927.1',
   minEngineVersion: '60927.1',
   ruleRoutingGuidance: {
     belongs: 'serving a static site from Cloudflare: the published tree, custom domains, the nightly release that uploads it',

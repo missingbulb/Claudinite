@@ -5,7 +5,7 @@
 // are the older equivalent markers; add them here if a consumer predates
 // pyproject.toml.)
 export default {
-  version: '60925.2',
+  version: '60927.1',
   minEngineVersion: '60927.1',
   ruleRoutingGuidance: {
     belongs: 'packaging and import conventions for a Python project — pyproject extras, lazy optional heavy deps, stdlib-only core',

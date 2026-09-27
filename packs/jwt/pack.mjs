@@ -6,7 +6,7 @@
 // only *suspects* the pack; declaring it is the project's call, like every pack.
 
 export default {
-  version: '60925.1',
+  version: '60927.1',
   minEngineVersion: '60927.1',
   ruleRoutingGuidance: {
     belongs: 'minting and validating JSON Web Tokens: algorithm pinning, claim validation, key strength and secrecy, expiry, JWE',

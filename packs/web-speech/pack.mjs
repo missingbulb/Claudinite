@@ -6,7 +6,7 @@
 // Fingerprinted by an actual speech-API reference in JS/TS source.
 
 export default {
-  version: '60925.1',
+  version: '60927.1',
   minEngineVersion: '60927.1',
   ruleRoutingGuidance: {
     belongs: 'browser voice I/O gotchas — SpeechRecognition results and errors, speechSynthesis and chrome.tts, mic permission and lifecycle',

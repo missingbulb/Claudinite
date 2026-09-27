@@ -5,7 +5,7 @@
 // browser-automation package, or a `.launch(` call site.
 
 export default {
-  version: '60927.2',
+  version: '60927.3',
   minEngineVersion: '60927.1',
   ruleRoutingGuidance: {
     belongs:

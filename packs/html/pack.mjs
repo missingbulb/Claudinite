@@ -1,6 +1,6 @@
 // Prose-only pack with no structural fingerprint: declaration is authoritative.
 export default {
-  version: '60925.1',
+  version: '60927.1',
   minEngineVersion: '60925.1',
   ruleRoutingGuidance: {
     belongs: 'hand-authored HTML markup gotchas — element nesting, injected content placement, live browser verification of a page',

@@ -2,7 +2,7 @@
 // Dart tree, two path-forced skills, and the Flutter SDK a cloud session needs.
 // Fingerprint: a pubspec.yaml at the repo root or one directory down, never deeper.
 export default {
-  version: '60925.2',
+  version: '60927.1',
   minEngineVersion: '60927.1',
   ruleRoutingGuidance: {
     belongs: 'widget-tree architecture, ports and fakes, widget-test and golden mechanics, pub and analyze toolchain habits for Flutter',

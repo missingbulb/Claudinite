@@ -6,7 +6,7 @@
 // dependency manifest (`requirements*.txt` or `pyproject.toml`).
 
 export default {
-  version: '60925.1',
+  version: '60927.1',
   minEngineVersion: '60927.1',
   ruleRoutingGuidance: {
     belongs:

@@ -3,7 +3,7 @@
 // conventions - layout, naming, gates, kinds, gallery, determinism - shared by
 // every project that runs its spec as tests.
 export default {
-  version: '60925.2',
+  version: '60927.1',
   minEngineVersion: '60927.1',
   ruleRoutingGuidance: {
     belongs: 'running a numbered spec as tests: dev/requirements layout, requirement ids, kinds, coverage and gallery gates, determinism rules',
