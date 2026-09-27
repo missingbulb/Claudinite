@@ -37,5 +37,5 @@
   green deploy workflow only reports the last *deploy*, not the current stack state. The CLI is
   **not pre-installed on the cloud/web runner** (nor `boto3`/`sam`), so declare its install in the
   **environment setup script** (`pip install awscli`, or the official bundle) rather than per
-  session; point it at the sandbox proxy's CA bundle (`AWS_CA_BUNDLE`) if a call fails TLS
-  verification. (reach-aws-session)
+  session; the sandbox already exports `AWS_CA_BUNDLE`, so a TLS failure is not a bundle left
+  unset. (reach-aws-session)

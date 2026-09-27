@@ -66,3 +66,13 @@
   basics.
 - **Actor:** @missingbulb (owner).
 - **Mechanism:** the skill description, triggering on what it did before.
+
+## 2026-09-27 · reworded · Claudinite canon: rule revalidation
+- **Reason:** re-probed 2026-09-27 against run 36313686047 while its only job was `in_progress`:
+  `get_job_logs(run_id, failed_only: true)` answered `failed_jobs: 0` / "No failed jobs found in
+  this workflow run", so zero failures read a running job as green; and the same tool on that job's
+  id returned a `logs_url` and "Job logs are available for download", the `HTTP 404` surfacing only
+  under `return_content: true`. Both were the section's stated way to confirm a non-PR run.
+- **Actor:** the canon-rule-revalidation task, running as work item #2349.
+- **Model:** claude-opus-5
+- **Retire when:** `get_job_logs` distinguishes an unfinished run from a green one.
