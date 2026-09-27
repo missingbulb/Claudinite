@@ -138,3 +138,35 @@
   reads, and the moment the rule applies already carries `legacy-tolerance-scheduled`, so a second
   advisory on the same added marker would fire on every legitimate tolerance too.
 - **Actor:** the `claudinite-growth/growth-extract` run on work item #2335.
+
+## 2026-09-27 · declined · a pack prose edit must run `engine-tests/rule-index.test.mjs`, as a check
+- **Source:** the `prose-to-checks-sweep` run on work item #2354, re-deriving the
+  `running-the-suite` skill's `editing-rules-md` bullet. Neither sweep catches a stale index
+  (probed: a broken size band in a pack README leaves `check_the_world` and `check_the_work` silent
+  at exit 0, and only that test red), so a transcript rule over "pack prose changed, the test never
+  ran" would have been the carrier.
+- **Reason:** the same territory the owner already closed on #987 ("drop this rule") for a canon
+  pack's RULES.md owing its README rule-index row, and on the co-change shape declined 2026-09-22. A
+  third spelling of it is re-litigating a settled call, not a new candidate.
+- **Actor:** the `claudinite-growth/prose-to-checks-sweep` run on work item #2354.
+
+## 2026-09-27 · declined · `spawning-child-process`, as a check over a worker's spawn options
+- **Source:** row 94 of `docs/declarative-checks/rule-inventory.md`, re-derived against today's
+  tree. Its recorded objection is about the declared block relations only, which a coded rule would
+  not have.
+- **Reason:** the objection stands for a different reason, so the row is stale rather than waiting
+  on a key. Eleven of the twelve real child-process call sites under `packs/*/tasks/` pass the root
+  positionally as `git -C <root>` and carry no `cwd` option at all, which satisfies the rule and
+  fails the signature - so "the options object has no `cwd`" would fire on almost every worker in
+  the tree.
+- **Actor:** the `claudinite-growth/prose-to-checks-sweep` run on work item #2354.
+
+## 2026-09-27 · declined · `writing-task-output`, as a check over a worker naming `GENERATED`
+- **Source:** row 115 of `docs/declarative-checks/rule-inventory.md`, re-derived because its
+  recorded objection - the `basics/baselining` exception - died with that task.
+- **Reason:** the signature died with it too. Delivery reaches every worker through
+  `worker-entry.mjs`'s bag rather than an import, so no worker imports `deliverGenerated`, and all
+  five remaining `GENERATED` mentions under `packs/*/tasks/` are legacy read paths or comments. The
+  rule's own prose still names `basics/baselining` as the deliberate exception, which no longer
+  exists.
+- **Actor:** the `claudinite-growth/prose-to-checks-sweep` run on work item #2354.
