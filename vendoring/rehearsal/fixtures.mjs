@@ -47,6 +47,7 @@
 //                 `hidden` sits here on the same terms: it decides only whether the
 //                 CANON's catalog names a pack, so a local one carrying it does nothing
 //                 either, and validation is the half that could turn a member red.
+//                 `pitch` too: only a dashboard reading the canon's catalog shows it.
 //                 The dated pack also bundles a skill forcing itself for files (#1648): a
 //                 consumer's own path-scoped skill must mount, index and load.
 //   legacy-task   a local pack whose scheduled task still declares fields the
@@ -396,6 +397,7 @@ const PACK_VERSIONED = `export default {
   version: 3,
   minEngineVersion: 1,
   hidden: true,
+  pitch: 'A rehearsal fixture: the paragraph proves a local pack may carry a pitch.',
   seedOps: [{ template: 'RULES.md', dest: 'SEEDED-BY-FIXTURE.md' }],
   adoptionHandover: [{ step: 'Flip the fixture switch', breaks: 'nothing — this pack is a rehearsal fixture', done: 'never; nobody adopts a fixture' }],
   ruleRoutingGuidance: {

@@ -18,6 +18,7 @@ export default {
     belongs: 'cross-project working discipline, issue-branch-PR lifecycle, repo hygiene, doc/reference integrity and the general engineering, testing and debugging skills',
     excludes: 'technology-specific content — its own tech pack; git procedure and GitHub Actions workflow or platform behaviour — git-github',
   },
+  pitch: 'The working discipline every session follows, whatever the repo builds. Some sixty rules make Claude start from the problem, prove each change works now rather than later, fix warnings at their cause and track work through pull requests. Well over a dozen skills cover bug investigation, committing, writing trustworthy tests, planning migrations and verifying changes in production. Dozens of checks hold the discipline in place, and a pair of scheduled tasks look into CI that got slower and improve the repo\'s comments without anyone asking.',
   seededByDefault: true,
   // `claudinite-lifecycle` is required rather than assumed: this pack is declared everywhere, so
   // the closure is what puts Claudinite's own rules in front of every session.

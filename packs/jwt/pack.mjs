@@ -14,6 +14,7 @@ export default {
     belongs: 'minting and validating JSON Web Tokens: algorithm pinning, claim validation, key strength and secrecy, expiry, JWE',
     excludes: 'the Google-issuer validator config — google-identity; OAuth client-side token acquisition — chrome-extension',
   },
+  pitch: 'Token handling is where small mistakes become security holes: accepting the none algorithm, leaving algorithms unpinned, hardcoding a signing secret, issuing tokens that never expire. This pack guards a repo that mints or validates JSON Web Tokens with a handful of checks that run on every change, blocking the critical mistakes and flagging missing audience binding or expiry. Two skills guide Claude Code sessions through minting tokens, from algorithm and key choice to claims, and wiring verification correctly. It adds no always-on prose.',
   marker: 'a JWT library (jsonwebtoken / jose / PyJWT) referenced in JS/TS/Python source',
   detect: (ctx) =>
     ctx.tracked.some((f) => {

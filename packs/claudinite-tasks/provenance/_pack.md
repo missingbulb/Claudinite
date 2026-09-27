@@ -116,3 +116,9 @@
   that stagger.
 - **Actor:** @missingbulb (owner).
 - **Model:** claude-opus-5-5
+## 2026-09-27 · born · a pitch paragraph for the dashboard's plain-repo view
+- **Reason:** the dashboard shows a repo that does not run Claudinite the packs that fit it, and the
+  owner asked for one paragraph per pack naming its main skills and process gains, with rough counts
+  so it outlives the pack's growth.
+- **Actor:** @missingbulb (owner).
+- **Mechanism:** the manifest's `pitch` field, beside `ruleRoutingGuidance`.
