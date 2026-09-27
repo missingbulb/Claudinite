@@ -29,3 +29,8 @@
 - **Mechanism:** the harness's `disable-model-invocation: true`; the worker reads the SKILL.md by
   path.
 - **Actor:** @missingbulb (owner).
+
+## 2026-09-27 · reworded · a new pack's fingerprint is its `locate`
+- **Reason:** the manifest's fingerprint became the `locate` spec; the skill named the retired
+  `detect`/`marker`.
+- **Actor:** @missingbulb (owner).

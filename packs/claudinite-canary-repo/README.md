@@ -27,7 +27,7 @@ workflow rather than create one — the exact shape a fleet-wide workflow fix wo
 
 ## Who carries it
 
-`seededByDefault: false`, `detect: null`, `marker: null`. `--init` never seeds it, the fleet's
+`seededByDefault: false` and no `locate`. `--init` never seeds it, the fleet's
 pack scan never suspects it, and a repo carries it only because someone declared it by hand. The
 intended holder is **the canary** and nothing else.
 
