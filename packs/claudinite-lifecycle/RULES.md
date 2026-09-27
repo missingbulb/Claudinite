@@ -39,6 +39,12 @@
   its stamp, the head sha's runs) before theorizing about a platform setting; propose a settings
   change as a conclusion, never as a diagnosis. (answering-did-mount)
 
+- **Checking whether a `claudinite-lifecycle/update` PR should auto-merge or wait for review** —
+  grep `.claudinite-settings.json` directly for `dailyClaudiniteUpdatesRequirePrReview`
+  (documented in `.claudinite/shared/engine/checks/helpers/repo-context.mjs`); its absence means
+  auto-merge. Don't guess `"maintenance"` or `"delivery"` as the key name — those are retired
+  spellings, not the schema's key. (checking-whether-claudinite)
+
 - **A file a vendored module references but that is absent from `.claudinite/shared/`** — that is
   evidence about the vendor set, not the canon: check the canon itself (a shallow clone, or a
   canon-scoped session) before filing an issue claiming it was never shipped, and where you can't,

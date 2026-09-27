@@ -164,3 +164,9 @@
   that sample lands. Sample continuously across the transition's window instead (a
   `MutationObserver`/`requestAnimationFrame` loop collecting frames), and assert that some sampled
   frame actually falls between the start and end values. (sample-transition-continuously)
+
+- **Asserting a driven page logged no console/network errors — filter out failures to hosts a
+  sandboxed runner can't reach** (web fonts, map tiles, analytics), not only genuine application
+  errors. They fail identically on every run for a reason that has nothing to do with the page
+  under test, and read as a regression until you know the host is off-box.
+  (filter-off-box-console-errors)

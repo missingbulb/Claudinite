@@ -37,3 +37,9 @@
   reproduction. A locally-built repro can converge on a plausible-but-wrong root cause that
   produces the identical visible symptom, and a fix built on it lands for a bug that isn't the one
   reported. (gather-evidence-before-repro)
+
+- **Driving or eyeballing a page that fetches its own data — serve it over `http(s)`, never open
+  it via `file://`.** A same-origin `fetch()`/XHR of a relative resource is blocked or mishandled
+  under the `file:` scheme, so the page loads with no data and no thrown error — indistinguishable
+  from a real bug until you notice the scheme. A one-line static server
+  (`python3 -m http.server`) over the page's directory is the fix. (serve-over-http-not-file)

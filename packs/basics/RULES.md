@@ -43,6 +43,11 @@
 - **Building a mechanism for a behavior** — verify against a real run that it isn't already
   provided. (building-mechanism-behavior)
 
+- **About to report a sandbox capability (network access, a tool, an install) as unavailable** —
+  probe it again in this session first, whatever a doc or an earlier run says; an egress or
+  environment policy drifts day to day, so a stale note about what's blocked is exactly as
+  unreliable as one about what's open. (reporting-a-capabilitys)
+
 - **Building release, deploy, versioning or CI plumbing** — look for the shared pack that owns it
   first; copying a mechanic from a sibling repo is the tell that it belongs centrally. If no pack
   owns it, report the gap rather than author a third copy. (building-release-deploy)
@@ -161,6 +166,10 @@
 - **Polling with an `until` loop** — write a condition that names the state awaited (a file's
   arrival, a run's status); one already true on its first check is a blind sleep wearing a loop.
   (polling-until-loop)
+
+- **Writing a poll or wait loop's condition** — never suppress its stderr (a trailing
+  `2>/dev/null`); it is exactly the diagnostic that would explain why the condition never became
+  true, and suppressing it turns a debuggable failure into a silent one. (suppressing-a-polls)
 
 - **Handing the owner a command block to paste into their terminal** — carry no trailing
   `# comment` on any line: interactive zsh treats `#` as a comment only under

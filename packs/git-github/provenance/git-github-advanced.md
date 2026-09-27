@@ -89,3 +89,17 @@
 - **Actor:** the canon-rule-revalidation task, running as work item #2349.
 - **Model:** claude-opus-5
 - **Retire when:** `get_job_logs` distinguishes an unfinished run from a green one.
+
+## 2026-09-27 · strengthened · a stale ref needs a fetch, not always `--unshallow`
+- **Source:** Shepherd's local pack, read by the `growth-promote` task's 2026-09-27 window: a
+  member session had, at one point, treated any stale-looking `origin/main` in a shallow checkout
+  as needing `--unshallow`, until a later live re-probe found a plain `git fetch origin main`
+  updated a six-day-stale ref correctly with no `--unshallow` at all.
+- **Reason:** the existing bullet's `--unshallow` remedy is for a *history* gap (`merge-base`
+  failing on branches predating the shallow point) and does not license unshallowing on a *stale
+  ref* alone, which a plain fetch already fixes at a fraction of the cost.
+- **Mechanism:** a sentence appended to the existing shallow-checkout section, whose body is the
+  element.
+- **Actor:** claudinite-canon-curation growth-promote run.
+- **Model:** claude-sonnet-5
+- **Landed:** https://github.com/missingbulb/Claudinite/pull/2283
