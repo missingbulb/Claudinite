@@ -14,3 +14,9 @@
 - **Reason:** owner decision, 2026-09-25: the field names what happens when the check fails, and
   *severity* keeps its impact sense; what this element enforces is unchanged.
 - **Actor:** @missingbulb (owner).
+
+## 2026-09-27 · scope-changed · a GENERATED file is out of scope
+- **Reason:** its lines come from sources the check already judges; regenerating the pack catalog
+  re-added 36 manifest dashes as new lines.
+- **Actor:** @missingbulb (owner).
+- **Mechanism:** a negative lookahead on `.GENERATED.` in `inFilesMatching`.
