@@ -7,6 +7,30 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60925.6 | 2026-09-25 | Flatten pack declarations into .claudinite/flat/, move rolling usage files into .claudinite/usage/ (#2322) |
+| 60925.5 | 2026-09-25 | Cut skill descriptions out of session-start context (#2325) |
+| 60925.4 | 2026-09-25 | Rename a check's severity to on_fail: block \| advise; retire the baseline/converge vocabulary (#2318) |
+| 60925.3 | 2026-09-25 | Provenance: settle conversion entries git dates at the birth, backfill the twelve it guessed (#2317) |
+| 60925.2 | 2026-09-25 | Provenance: members' local packs are backfilled by hand, not by revalidation (#2315) |
+| 60925.1 | 2026-09-25 | Provenance brief: follow a rule reworded in place, print a version row once (#2314) |
+| 60924.1 | 2026-09-24 | Estimate context tokens from characters, not words (#2296) |
+| 60923.3 | 2026-09-23 | Fold the task janitor into the scheduler run's repair phase (#2262) |
+| 60923.2 | 2026-09-23 | Provenance: backfill claudinite-growth (#2267) |
+| 60923.1 | 2026-09-23 | Name the queue mark literally, and guard the label an issue is filed with (#2264) |
+| 60922.11 | 2026-09-22 | Let the runner wrap every task's worker, and guard print-then-exit (#2225) |
+| 60922.10 | 2026-09-22 | Retire the frequency door: a declaration states its cadence as a condition (#2138) |
+| 60922.9 | 2026-09-22 | Provenance: the carrier follow reads content, not a pickaxe (#2260) |
+| 60922.8 | 2026-09-22 | Retire the task contract and queue vocabulary legacy tolerances (#1920) |
+| 60922.7 | 2026-09-22 | Dissolve docs/skill-usage-metrics/DESIGN.md into the packs that own its subjects (#1513) |
+| 60922.6 | 2026-09-22 | Account for what a session loads besides its rules (#2257) |
+| 60922.5 | 2026-09-22 | in-session-github-access scans where migration records live, and a provenance entry is sized to its decision (#2250) |
+| 60922.4 | 2026-09-22 | Promote 6 portable lessons from CrosswordChat, GCEC, LaughCounter, MissingBulbWebsite, Shepherd (#1886) |
+| 60922.3 | 2026-09-22 | Provenance: fix the brief's derivations, give the backfill its own lane, repoint a stale README (#2248) |
+| 60922.2 | 2026-09-22 | A rule's floor asks how busy the repo was, not how often the sweeps ran (#2244) |
+| 60922.1 | 2026-09-22 | Usage review: skills declare their expected usage, rules read it back (#2214) |
+| 60921.6 | 2026-09-21 | Retire the remaining scattered legacy residues (#1917); A task declaration states its own trigger; the door derives none (#2187); Growth: promote lessons from members' local packs (2026-09-21) (#2206) |
+| 60921.5 | 2026-09-21 | Backfill skill: step 10 said check reports nothing; it always prints (#2212) |
+| 60921.4 | 2026-09-21 | The backfill brief carries the evidence its first run derived by hand (#2207) |
 | 60921.3 | 2026-09-21 | Convert the instructions a repo already wrote into its pack (#2191) |
 | 60921.2 | 2026-09-21 | Move every pack's VERSIONS.md under its provenance/ folder (#2192) |
 | 60921.1 | 2026-09-21 | Provenance backfill: a brief the tool derives, and an apply that fans it out (#2190) |

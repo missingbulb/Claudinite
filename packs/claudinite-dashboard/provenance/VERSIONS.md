@@ -7,6 +7,13 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60925.2 | 2026-09-25 | Flatten pack declarations into .claudinite/flat/, move rolling usage files into .claudinite/usage/ (#2322) |
+| 60925.1 | 2026-09-25 | Rename a check's severity to on_fail: block \| advise; retire the baseline/converge vocabulary (#2318) |
+| 60922.3 | 2026-09-22 | Let the runner wrap every task's worker, and guard print-then-exit (#2225) |
+| 60922.2 | 2026-09-22 | Retire the frequency door: a declaration states its cadence as a condition (#2138) |
+| 60922.1 | 2026-09-22 | Retire the member declaration and stamp legacy shapes (#1919) |
+| 60921.2 | 2026-09-21 | A task declaration states its own trigger; the door derives none (#2187) |
+| 60921.1 | 2026-09-21 | Provenance: backfill claudinite-tasks, claudinite-dashboard, claude-code-web-users-support (#2220) |
 | 60920.5 | 2026-09-20 | A task cadence measures whole UTC periods, not a per-repo anchor (#2182) |
 | 60920.4 | 2026-09-20 | _no pull request is attributed to this version_ |
 | 60920.3 | 2026-09-20 | basics: retire the file-placement check (#2177) |

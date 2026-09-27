@@ -7,6 +7,19 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60925.5 | 2026-09-25 | Flatten pack declarations into .claudinite/flat/, move rolling usage files into .claudinite/usage/ (#2322) |
+| 60925.4 | 2026-09-25 | Cut skill descriptions out of session-start context (#2325) |
+| 60925.3 | 2026-09-25 | basics: rewrite the comment rule; let improve-comments reach .claudinite/local/ (#2324) |
+| 60925.2 | 2026-09-25 | Rename a check's severity to on_fail: block \| advise; retire the baseline/converge vocabulary (#2318) |
+| 60925.1 | 2026-09-25 | Provenance: backfill basics (#2303) |
+| 60924.1 | 2026-09-24 | Estimate context tokens from characters, not words (#2296) |
+| 60923.1 | 2026-09-23 | Name the queue mark literally, and guard the label an issue is filed with (#2264) |
+| 60922.5 | 2026-09-22 | Let the runner wrap every task's worker, and guard print-then-exit (#2225) |
+| 60922.4 | 2026-09-22 | Account for what a session loads besides its rules (#2257) |
+| 60922.3 | 2026-09-22 | Growth promote: lessons from 5 members, deduplicated against #1886 (#2032) |
+| 60922.2 | 2026-09-22 | Tests name fake packs, tasks, skills and checks unless the real one is the subject (#2241) |
+| 60922.1 | 2026-09-22 | Usage review: skills declare their expected usage, rules read it back (#2214) |
+| 60921.1 | 2026-09-21 | Retire the remaining scattered legacy residues (#1917); Growth: promote lessons from members' local packs (2026-09-21) (#2206) |
 | 60920.3 | 2026-09-20 | A task cadence measures whole UTC periods, not a per-repo anchor (#2182) |
 | 60920.2 | 2026-09-20 | Provenance: the marking pass, every rule marked and every references.md converted (#2178) |
 | 60920.1 | 2026-09-20 | basics: retire the file-placement check (#2177) |

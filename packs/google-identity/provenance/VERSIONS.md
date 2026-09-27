@@ -7,6 +7,9 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60925.1 | 2026-09-25 | Rename a check's severity to on_fail: block \| advise; retire the baseline/converge vocabulary (#2318) |
+| 60922.1 | 2026-09-22 | Usage review: skills declare their expected usage, rules read it back (#2214) |
+| 60921.1 | 2026-09-21 | Provenance: backfill executable-requirements, leaflet, google-identity (#2217) |
 | 60920.1 | 2026-09-20 | Claudinite: pack version history (#1730); Provenance: the marking pass, every rule marked and every references.md converted (#2178) |
 | 60904.1 | 2026-09-04 | `google-client-id-single-origin`'s `doc:` pointer names its skill at `packs/google-identity/skills/…`, the path the tree carries (#1675). |
 | 60822.1 | 2026-08-22 | The manifest stops restating its own tree (#1246): `id`, `prose`, `badge`, `skills`, `worldRules` and `workRules` are resolved from the pack directory and an absent `detect`/`marker` means no fingerprint. Coded rules move into `worldRules/`/`workRules/` and tests into `test/`, which no vendor set ships. `minEngineVersion` rises to the engine release that reads all of it. |

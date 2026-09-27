@@ -7,6 +7,9 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60925.1 | 2026-09-25 | Rename a check's severity to on_fail: block \| advise; retire the baseline/converge vocabulary (#2318) |
+| 60922.1 | 2026-09-22 | Usage review: skills declare their expected usage, rules read it back (#2214) |
+| 60921.1 | 2026-09-21 | Provenance: backfill jwt, python, ios (#2216) |
 | 60920.1 | 2026-09-20 | Provenance: the marking pass, every rule marked and every references.md converted (#2178) |
 | 60915.1 | 2026-09-15 | Claudinite: pack version history (#1730); Five canon tasks change what they do to their pull requests (#2045) |
 | 60901.1 | 2026-09-01 | `jwt-advisory-watch` is retired: keeping a technology's guidance current is the canon's curation duty, not a pack task's. The README's new `## Upstream` section declares where JWT practice publishes changes and what the pack's content has been reconciled against; the canon's `upstream-watch` reads it. Nothing here scans a member's dependency manifests any more. |

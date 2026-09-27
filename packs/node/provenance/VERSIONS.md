@@ -7,6 +7,10 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60925.2 | 2026-09-25 | Cut skill descriptions out of session-start context (#2325) |
+| 60925.1 | 2026-09-25 | Rename a check's severity to on_fail: block \| advise; retire the baseline/converge vocabulary (#2318) |
+| 60922.1 | 2026-09-22 | Usage review: skills declare their expected usage, rules read it back (#2214) |
+| 60921.1 | 2026-09-21 | Provenance: backfill node, numpy-image-processing (#2215) |
 | 60920.1 | 2026-09-20 | Provenance: the marking pass, every rule marked and every references.md converted (#2178) |
 | 60915.1 | 2026-09-15 | Halve the test suite: unblock the long pole, cut the per-fixture git spawns (#2062) |
 | 60913.3 | 2026-09-13 | Member-facing Actions cache advice: node setup step, CI profiling split, scoping gotchas (#2022) |

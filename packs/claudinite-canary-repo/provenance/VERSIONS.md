@@ -7,6 +7,9 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60925.1 | 2026-09-25 | Rename a check's severity to on_fail: block \| advise; retire the baseline/converge vocabulary (#2318) |
+| 60922.1 | 2026-09-22 | Retire the 2026-08-19 pack id tolerances from the rename map (#1916) |
+| 60921.1 | 2026-09-21 | Provenance: backfill android, app-store-release, play-store-release, html, claudinite-canary-repo (#2213) |
 | 60920.1 | 2026-09-20 | _no pull request is attributed to this version_ |
 | 60918.1 | 2026-09-18 | Split the website packs by ownership: public-website, github-pages, cloudflare-site (#2101) |
 | 60906.1 | 2026-09-06 | Claudinite: pack version history (#1730); Delete the top-level updates/ shim tree — the claudinite-tasks migration's last link (#1819) |

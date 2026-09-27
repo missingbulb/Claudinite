@@ -7,6 +7,12 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60925.2 | 2026-09-25 | Rename a check's severity to on_fail: block \| advise; retire the baseline/converge vocabulary (#2318) |
+| 60925.1 | 2026-09-25 | claude-code-web-users-support: address personal packs by GitHub login, and generate the store's CODEOWNERS (#2321) |
+| 60924.1 | 2026-09-24 | claude-code-web-users-support: the session root ignores itself (#2301) |
+| 60922.2 | 2026-09-22 | Retire the member declaration and stamp legacy shapes (#1919) |
+| 60922.1 | 2026-09-22 | Account for what a session loads besides its rules (#2257) |
+| 60921.2 | 2026-09-21 | Provenance: backfill claudinite-tasks, claudinite-dashboard, claude-code-web-users-support (#2220) |
 | 60921.1 | 2026-09-21 | Copy the pack a person brings into the session (#2189) |
 | 60920.2 | 2026-09-20 | Provenance: the marking pass, every rule marked and every references.md converted (#2178) |
 | 60920.1 | 2026-09-20 | Provenance: the mechanism - the grammar, the tool, the checks, the forced skill, the record (#2176) |

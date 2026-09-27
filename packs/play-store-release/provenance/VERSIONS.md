@@ -7,6 +7,8 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60925.1 | 2026-09-25 | Rename a check's severity to on_fail: block \| advise; retire the baseline/converge vocabulary (#2318) |
+| 60921.1 | 2026-09-21 | Provenance: backfill android, app-store-release, play-store-release, html, claudinite-canary-repo (#2213) |
 | 60920.1 | 2026-09-20 | Claudinite: pack version history (#1730) |
 | 60903.1 | 2026-09-03 | The stub note moves to the pack README and `RULES.md` is gone: an absent prose file contributes nothing, where the note cost every session four lines (#1662). |
 | 60902.1 | 2026-09-02 | `RULES.md` drops the descriptive framing the pack README already carries — the file carries rules only. |

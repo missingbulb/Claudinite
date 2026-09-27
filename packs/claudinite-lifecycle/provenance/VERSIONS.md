@@ -7,6 +7,21 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60925.4 | 2026-09-25 | Flatten pack declarations into .claudinite/flat/, move rolling usage files into .claudinite/usage/ (#2322) |
+| 60925.3 | 2026-09-25 | Cut skill descriptions out of session-start context (#2325) |
+| 60925.2 | 2026-09-25 | Rename a check's severity to on_fail: block \| advise; retire the baseline/converge vocabulary (#2318) |
+| 60925.1 | 2026-09-25 | Converge .claudinite/.gitignore so every member ignores the session root (#2316) |
+| 60924.1 | 2026-09-24 | Strip provenance markers from canon prose on its way into a member's mount (#2286) |
+| 60923.1 | 2026-09-23 | Name the queue mark literally, and guard the label an issue is filed with (#2264) |
+| 60922.7 | 2026-09-22 | Let the runner wrap every task's worker, and guard print-then-exit (#2225) |
+| 60922.6 | 2026-09-22 | Retire the member declaration and stamp legacy shapes (#1919) |
+| 60922.5 | 2026-09-22 | Growth promote: lessons from 5 members, deduplicated against #1886 (#2032) |
+| 60922.4 | 2026-09-22 | Promote 6 portable lessons from CrosswordChat, GCEC, LaughCounter, MissingBulbWebsite, Shepherd (#1886) |
+| 60922.3 | 2026-09-22 | Require the executor's target hand-off, retiring both fallbacks (#1943) |
+| 60922.2 | 2026-09-22 | Usage review: skills declare their expected usage, rules read it back (#2214) |
+| 60922.1 | 2026-09-22 | Provenance: backfill the six Claudinite-facing and process packs (#2227) |
+| 60921.4 | 2026-09-21 | Retire the remaining scattered legacy residues (#1917) |
+| 60921.3 | 2026-09-21 | Make shared-tree-immutable advisory, naming the update task as its writer (#2208) |
 | 60921.2 | 2026-09-21 | Convert the instructions a repo already wrote into its pack (#2191) |
 | 60921.1 | 2026-09-21 | Copy the pack a person brings into the session (#2189) |
 | 60920.5 | 2026-09-20 | A task cadence measures whole UTC periods, not a per-repo anchor (#2182) |

@@ -7,6 +7,12 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60925.2 | 2026-09-25 | Cut skill descriptions out of session-start context (#2325) |
+| 60925.1 | 2026-09-25 | Rename a check's severity to on_fail: block \| advise; retire the baseline/converge vocabulary (#2318) |
+| 60922.4 | 2026-09-22 | Account for what a session loads besides its rules (#2257) |
+| 60922.3 | 2026-09-22 | Retire the 2026-08-19 pack id tolerances from the rename map (#1916) |
+| 60922.2 | 2026-09-22 | Usage review: skills declare their expected usage, rules read it back (#2214) |
+| 60922.1 | 2026-09-22 | Provenance: backfill the five platform packs (#2226) |
 | 60920.1 | 2026-09-20 | Provenance: the marking pass, every rule marked and every references.md converted (#2178) |
 | 60913.1 | 2026-09-13 | Claudinite: pack version history (#1730); State a rule's prose size as a band, not an exact word count (#2009) |
 | 60903.2 | 2026-09-03 | The security-rules rules move into the new `firestore-security-rules` skill (forced for `**/firestore.rules`, `**/storage.rules`), the function-side limits and the smoke-load into the new `firebase-functions` skill (forced for `functions/**`), and the deploy layout into `create-release-plan` (now forced for `firebase.json`, `.firebaserc`); `RULES.md` shrinks to the five always-on rules (#1662). |

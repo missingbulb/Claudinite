@@ -7,5 +7,7 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60925.1 | 2026-09-25 | Rename a check's severity to on_fail: block \| advise; retire the baseline/converge vocabulary (#2318) |
+| 60921.1 | 2026-09-21 | Provenance: backfill node, numpy-image-processing (#2215) |
 | 60920.2 | 2026-09-20 | Provenance: mark numpy-image-processing (#2184) |
 | 60920.1 | 2026-09-20 | Merge pull request #2159 from missingbulb/claudinite/claudinite-canon-curation/growth-discover-packs/2026-09-20-8lpas9 |
