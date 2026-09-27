@@ -483,7 +483,7 @@
     ],
     "forbidAddedLinesMatching": [
       {
-        "inFilesMatching": "/^(?!\\.claudinite\\/shared\\/).*$/",
+        "inFilesMatching": "/^(?!\\.claudinite\\/shared\\/)(?!.*\\.GENERATED\\.).*$/",
         "match": "/[\u2013\u2014]|\\\\u201[34]/",
         "unlessLineMatches": "/^\\s*\"match\": /",
         "what": "adds a long dash: \"{match}\"",

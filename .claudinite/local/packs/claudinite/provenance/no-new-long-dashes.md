@@ -14,3 +14,11 @@
 - **Reason:** owner decision, 2026-09-25: the field names what happens when the check fails, and
   *severity* keeps its impact sense; what this element enforces is unchanged.
 - **Actor:** @missingbulb (owner).
+
+## 2026-09-27 · scope-changed · a generated file is judged at its sources
+- **Reason:** packs/locators.GENERATED.mjs carries manifest and module text verbatim, so every
+  existing dash in a source re-fired as "added" on each regeneration, where no edit to the generated
+  file could clear it.
+- **Actor:** @missingbulb (owner).
+- **Mechanism:** `inFilesMatching` skips `*.GENERATED.*`; the dash is still caught where its source
+  is written.
