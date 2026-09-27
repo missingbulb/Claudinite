@@ -55,3 +55,9 @@
 - **Reason:** owner decision, 2026-09-25: the field names what happens when the check fails, and
   *severity* keeps its impact sense; what this element enforces is unchanged.
 - **Actor:** @missingbulb (owner).
+
+## 2026-09-27 · reaffirmed · same findings, read in one batch
+- **Reason:** the base-tree probe ran a `git show` per tracked file (about 9s at Stop on a branch
+  touching packs); it now lists the base once and batch-reads only the changed packs, with findings
+  hashed identical on the real tree.
+- **Actor:** @missingbulb (owner).

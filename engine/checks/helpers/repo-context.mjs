@@ -624,6 +624,7 @@ export function buildContext({ root, mode = 'changed', baseOverride = null, tran
   // and each readBase is otherwise a git subprocess.
   const readCache = new Map();
   const readBaseCache = new Map();
+  const baseTree = once(() => (mergeBase() ? lines(gitTry(root, 'ls-tree', '-r', '--name-only', mergeBase())) : []));
 
   // The work-scoping fields are accessors over the memos above; `root`, `mode`,
   // `baseRef`, `tracked`, `untracked` and `config` stay plain values, being either
@@ -670,6 +671,35 @@ export function buildContext({ root, mode = 'changed', baseOverride = null, tran
       if (!mergeBase()) return null;
       if (!readBaseCache.has(path)) readBaseCache.set(path, gitTry(root, 'show', `${mergeBase()}:${path}`));
       return readBaseCache.get(path);
+    },
+
+    // Every path at the scoping base, in one subprocess where asking readBase path by
+    // path costs one each; empty if no base resolves.
+    listBase() { return baseTree(); },
+
+    // Fill readBase's cache for many paths in one subprocess. A caller about to read
+    // a whole tree at the base pays one `cat-file --batch` instead of a `show` per file.
+    prefetchBase(paths) {
+      if (!mergeBase()) return;
+      const want = [...new Set(paths)].filter((p) => !readBaseCache.has(p) && !p.includes('\n'));
+      if (!want.length) return;
+      const r = spawnSync('git', ['cat-file', '--batch'], {
+        cwd: root, input: want.map((p) => `${mergeBase()}:${p}\n`).join(''), maxBuffer: 1024 * 1024 * 1024,
+      });
+      if (r.status !== 0) return;
+      const out = r.stdout;
+      let at = 0;
+      for (const path of want) {
+        const eol = out.indexOf(10, at);
+        if (eol < 0) return;
+        const header = out.toString('utf8', at, eol);
+        at = eol + 1;
+        const m = /^[0-9a-f]+ (\w+) (\d+)$/.exec(header);
+        if (!m) { if (header.endsWith(' missing')) readBaseCache.set(path, null); continue; }
+        const size = Number(m[2]);
+        if (m[1] === 'blob') readBaseCache.set(path, out.toString('utf8', at, at + size));
+        at += size + 1;
+      }
     },
 
     // Added lines of one file relative to the scoping base (untracked file = every line).

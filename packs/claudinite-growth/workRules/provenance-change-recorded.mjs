@@ -51,7 +51,14 @@ const rule = {
     // changed set alone, which would read every untouched carrier as deleted.
     const headFiles = [...work.tracked, ...work.untracked];
     const head = { exists: (p) => work.exists(p), read: (p) => work.read(p), listDir: (p) => listFrom(headFiles, p) };
-    const baseFiles = [...new Set([...work.tracked, ...deleted])].filter((p) => work.readBase(p) !== null);
+    // Only the changed packs' own trees are ever listed. The base tree comes in one
+    // listing where the engine offers it; an older engine's is probed file by file,
+    // one git subprocess each, so that probe stays inside those trees.
+    const inChangedPack = (p) => packs.some((dir) => p.startsWith(`${dir}/`));
+    const listed = typeof work.listBase === 'function' ? work.listBase() : null;
+    const atBase = listed ? ((set) => (p) => set.has(p))(new Set(listed)) : (p) => work.readBase(p) !== null;
+    const baseFiles = [...new Set([...work.tracked, ...deleted])].filter((p) => inChangedPack(p) && atBase(p));
+    if (typeof work.prefetchBase === 'function') work.prefetchBase(baseFiles);
     const base = { exists: (p) => work.readBase(p) !== null, read: (p) => work.readBase(p), listDir: (p) => listFrom(baseFiles, p) };
     const out = [];
     const touched = (p) => changed.includes(p);
