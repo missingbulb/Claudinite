@@ -43,3 +43,9 @@
 - **Mechanism:** the manifest's `relevanceDetector` (engine/pack_loader/relevance-detector.mjs): `paths`, optional `text`,
   `search` terms; it answers exactly what the retired `detect` answered, proven over 4,000 composed
   repos before the change.
+
+## 2026-09-28 · reworded · the manifest spells out the value it imported
+- **Reason:** a manifest that is data cannot import; the value is written out, and the pack's test
+  holds it equal to the module it came from.
+- **Actor:** @missingbulb (owner), asking for pack.json manifests with imported values inlined and a
+  check against drift.

@@ -2,10 +2,19 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { cleanup, makeRepo } from '../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
-import pack from '../pack.mjs';
+import { loadPacks } from '../../../engine/pack_loader/pack-registry.mjs';
+import { STAMP } from '../public/version.mjs';
 import * as detectorSpec from '../../../engine/pack_loader/relevance-detector.mjs';
 
+const pack = (await loadPacks()).find((p) => p.id === 'public-website'); // @real-entity the pack under test
 const detect = (root) => detectorSpec.detectsRelevance(pack.relevanceDetector, buildContext({ root, mode: 'all' }));
+
+// The manifest spells out the stamp the release writes, stateless: a fingerprint is
+// tested file after file, so it cannot carry the stamp's `g`.
+test('the fingerprint looks for the stamp the version module writes', () => {
+  assert.equal(pack.relevanceDetector.text.source, STAMP.source);
+  assert.equal(pack.relevanceDetector.text.flags, STAMP.flags.replace('g', ''));
+});
 
 test('the pack fingerprints a repo whose page carries the version stamp', () => {
   const root = makeRepo({ base: {

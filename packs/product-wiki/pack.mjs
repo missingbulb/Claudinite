@@ -1,8 +1,6 @@
 // Project-aspect standard pack: the self-growing product research wiki under
 // product-wiki/, isolated behind the reviewed product-requirements crossing
 // point, and fingerprinted on that sink.
-import { SINK_README } from './lib.mjs';
-
 export default {
   version: '60927.2',
   minEngineVersion: '60927.1',
@@ -11,7 +9,7 @@ export default {
     excludes: 'how the product is built or specced — that is spec-driven-product; requirement proofs are executable-requirements',
   },
   pitch: 'Gives the repo a product research wiki that grows by itself: market, user and competitor findings kept as cited pages, each opening with a short list of key insights. A weekly task researches the wiki\'s own open questions and delivers the results as an unmerged pull request for review. Over a dozen checks enforce page structure, real source links and freshness, and wall the unreviewed research off from the code. The explore-link skill folds any URL into the right page, and writing-wiki-pages sets how pages are written.',
-  relevanceDetector: { about: SINK_README, paths: /^product-wiki\/product-requirements\/README\.md$/ },
+  relevanceDetector: { about: 'product-wiki/product-requirements/README.md', paths: /^product-wiki\/product-requirements\/README\.md$/ },
   // The isolation wall (product-wiki-isolation) and the skeleton check
   // (product-wiki-layout) are a designed pair, both declared in this pack's
   // declared-checks.json: the wall's glob target fails closed on an empty

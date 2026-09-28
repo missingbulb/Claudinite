@@ -32,8 +32,6 @@
 //
 // ONE CHECK, and it names no pack (seeds-agree.mjs): what it holds together is a fact
 // about seeding, not about any pack seeded.
-import { fleetTokenHandoverStep } from './fleet-token.mjs';
-
 export default {
   version: '60927.3',
   minEngineVersion: '60927.1',
@@ -52,7 +50,13 @@ export default {
   // that drifted in an earlier commit is just as silent as one that drifted in this one.
 
   // The token is the whole pack's one credential and only a human can mint it. The step
-  // is RENDERED from fleet-token.mjs rather than written here, so what adoption presents
-  // is the union of what every sweep needs rather than any one sweep's subset.
-  adoptionHandover: [fleetTokenHandoverStep()],
+  // is fleet-token.mjs's fleetTokenHandoverStep() written out, and a test holds the two
+  // equal, so what adoption presents stays the union of what every sweep needs.
+  adoptionHandover: [
+    {
+      step: "Create a fine-grained PAT on this account covering ALL repositories, granted Metadata read, Contents read and write, Issues read and write, Actions read and write, and add it to this repo as the Actions secret FLEET_GITHUB_TOKEN. Grant every permission listed, not the subset the first sweep you run needs.",
+      breaks: "every claudinite-fleet-sheepdog sweep fails — and a token short one permission fails only on the sweep that needs it, which can be a week later, on the one sweep that writes or dispatches",
+      done: "the secret exists and each claudinite-fleet-sheepdog task's next run is green",
+    },
+  ],
 };

@@ -90,3 +90,9 @@
   carries.
 - **Actor:** @missingbulb (owner).
 - **Mechanism:** `minEngineVersion`, which the pack update enforces.
+
+## 2026-09-28 · reworded · the manifest spells out the value it imported
+- **Reason:** a manifest that is data cannot import; the value is written out, and the pack's test
+  holds it equal to the module it came from.
+- **Actor:** @missingbulb (owner), asking for pack.json manifests with imported values inlined and a
+  check against drift.

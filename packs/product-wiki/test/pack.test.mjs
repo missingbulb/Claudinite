@@ -6,7 +6,8 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { makeRepo, cleanup, writeFiles, declaredCheck } from '../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
-import pack from '../pack.mjs';
+import { loadPacks } from '../../../engine/pack_loader/pack-registry.mjs';
+import { SINK_README } from '../lib.mjs';
 import { skillMetadata } from '../../../engine/pack_loader/skill-frontmatter.mjs';
 
 const layout = declaredCheck('packs/product-wiki', 'product-wiki-layout');
@@ -67,8 +68,12 @@ test('the writing-wiki-pages skill scopes itself to the tree, and the weekly wor
   assert.ok(readFileSync(join(here, '..', 'tasks', 'wiki-growth', 'task.md'), 'utf8').includes('skill: `writing-wiki-pages`'));
 });
 
-test('detect fires exactly on the sink marker', () => {
-  assert.equal(detectorSpec.detectsRelevance(pack.relevanceDetector, { tracked: ['product-wiki/product-requirements/README.md'], read: () => null }), true);
+const pack = (await loadPacks()).find((p) => p.id === 'product-wiki'); // @real-entity the pack under test
+
+// The manifest spells out the lib's sink path, which the wall and the layout check read.
+test('detect fires exactly on the sink marker the lib names', () => {
+  assert.equal(pack.relevanceDetector.about, SINK_README);
+  assert.equal(detectorSpec.detectsRelevance(pack.relevanceDetector, { tracked: [SINK_README], read: () => null }), true);
   assert.equal(detectorSpec.detectsRelevance(pack.relevanceDetector, { tracked: ['product-wiki/Market/README.md'], read: () => null }), false);
 });
 
