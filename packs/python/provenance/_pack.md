@@ -53,3 +53,11 @@
 - **Reason:** a manifest that is data cannot hold a RegExp; each pattern is its source string, or {
   source, flags } where it carries a flag, and loads to the same RegExp.
 - **Actor:** @missingbulb (owner), asking for pack.json manifests.
+
+## 2026-09-28 · reworded · the manifest's comments leave it, their decisions recorded here
+- **Reason:** a manifest that is data carries no comments. What they decided: the fingerprint is a
+  pyproject.toml at the root or one directory down, never deeper, so one inside a nested fixture or
+  vendored tree cannot trip it; setup.py and setup.cfg are the older markers, to add if a consumer
+  predates pyproject.toml.
+- **Actor:** @missingbulb (owner), asking for pack.json manifests, their comments deleted or moved
+  to a README or provenance.

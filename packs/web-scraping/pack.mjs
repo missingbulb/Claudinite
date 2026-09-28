@@ -1,9 +1,3 @@
-// web-scraping pack: taking data from a website you don't own and have no
-// contract with — locating the real data surface, fetching defensively, keeping
-// a committed raw record so the parse re-runs offline, and refreshing each field
-// on the clock it actually moves on. No fingerprint, no checks: prose and one
-// skill, activated by declaration.
-
 export default {
   version: '60927.1',
   minEngineVersion: '60925.1',

@@ -87,3 +87,11 @@
   the basics manifest carried.
 - **Actor:** @missingbulb (owner), asking for pack.json manifests.
 - **Mechanism:** contributed-rules.mjs beside the manifest, found by name as worldRules/ is.
+
+## 2026-09-28 · reworded · the manifest's comments leave it, their decisions recorded here
+- **Reason:** a manifest that is data carries no comments. What they decided: claudinite-lifecycle
+  is required rather than assumed, because basics is declared everywhere and the closure is what
+  puts Claudinite's own rules in front of every session; git-github is required because it carries
+  the git side of the task lifecycle (#385).
+- **Actor:** @missingbulb (owner), asking for pack.json manifests, their comments deleted or moved
+  to a README or provenance.

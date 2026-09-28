@@ -1,9 +1,3 @@
-// The headless-browser pack: driving a real browser from your own process —
-// resolving and pinning the build, replacing everything about the page's world
-// that would otherwise vary, and the capture mechanics. Prose only, and
-// fingerprinted by a driver reference in JS/TS source: the module specifier of a
-// browser-automation package, or a `.launch(` call site.
-
 export default {
   version: '60927.4',
   minEngineVersion: '60927.1',

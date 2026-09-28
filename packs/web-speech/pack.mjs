@@ -1,10 +1,3 @@
-// The browser voice-I/O pack: speech-to-text (webkitSpeechRecognition / the Web
-// Speech SpeechRecognition API) and text-to-speech (chrome.tts / speechSynthesis)
-// runtime gotchas that apply whenever an app reads or listens through the browser.
-// Mostly prose, with the call-site contracts in worldRules/, the web-speech-io
-// skill's rules and the voice-cache declaration beside this file as checks.
-// Fingerprinted by an actual speech-API reference in JS/TS source.
-
 export default {
   version: '60927.2',
   minEngineVersion: '60927.1',

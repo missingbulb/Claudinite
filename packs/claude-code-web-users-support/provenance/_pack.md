@@ -111,3 +111,11 @@
   so it outlives the pack's growth.
 - **Actor:** @missingbulb (owner).
 - **Mechanism:** the manifest's `pitch` field, beside `ruleRoutingGuidance`.
+
+## 2026-09-28 · reworded · the manifest's comments leave it, their decisions recorded here
+- **Reason:** a manifest that is data carries no comments. What they decided: the Setup script field
+  belongs to the managed container, so nothing in the repo can fill it and a web session halt-gates
+  until someone does; it is an adoption handover so the install flow prints it and the adopting
+  session files it, rather than a PR-body mention nobody returns to (#1167).
+- **Actor:** @missingbulb (owner), asking for pack.json manifests, their comments deleted or moved
+  to a README or provenance.

@@ -36,3 +36,12 @@
   update holds this version until the member's engine is at 60925.1.
 - **Actor:** @missingbulb (owner).
 - **Mechanism:** the manifest's `minEngineVersion`, which the pack update enforces.
+
+## 2026-09-28 · reworded · the manifest's comments leave it, their decisions recorded here
+- **Reason:** a manifest that is data carries no comments. What they decided: hidden because a canon
+  home is a role somebody assigns, not a shape a fingerprint can suspect. Shelf segregation is
+  barrier data (pack-independence, a declared forbidReferences check whose allow list is the engine
+  surface), never code this pack runs. A pack's version is cut on the base branch by this pack's
+  pack-version-bump task, never by the change itself.
+- **Actor:** @missingbulb (owner), asking for pack.json manifests, their comments deleted or moved
+  to a README or provenance.

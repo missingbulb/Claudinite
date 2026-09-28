@@ -1,10 +1,3 @@
-// numpy-image-processing pack: numeric image analysis in Python on the
-// NumPy + SciPy (`ndimage`) + scikit-image + Pillow stack - deriving a mask,
-// skeleton or threshold from an image array, and rendering the result.
-//
-// Fingerprint: `numpy` and `scipy` named together in a near-root Python
-// dependency manifest (`requirements*.txt` or `pyproject.toml`).
-
 export default {
   version: '60927.2',
   minEngineVersion: '60927.1',

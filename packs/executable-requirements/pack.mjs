@@ -1,7 +1,3 @@
-
-// The executable-requirements framework standard: the concrete, portable
-// conventions - layout, naming, gates, kinds, gallery, determinism - shared by
-// every project that runs its spec as tests.
 export default {
   version: '60927.2',
   minEngineVersion: '60927.1',

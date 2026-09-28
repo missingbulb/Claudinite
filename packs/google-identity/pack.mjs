@@ -1,7 +1,3 @@
-// Prose-free pack for validating Google Sign-In (Google Identity) ID tokens on
-// the server/backend: it carries no rules of its own, mounting the
-// google-id-token-validation skill, whose check-the-work rules carry the
-// teaching in their failure messages.
 export default {
   version: '60927.2',
   minEngineVersion: '60925.1',

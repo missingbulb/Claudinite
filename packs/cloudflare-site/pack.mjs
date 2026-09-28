@@ -1,9 +1,3 @@
-// Technology-plus-aspect pack: a static tree served from Cloudflare Workers static
-// assets on its own domain, the nightly release that uploads it, the boundary of what
-// reaches a public URL, and the parts of the deployment only a person holding the
-// Cloudflare account can do. The version is not here: public-website owns the scheme
-// and the page stamp, and the release reaches that pack's `public/version.mjs` to
-// advance it when the pack is declared.
 export default {
   version: '60927.2',
   minEngineVersion: '60927.1',
@@ -12,24 +6,8 @@ export default {
     excludes: 'Workers runtime and bindings — cloudflare-workers; the version scheme and the page stamp — public-website; markup — html',
   },
   pitch: 'Gives a site served from Cloudflare exactly one path to production. A nightly release task advances the version, uploads the published tree, and reports what the domain answered and whether it is serving that version, parking with a named reason when a person has to act. A skill covers releasing, forcing a release and rolling one back. A few rules and checks keep stray files out of the upload, links free of needless redirects, and any second publisher from quietly shipping around the release.',
-  // A pattern rather than a parse, so a reader that holds only text can judge it.
   relevanceDetector: { about: 'a near-root wrangler.json/.jsonc declaring assets.directory', paths: "^([^/]+/)?wrangler\\.jsonc?$", text: "\"assets\"\\s*:\\s*\\{[^}]*\"directory\"\\s*:\\s*\"[^\"\\s]", search: ['assets'] },
-  // The release is a work item: the queue owns its trigger, its gate, its secrets
-  // and its park lanes, which is the whole reason it is a task rather than a
-  // workflow.
   requires: ['claudinite-tasks'],
-
-  // No interview. Everything this pack needs about a deployment — the published
-  // tree, the hostnames claimed, whether analytics is wanted — is already stated
-  // structurally in the repo (the wrangler config, and whether a published file
-  // carries the beacon placeholder), and a question whose answer is already in the
-  // tree is a second place for it to be wrong.
-
-  // What adoption genuinely cannot do: everything on the Cloudflare account. The
-  // zone's two DNS deletions are NOT here — they are leftovers a repo may or may
-  // not have, evaluated by the release's own preflight and by
-  // `no-second-publisher`, because a checkbox that is a no-op for most adopters
-  // teaches the reader to skim the list that exists to stop them skimming.
   adoptionHandover: [
     {
       step: 'Add the site\'s domain as a zone on the Cloudflare account, and point the registrar\'s nameservers at the two Cloudflare shows at the end of that flow — https://dash.cloudflare.com/?to=/:account/add-site',

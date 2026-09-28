@@ -1,4 +1,3 @@
-// Prose-only pack with no structural fingerprint: declaration is authoritative.
 export default {
   version: '60927.1',
   minEngineVersion: '60925.1',

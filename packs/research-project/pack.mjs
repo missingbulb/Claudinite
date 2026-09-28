@@ -1,5 +1,3 @@
-// A project-class pack for research work: prose only, declared by a project of
-// this class rather than fingerprinted from its tree.
 export default {
   version: '60927.1',
   minEngineVersion: '60925.1',

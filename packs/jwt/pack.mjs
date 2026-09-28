@@ -1,10 +1,3 @@
-// The JSON Web Token pack: minting and validating JWTs safely. It contributes
-// no prose; two action skills (jwt-minting, jwt-validation) carry the judgment
-// half, and five declared checks under them carry the static half.
-//
-// Fingerprinted by a JWT library reference in JS/TS/Python source. The marker
-// only *suspects* the pack; declaring it is the project's call, like every pack.
-
 export default {
   version: '60927.2',
   minEngineVersion: '60927.1',

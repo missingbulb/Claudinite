@@ -61,3 +61,12 @@
   so it outlives the pack's growth.
 - **Actor:** @missingbulb (owner).
 - **Mechanism:** the manifest's `pitch` field, beside `ruleRoutingGuidance`.
+
+## 2026-09-28 · reworded · the manifest's comments leave it, their decisions recorded here
+- **Reason:** a manifest that is data carries no comments. What they decided: the pack is mandatory:
+  basics requires it, which vendors its content and materializes its declaration, and the
+  2026-08-14-core-seed record declared it into members that already existed. The update task lives
+  here, which is why claudinite-lifecycle-declared blocks: a repo that loses this pack's entry loses
+  its self-refresh, and nothing is left that could deliver one.
+- **Actor:** @missingbulb (owner), asking for pack.json manifests, their comments deleted or moved
+  to a README or provenance.

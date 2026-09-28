@@ -64,3 +64,13 @@
 - **Reason:** a manifest that is data cannot hold a RegExp; each pattern is its source string, or {
   source, flags } where it carries a flag, and loads to the same RegExp.
 - **Actor:** @missingbulb (owner), asking for pack.json manifests.
+
+## 2026-09-28 · reworded · the manifest's comments leave it, their decisions recorded here
+- **Reason:** a manifest that is data carries no comments. What they decided: the release half is
+  gated on shipping rather than on a second declaration (#1057): shipsReleasePipeline gates the
+  coded rule and every declared check carries the same relevantWhen, so a repo that only codes an
+  extension sees none of them. The cer/ check ids outlived the retired chrome-extension-release
+  pack, because a member's accept entries name rules by id and a rename orphans them. The release
+  standard is skills rather than prose: it is long, and only the checks need to be eager.
+- **Actor:** @missingbulb (owner), asking for pack.json manifests, their comments deleted or moved
+  to a README or provenance.

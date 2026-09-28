@@ -1,10 +1,3 @@
-
-// Technology pack: a native macOS app — the app bundle, TCC and Hardened
-// Runtime, the Developer ID / notarization / DMG distribution lane, and the
-// process-lifecycle rules a Mac agent app has to get right.
-//
-// Fingerprint: a `Package.swift` at the repo root or one directory down (a
-// monorepo's `mac/` dir), never deeper.
 export default {
   version: '60927.2',
   minEngineVersion: '60927.1',

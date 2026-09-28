@@ -1,8 +1,3 @@
-// Technology pack: a backend built on the Cloudflare Workers runtime and its
-// bindings (D1, R2, Vectorize, Workflows, Workers AI, Containers) driven
-// through Wrangler. The platform's own limits and deploy-window hazards, and
-// the binding boundary that forces everything else into plain, fake-tested
-// modules.
 export default {
   version: '60927.2',
   minEngineVersion: '60927.1',

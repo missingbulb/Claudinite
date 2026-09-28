@@ -96,3 +96,12 @@
   holds it equal to the module it came from.
 - **Actor:** @missingbulb (owner), asking for pack.json manifests with imported values inlined and a
   check against drift.
+
+## 2026-09-28 · reworded · the manifest's comments leave it, their decisions recorded here
+- **Reason:** a manifest that is data carries no comments. What they decided: it requires
+  claudinite-tasks because every sweep reads the queue's published vocabulary to ask whether a
+  member's scheduler is dormant, and an enforcer mounting the sweeps without it would fail its own
+  update on a dangling import. The token handover is the union of every sweep's grant, spelled out
+  as fleet-token.mjs renders it and held equal by the pack's test.
+- **Actor:** @missingbulb (owner), asking for pack.json manifests, their comments deleted or moved
+  to a README or provenance.

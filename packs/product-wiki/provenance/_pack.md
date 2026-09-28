@@ -54,3 +54,12 @@
 - **Reason:** a manifest that is data cannot hold a RegExp; each pattern is its source string, or {
   source, flags } where it carries a flag, and loads to the same RegExp.
 - **Actor:** @missingbulb (owner), asking for pack.json manifests.
+
+## 2026-09-28 · reworded · the manifest's comments leave it, their decisions recorded here
+- **Reason:** a manifest that is data carries no comments. What they decided: the isolation wall and
+  the skeleton check are a designed pair: the wall's glob fails closed on an empty product-wiki/,
+  and the layout check owns the missing-skeleton complaint. The interview's answers frame which
+  wikis are seeded and are recorded as intent, never as config; a session reads the repo's own brief
+  first and confirms rather than asking cold.
+- **Actor:** @missingbulb (owner), asking for pack.json manifests, their comments deleted or moved
+  to a README or provenance.

@@ -1,5 +1,3 @@
-// Technology stub pack: Android app development (Gradle/AGP, manifests, permissions, signing, flavors).
-// No rules captured yet, so no RULES.md.
 export default {
   version: '60927.2',
   minEngineVersion: '60927.1',

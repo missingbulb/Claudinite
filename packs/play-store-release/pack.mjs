@@ -1,5 +1,3 @@
-// Opt-in release stub pack: releasing to the Google Play Store (Play Console, signing, integrity, staged rollout).
-// No rules captured yet, so no RULES.md; no fingerprint, so a project declares it by hand.
 export default {
   version: '60927.1',
   minEngineVersion: '60925.1',

@@ -1,6 +1,3 @@
-
-// The AWS Serverless Application Model and the API-Gateway/CloudFront stack it
-// deploys: the gotchas any SAM project hits, as checks, prose and two skills.
 export default {
   version: '60927.3',
   minEngineVersion: '60927.1',

@@ -1,9 +1,3 @@
-// Technology pack: Python packaging around an optional heavy/native dependency.
-// Fingerprint: a `pyproject.toml` at the repo root OR one directory down (a
-// subproject/tool dir), never deeper, so a pyproject.toml inside a nested
-// fixture/example/vendored tree can't trip detection. (`setup.py`/`setup.cfg`
-// are the older equivalent markers; add them here if a consumer predates
-// pyproject.toml.)
 export default {
   version: '60927.2',
   minEngineVersion: '60927.1',

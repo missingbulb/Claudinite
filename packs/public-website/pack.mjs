@@ -1,7 +1,3 @@
-// Being a public website, whatever serves it: the version the site carries and the
-// stamp its pages show, and the ways a page that fetches its own data goes quietly
-// stale. A hosting pack's release reaches `public/version.mjs` to advance the version
-// as part of cutting a release, and goes out without a bump when the file is absent.
 export default {
   version: '60927.2',
   minEngineVersion: '60927.1',

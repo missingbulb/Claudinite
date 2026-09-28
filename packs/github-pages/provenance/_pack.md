@@ -50,3 +50,12 @@
 - **Reason:** a manifest that is data cannot hold a RegExp; each pattern is its source string, or {
   source, flags } where it carries a flag, and loads to the same RegExp.
 - **Actor:** @missingbulb (owner), asking for pack.json manifests.
+
+## 2026-09-28 · reworded · the manifest's comments leave it, their decisions recorded here
+- **Reason:** a manifest that is data carries no comments. What they decided: the release is a task
+  so the queue owns its trigger, gate and park lanes. The one question's answer, what is published,
+  lives in the repo's own .github/site.config rather than on the pack entry, where the deploy's
+  build step and the gp/site-config check both read it. The handover steps are repository settings
+  no workflow, check or agent can turn on.
+- **Actor:** @missingbulb (owner), asking for pack.json manifests, their comments deleted or moved
+  to a README or provenance.
