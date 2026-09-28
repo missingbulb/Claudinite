@@ -16,13 +16,7 @@ export default {
   // and the `cd "$d"` is relative to it.
   env: {
     label: 'Node dependencies (npm ci)',
-    setup: (p) =>
-      (p.dirs?.length ? p.dirs : ['.'])
-        .map((d) => `( cd "${d}" && npm ci ) || true`)
-        .join('\n'),
-    probe: (p) =>
-      (p.dirs?.length ? p.dirs : ['.'])
-        .map((d) => `[ -d "${d}/node_modules" ]`)
-        .join(' && '),
+    setup: { forEach: 'dirs', whenUnset: ['.'], template: '( cd "{}" && npm ci ) || true' },
+    probe: { forEach: 'dirs', whenUnset: ['.'], template: '[ -d "{}/node_modules" ]' },
   },
 };

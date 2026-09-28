@@ -81,3 +81,9 @@
   so it outlives the pack's growth.
 - **Actor:** @missingbulb (owner).
 - **Mechanism:** the manifest's `pitch` field, beside `ruleRoutingGuidance`.
+
+## 2026-09-28 · moved · the contributedRules seam leaves the manifest for contributed-rules.mjs
+- **Reason:** a manifest that is data cannot hold a function, and the seam is the one piece of code
+  the basics manifest carried.
+- **Actor:** @missingbulb (owner), asking for pack.json manifests.
+- **Mechanism:** contributed-rules.mjs beside the manifest, found by name as worldRules/ is.

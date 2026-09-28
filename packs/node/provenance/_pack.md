@@ -62,3 +62,8 @@
 - **Mechanism:** the manifest's `relevanceDetector` (engine/pack_loader/relevance-detector.mjs): `paths`, optional `text`,
   `search` terms; it answers exactly what the retired `detect` answered, proven over 4,000 composed
   repos before the change.
+
+## 2026-09-28 · reworded · the env setup and probe become templates over config.dirs
+- **Reason:** a manifest that is data cannot hold the functions that expanded one command per
+  directory; the template renders the same commands.
+- **Actor:** @missingbulb (owner), asking for pack.json manifests.
