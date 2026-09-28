@@ -182,6 +182,13 @@
   `&&` or piped keeps failing exactly the same way; split it apart before running rather than
   retrying a differently-phrased compound form. (worktree-isolated-git-refused)
 
+- **Getting a 403, or a failed tunnel, from a fetch that goes through the sandbox's own egress
+  proxy** — `curl -v` tells you whose denial it is: `CONNECT tunnel failed, response 403` is the
+  proxy's own policy refusing the host before any connection reaches it, while the same status
+  after a negotiated tunnel is the origin refusing you. Where the harness exposes one, query its
+  own status endpoint (`$HTTPS_PROXY/__agentproxy/status`) for recent policy rejections rather
+  than guessing from the code alone. (reading-403-proxy)
+
 
 ## Warnings and findings
 
