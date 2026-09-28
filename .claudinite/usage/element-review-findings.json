@@ -1,15 +1,15 @@
 {
-  "generated": "2026-09-27T00:00:00Z",
+  "generated": "2026-09-28T00:00:00Z",
   "window": {
-    "from": "2026-08-30",
-    "to": "2026-09-26",
+    "from": "2026-08-31",
+    "to": "2026-09-27",
     "daysCovered": 28,
     "previous": {
-      "from": "2026-08-02",
-      "to": "2026-08-29",
+      "from": "2026-08-03",
+      "to": "2026-08-30",
       "daysCovered": 1
     },
-    "foldedThrough": "2026-09-26",
+    "foldedThrough": "2026-09-27",
     "subjects": {
       "skills": 38,
       "checks": 106,
@@ -34,7 +34,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -55,7 +55,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -76,7 +76,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-27",
       "lasting": false
@@ -97,7 +97,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -118,7 +118,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -139,7 +139,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -160,7 +160,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -181,7 +181,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -202,28 +202,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
-      },
-      "since": "2026-09-22",
-      "lasting": false
-    },
-    {
-      "rule": "check-never-fires",
-      "subject": "dedup-prune-integrity",
-      "pack": "claudinite-growth",
-      "cause": "unknown",
-      "causes": [
-        "nobody does the thing at all here - the guarded files or calls are absent from the window",
-        "the check is unreachable - its scan pattern or scope selects nothing in this tree",
-        "a sibling check catches the violation first - a check with overlapping scope fires instead",
-        "the check's fixture is the only violator it has ever seen - a test that passes and nothing else"
-      ],
-      "open": true,
-      "finding": "never fires, and no RULES.md line states the same rule",
-      "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
-      "figures": {
-        "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -244,7 +223,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-26",
       "lasting": false
@@ -265,7 +244,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -286,7 +265,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -307,7 +286,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -328,7 +307,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -349,7 +328,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -370,7 +349,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -391,7 +370,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -412,7 +391,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -433,7 +412,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -454,7 +433,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -475,7 +454,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -496,7 +475,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -517,7 +496,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -538,7 +517,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -559,7 +538,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -580,7 +559,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -601,7 +580,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-25",
       "lasting": false
@@ -622,7 +601,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -643,7 +622,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -664,7 +643,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -685,7 +664,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -706,7 +685,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -727,7 +706,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -748,7 +727,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-25",
       "lasting": false
@@ -769,7 +748,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -790,7 +769,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -811,7 +790,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-23",
       "lasting": false
@@ -832,7 +811,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -853,7 +832,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -874,7 +853,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -895,30 +874,9 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
-      "lasting": false
-    },
-    {
-      "rule": "check-never-fires",
-      "subject": "skill-description-length",
-      "pack": "basics",
-      "cause": "unknown",
-      "causes": [
-        "nobody does the thing at all here - the guarded files or calls are absent from the window",
-        "the check is unreachable - its scan pattern or scope selects nothing in this tree",
-        "a sibling check catches the violation first - a check with overlapping scope fires instead",
-        "the check's fixture is the only violator it has ever seen - a test that passes and nothing else"
-      ],
-      "open": true,
-      "finding": "never fires, and no RULES.md line states the same rule",
-      "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
-      "figures": {
-        "checkFindings": 0,
-        "activity": 515.970626
-      },
-      "since": "2026-09-23",
       "lasting": false
     },
     {
@@ -937,7 +895,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-25",
       "lasting": false
@@ -958,7 +916,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -979,7 +937,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -1000,7 +958,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -1021,7 +979,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -1042,7 +1000,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -1063,7 +1021,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -1084,7 +1042,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -1105,7 +1063,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -1126,7 +1084,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -1147,7 +1105,7 @@
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -1167,7 +1125,7 @@
       "recommendation": "a candidate for the prose-removal experiment: delete the prose, keep the check, read this counter one window later - at most one firing means the check alone suffices; more means the prose was doing the work",
       "figures": {
         "checkFindings": 0,
-        "activity": 515.970626
+        "activity": 496.41388600000005
       },
       "since": "2026-09-22",
       "lasting": false
@@ -1224,9 +1182,9 @@
       "finding": "an advisory guard fires in most sessions and the call runs anyway",
       "recommendation": "usually a guard matching calls it was not written for - narrow it; a sample of the calls is attached",
       "figures": {
-        "guardAdvisory": 154,
-        "sessions": 295,
-        "activity": 515.970626
+        "guardAdvisory": 155,
+        "sessions": 281,
+        "activity": 496.41388600000005
       },
       "since": "2026-09-26",
       "lasting": false
@@ -1245,9 +1203,9 @@
       "finding": "an advisory guard fires in most sessions and the call runs anyway",
       "recommendation": "usually a guard matching calls it was not written for - narrow it; a sample of the calls is attached",
       "figures": {
-        "guardAdvisory": 239,
-        "sessions": 295,
-        "activity": 515.970626
+        "guardAdvisory": 249,
+        "sessions": 281,
+        "activity": 496.41388600000005
       },
       "since": "2026-09-23",
       "lasting": false
@@ -1266,9 +1224,9 @@
       "finding": "an advisory guard fires in most sessions and the call runs anyway",
       "recommendation": "usually a guard matching calls it was not written for - narrow it; a sample of the calls is attached",
       "figures": {
-        "guardAdvisory": 212,
-        "sessions": 295,
-        "activity": 515.970626
+        "guardAdvisory": 229,
+        "sessions": 281,
+        "activity": 496.41388600000005
       },
       "since": "2026-09-23",
       "lasting": false
@@ -1287,55 +1245,11 @@
       "finding": "an advisory guard fires in most sessions and the call runs anyway",
       "recommendation": "usually a guard matching calls it was not written for - narrow it; a sample of the calls is attached",
       "figures": {
-        "guardAdvisory": 317,
-        "sessions": 295,
-        "activity": 515.970626
+        "guardAdvisory": 338,
+        "sessions": 281,
+        "activity": 496.41388600000005
       },
       "since": "2026-09-23",
-      "lasting": false
-    },
-    {
-      "rule": "skill-adoption-not-reached",
-      "subject": "adopt-claudinite",
-      "pack": "claudinite-lifecycle",
-      "cause": "unknown",
-      "causes": [
-        "the description does not name the adoption moment - digests show the step being done",
-        "the step was done another way, by prose or by hand - digests show it without the skill",
-        "the step was skipped - digests show no such step",
-        "the pack was declared before its skill was mounted - the declaration commit predates the mount stamp"
-      ],
-      "open": true,
-      "finding": "the pack was declared and its adoption-time skill never loaded while the adoption was live",
-      "recommendation": "read the adoption sessions' digests: was the step done another way, skipped, or did the description not name it",
-      "figures": {
-        "skillLoads": 0,
-        "sessions": 295
-      },
-      "since": "2026-09-27",
-      "digests": null,
-      "lasting": false
-    },
-    {
-      "rule": "skill-adoption-not-reached",
-      "subject": "extract-from-instructions",
-      "pack": "claudinite-growth",
-      "cause": "unknown",
-      "causes": [
-        "the description does not name the adoption moment - digests show the step being done",
-        "the step was done another way, by prose or by hand - digests show it without the skill",
-        "the step was skipped - digests show no such step",
-        "the pack was declared before its skill was mounted - the declaration commit predates the mount stamp"
-      ],
-      "open": true,
-      "finding": "the pack was declared and its adoption-time skill never loaded while the adoption was live",
-      "recommendation": "read the adoption sessions' digests: was the step done another way, skipped, or did the description not name it",
-      "figures": {
-        "skillLoads": 0,
-        "sessions": 295
-      },
-      "since": "2026-09-27",
-      "digests": null,
       "lasting": false
     },
     {
@@ -1350,8 +1264,8 @@
       "finding": "it is only ever loaded because a guard held a call for it, and each block is a tool call spent to read a few lines",
       "recommendation": "carry the lines in context or in the guard's own block text",
       "figures": {
-        "skillBlocks": 44,
-        "skillLoads": 40,
+        "skillBlocks": 48,
+        "skillLoads": 45,
         "tokens": 259
       },
       "since": "2026-09-23",
@@ -1369,8 +1283,8 @@
       "finding": "it is only ever loaded because a guard held a call for it, and each block is a tool call spent to read a few lines",
       "recommendation": "carry the lines in context or in the guard's own block text",
       "figures": {
-        "skillBlocks": 191,
-        "skillLoads": 170,
+        "skillBlocks": 201,
+        "skillLoads": 180,
         "tokens": 213
       },
       "since": "2026-09-23",
@@ -1390,8 +1304,8 @@
       "finding": "its declared moments occurred and the skill was not loaded for most of them",
       "recommendation": "the trigger is mechanical, so this is a fault in the declaration or the hook: reproduce one moment against the guard",
       "figures": {
-        "skillLoads": 62,
-        "moments": 1652
+        "skillLoads": 70,
+        "moments": 1661
       },
       "since": "2026-09-23",
       "lasting": false
@@ -1410,8 +1324,8 @@
       "finding": "its declared moments occurred and the skill was not loaded for most of them",
       "recommendation": "the trigger is mechanical, so this is a fault in the declaration or the hook: reproduce one moment against the guard",
       "figures": {
-        "skillLoads": 158,
-        "moments": 876
+        "skillLoads": 168,
+        "moments": 894
       },
       "since": "2026-09-23",
       "lasting": false
@@ -1430,8 +1344,8 @@
       "finding": "its declared moments occurred and the skill was not loaded for most of them",
       "recommendation": "the trigger is mechanical, so this is a fault in the declaration or the hook: reproduce one moment against the guard",
       "figures": {
-        "skillLoads": 40,
-        "moments": 266
+        "skillLoads": 45,
+        "moments": 276
       },
       "since": "2026-09-23",
       "lasting": false
@@ -1450,8 +1364,8 @@
       "finding": "its declared moments occurred and the skill was not loaded for most of them",
       "recommendation": "the trigger is mechanical, so this is a fault in the declaration or the hook: reproduce one moment against the guard",
       "figures": {
-        "skillLoads": 191,
-        "moments": 422
+        "skillLoads": 194,
+        "moments": 413
       },
       "since": "2026-09-23",
       "lasting": false
@@ -1470,8 +1384,8 @@
       "finding": "its declared moments occurred and the skill was not loaded for most of them",
       "recommendation": "the trigger is mechanical, so this is a fault in the declaration or the hook: reproduce one moment against the guard",
       "figures": {
-        "skillLoads": 146,
-        "moments": 3563
+        "skillLoads": 153,
+        "moments": 3522
       },
       "since": "2026-09-23",
       "lasting": false
@@ -1490,8 +1404,8 @@
       "finding": "its declared moments occurred and the skill was not loaded for most of them",
       "recommendation": "the trigger is mechanical, so this is a fault in the declaration or the hook: reproduce one moment against the guard",
       "figures": {
-        "skillLoads": 170,
-        "moments": 1610
+        "skillLoads": 180,
+        "moments": 1557
       },
       "since": "2026-09-23",
       "lasting": false
@@ -1510,8 +1424,8 @@
       "finding": "its declared moments occurred and the skill was not loaded for most of them",
       "recommendation": "the trigger is mechanical, so this is a fault in the declaration or the hook: reproduce one moment against the guard",
       "figures": {
-        "skillLoads": 6,
-        "moments": 43
+        "skillLoads": 7,
+        "moments": 40
       },
       "since": "2026-09-23",
       "lasting": false
@@ -1530,8 +1444,8 @@
       "finding": "its declared moments occurred and the skill was not loaded for most of them",
       "recommendation": "the trigger is mechanical, so this is a fault in the declaration or the hook: reproduce one moment against the guard",
       "figures": {
-        "skillLoads": 105,
-        "moments": 510
+        "skillLoads": 112,
+        "moments": 694
       },
       "since": "2026-09-23",
       "lasting": false
@@ -1550,8 +1464,8 @@
       "finding": "its declared moments occurred and the skill was not loaded for most of them",
       "recommendation": "the trigger is mechanical, so this is a fault in the declaration or the hook: reproduce one moment against the guard",
       "figures": {
-        "skillLoads": 89,
-        "moments": 517
+        "skillLoads": 95,
+        "moments": 530
       },
       "since": "2026-09-23",
       "lasting": false
@@ -1570,8 +1484,8 @@
       "finding": "its declared moments occurred and the skill was not loaded for most of them",
       "recommendation": "the trigger is mechanical, so this is a fault in the declaration or the hook: reproduce one moment against the guard",
       "figures": {
-        "skillLoads": 66,
-        "moments": 399
+        "skillLoads": 68,
+        "moments": 392
       },
       "since": "2026-09-23",
       "lasting": false
@@ -1590,8 +1504,8 @@
       "finding": "its declared moments occurred and the skill was not loaded for most of them",
       "recommendation": "the trigger is mechanical, so this is a fault in the declaration or the hook: reproduce one moment against the guard",
       "figures": {
-        "skillLoads": 143,
-        "moments": 1681
+        "skillLoads": 148,
+        "moments": 1668
       },
       "since": "2026-09-23",
       "lasting": false
@@ -1610,8 +1524,8 @@
       "finding": "its result or prompt trigger fires and the skill is not loaded afterwards",
       "recommendation": "usually a pattern matching text that merely mentions the symptom - tighten it to the tool's own result shape; the fires' contexts are in the finding",
       "figures": {
-        "triggerFollowed": 6,
-        "triggerFired": 30
+        "triggerFollowed": 9,
+        "triggerFired": 35
       },
       "since": "2026-09-23",
       "lasting": false
@@ -1700,14 +1614,6 @@
     },
     {
       "rule": "advisory-ignored",
-      "subject": "comment-classification-form",
-      "pack": "basics",
-      "name": "advisory",
-      "need": 10,
-      "have": 9
-    },
-    {
-      "rule": "advisory-ignored",
       "subject": "conformance-work-scope",
       "pack": "claudinite-lifecycle",
       "name": "advisory",
@@ -1760,7 +1666,7 @@
       "pack": "claudinite-growth",
       "name": "advisory",
       "need": 10,
-      "have": null
+      "have": 0
     },
     {
       "rule": "advisory-ignored",
@@ -1793,22 +1699,6 @@
       "name": "advisory",
       "need": 10,
       "have": null
-    },
-    {
-      "rule": "advisory-ignored",
-      "subject": "generated-file-carries-no-banner",
-      "pack": "claudinite",
-      "name": "advisory",
-      "need": 10,
-      "have": 7
-    },
-    {
-      "rule": "advisory-ignored",
-      "subject": "generated-merge-driver",
-      "pack": "basics",
-      "name": "advisory",
-      "need": 10,
-      "have": 7
     },
     {
       "rule": "advisory-ignored",
@@ -2176,7 +2066,7 @@
       "pack": "basics",
       "name": "advisory",
       "need": 10,
-      "have": null
+      "have": 1
     },
     {
       "rule": "advisory-ignored",
@@ -2308,14 +2198,6 @@
     },
     {
       "rule": "advisory-ignored",
-      "subject": "untracked-test-file",
-      "pack": "basics",
-      "name": "advisory",
-      "need": 10,
-      "have": 8
-    },
-    {
-      "rule": "advisory-ignored",
       "subject": "updates-export-removed",
       "pack": "claudinite",
       "name": "advisory",
@@ -2420,14 +2302,6 @@
     },
     {
       "rule": "check-fires-most-sessions",
-      "subject": "dedup-prune-integrity",
-      "pack": "claudinite-growth",
-      "name": "checkSessions / sessions >= 0.5",
-      "need": null,
-      "have": null
-    },
-    {
-      "rule": "check-fires-most-sessions",
       "subject": "flat-declarations-current",
       "pack": "claudinite-lifecycle",
       "name": "checkSessions / sessions >= 0.5",
@@ -2685,14 +2559,6 @@
     {
       "rule": "check-fires-most-sessions",
       "subject": "shared-constants",
-      "pack": "basics",
-      "name": "checkSessions / sessions >= 0.5",
-      "need": null,
-      "have": null
-    },
-    {
-      "rule": "check-fires-most-sessions",
-      "subject": "skill-description-length",
       "pack": "basics",
       "name": "checkSessions / sessions >= 0.5",
       "need": null,
@@ -2860,14 +2726,6 @@
     },
     {
       "rule": "check-unsatisfiable",
-      "subject": "dedup-prune-integrity",
-      "pack": "claudinite-growth",
-      "name": "relent >= 1",
-      "need": null,
-      "have": null
-    },
-    {
-      "rule": "check-unsatisfiable",
       "subject": "flat-declarations-current",
       "pack": "claudinite-lifecycle",
       "name": "relent >= 1",
@@ -3132,14 +2990,6 @@
     },
     {
       "rule": "check-unsatisfiable",
-      "subject": "skill-description-length",
-      "pack": "basics",
-      "name": "relent >= 1",
-      "need": null,
-      "have": null
-    },
-    {
-      "rule": "check-unsatisfiable",
       "subject": "skill-no-enforcement-narration",
       "pack": "claudinite-canon-curation",
       "name": "relent >= 1",
@@ -3232,7 +3082,7 @@
       "pack": null,
       "name": "previous.activity",
       "need": 120,
-      "have": 0.7556200000000001
+      "have": 39.302114
     },
     {
       "rule": "guard-overruled",
@@ -3664,15 +3514,7 @@
       "pack": "claudinite-growth",
       "name": "skillLoads",
       "need": 5,
-      "have": 3
-    },
-    {
-      "rule": "skill-forced-only-small",
-      "subject": "improve-comments",
-      "pack": "basics",
-      "name": "skillLoads",
-      "need": 5,
-      "have": 4
+      "have": 2
     },
     {
       "rule": "skill-forced-only-small",
@@ -3846,9 +3688,9 @@
       "rule": "skill-loaded-still-caught",
       "subject": "growth-dedup",
       "pack": "claudinite-growth",
-      "name": "skillCaught / skillSessions >= 0.3",
-      "need": null,
-      "have": null
+      "name": "skillSessions",
+      "need": 5,
+      "have": 4
     },
     {
       "rule": "skill-loaded-still-caught",
