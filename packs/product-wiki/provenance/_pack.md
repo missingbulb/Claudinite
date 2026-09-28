@@ -43,3 +43,36 @@
 - **Mechanism:** the manifest's `relevanceDetector` (engine/pack_loader/relevance-detector.mjs): `paths`, optional `text`,
   `search` terms; it answers exactly what the retired `detect` answered, proven over 4,000 composed
   repos before the change.
+
+## 2026-09-28 · reworded · the manifest spells out the value it imported
+- **Reason:** a manifest that is data cannot import; the value is written out, and the pack's test
+  holds it equal to the module it came from.
+- **Actor:** @missingbulb (owner), asking for pack.json manifests with imported values inlined and a
+  check against drift.
+
+## 2026-09-28 · reworded · the fingerprint's patterns are written as source strings
+- **Reason:** a manifest that is data cannot hold a RegExp; each pattern is its source string, or {
+  source, flags } where it carries a flag, and loads to the same RegExp.
+- **Actor:** @missingbulb (owner), asking for pack.json manifests.
+
+## 2026-09-28 · reworded · the manifest's comments leave it, their decisions recorded here
+- **Reason:** a manifest that is data carries no comments. What they decided: the isolation wall and
+  the skeleton check are a designed pair: the wall's glob fails closed on an empty product-wiki/,
+  and the layout check owns the missing-skeleton complaint. The interview's answers frame which
+  wikis are seeded and are recorded as intent, never as config; a session reads the repo's own brief
+  first and confirms rather than asking cold.
+- **Actor:** @missingbulb (owner), asking for pack.json manifests, their comments deleted or moved
+  to a README or provenance.
+
+## 2026-09-28 · moved · the manifest becomes pack.json
+- **Reason:** a manifest that is data is read with no import and by any tool; the conversion wrote
+  the module's evaluated export, and the pack loads identically.
+- **Actor:** @missingbulb (owner), asking for pack.json manifests.
+- **Mechanism:** pack.json, which the loader prefers over pack.mjs; a canon pack now needs engine
+  60928.1, the first to read it.
+
+## 2026-09-28 · scope-changed · the fingerprint is dropped; the pack is declared by hand
+- **Reason:** the sink README is the pack's own artifact, so it is only there once the pack is
+  adopted: not an indicator for adoption.
+- **Actor:** @missingbulb (owner), in review of #2382.
+- **Mechanism:** no relevanceDetector, so --init and the fleet sweep never suggest it.

@@ -81,3 +81,31 @@
   so it outlives the pack's growth.
 - **Actor:** @missingbulb (owner).
 - **Mechanism:** the manifest's `pitch` field, beside `ruleRoutingGuidance`.
+
+## 2026-09-28 · moved · the contributedRules seam leaves the manifest for contributed-rules.mjs
+- **Reason:** a manifest that is data cannot hold a function, and the seam is the one piece of code
+  the basics manifest carried.
+- **Actor:** @missingbulb (owner), asking for pack.json manifests.
+- **Mechanism:** contributed-rules.mjs beside the manifest, found by name as worldRules/ is.
+
+## 2026-09-28 · reworded · the manifest's comments leave it, their decisions recorded here
+- **Reason:** a manifest that is data carries no comments. What they decided: claudinite-lifecycle
+  is required rather than assumed, because basics is declared everywhere and the closure is what
+  puts Claudinite's own rules in front of every session; git-github is required because it carries
+  the git side of the task lifecycle (#385).
+- **Actor:** @missingbulb (owner), asking for pack.json manifests, their comments deleted or moved
+  to a README or provenance.
+
+## 2026-09-28 · moved · the manifest becomes pack.json
+- **Reason:** a manifest that is data is read with no import and by any tool; the conversion wrote
+  the module's evaluated export, and the pack loads identically.
+- **Actor:** @missingbulb (owner), asking for pack.json manifests.
+- **Mechanism:** pack.json, which the loader prefers over pack.mjs; a canon pack now needs engine
+  60928.1, the first to read it.
+
+## 2026-09-28 · scope-changed · pack contributions are retired, and basics interprets none
+- **Reason:** no pack contributed a barrier, so the seam built nothing; a pack's fixed barrier is a
+  declared forbidReferences check, and a repo's own is config.barriers.rules.
+- **Actor:** @missingbulb (owner), asking to drop pack contributions altogether.
+- **Mechanism:** none; contributed-rules.mjs and barriers.mjs are deleted, the engine calls no seam,
+  and legacy-shape-in-use names a local manifest still carrying either field until #2395.

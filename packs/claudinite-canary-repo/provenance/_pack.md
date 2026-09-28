@@ -79,3 +79,18 @@
   update holds this version until the member's engine is at 60925.1.
 - **Actor:** @missingbulb (owner).
 - **Mechanism:** the manifest's `minEngineVersion`, which the pack update enforces.
+
+## 2026-09-28 · reworded · the manifest's comments leave it, their decisions recorded here
+- **Reason:** a manifest that is data carries no comments. What they decided: hidden because the
+  canary is its only intended holder, so it is withheld from the catalog a session reads to pick a
+  pack; declaring it by hand still works. Its workflow is seeded once and never converged: from pack
+  version 2 the same path is re-vendored by a record through the update flow's withhold lane.
+- **Actor:** @missingbulb (owner), asking for pack.json manifests, their comments deleted or moved
+  to a README or provenance.
+
+## 2026-09-28 · moved · the manifest becomes pack.json
+- **Reason:** a manifest that is data is read with no import and by any tool; the conversion wrote
+  the module's evaluated export, and the pack loads identically.
+- **Actor:** @missingbulb (owner), asking for pack.json manifests.
+- **Mechanism:** pack.json, which the loader prefers over pack.mjs; a canon pack now needs engine
+  60928.1, the first to read it.

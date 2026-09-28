@@ -144,3 +144,25 @@ test('legacy-shape-in-use: a local pack still spelling the retired fingerprint f
   assert.equal(findings[0].line, 3);
   assert.match(findings[0].what, /retired fingerprint/);
 });
+
+test('legacy-shape-in-use: a local manifest carrying a retired contribution field is reported, one per field', () => {
+  const findings = rule.run(ctx({
+    [SETTINGS_FILE]: JSON.stringify({ packs: ['local/own', 'local/seam'] }),
+    '.claudinite/local/packs/own/pack.json': '{\n  "ruleRoutingGuidance": { "belongs": "b", "excludes": "e" },\n  "contributes": { "barriers": [] }\n}\n',
+    '.claudinite/local/packs/seam/pack.mjs': "export default {\n  ruleRoutingGuidance: { belongs: 'b', excludes: 'e' },\n  contributedRules: () => [],\n};\n",
+    '.claudinite/shared/packs/acme-pack/pack.json': '{\n  "contributes": { "barriers": [] }\n}\n',
+  }));
+  assert.deepEqual(findings.map((f) => [f.file, f.line]).sort(), [
+    ['.claudinite/local/packs/own/pack.json', 3],
+    ['.claudinite/local/packs/seam/pack.mjs', 3],
+  ]);
+  assert.ok(findings.every((f) => /contribut/.test(f.what)), JSON.stringify(findings.map((f) => f.what)));
+});
+
+test('legacy-shape-in-use: a local pack.json spelling the retired fingerprint fields is reported too', () => {
+  const findings = rule.run(ctx({
+    [SETTINGS_FILE]: JSON.stringify({ packs: ['local/own'] }),
+    '.claudinite/local/packs/own/pack.json': '{\n  "ruleRoutingGuidance": { "belongs": "b", "excludes": "e" },\n  "detect": null\n}\n',
+  }));
+  assert.deepEqual(findings.map((f) => [f.file, f.line]), [['.claudinite/local/packs/own/pack.json', 3]]);
+});

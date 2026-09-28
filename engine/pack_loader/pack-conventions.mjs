@@ -10,10 +10,10 @@ import { join } from 'node:path';
 // `relevanceDetector: null` said that a pack carries no fingerprint. A field with exactly one correct value is not a declaration; it is
 // a line every author copies and every reviewer skips.
 //
-// So this is the manifest's DEFAULT LAYER and `pack.mjs` states only what neither
+// So this is the manifest's DEFAULT LAYER and `pack.json` states only what neither
 // the tree nor silence can: the pack's version, its routing guidance, an actual
 // fingerprint, its adoption questions. Discovery was already structural — a
-// directory with a pack.mjs is a pack — and this is the same principle one level
+// directory with a manifest is a pack - and this is the same principle one level
 // in.
 //
 // OVERRIDE, NOT REPLACEMENT. A manifest field still wins where it is declared, so
@@ -31,6 +31,16 @@ import { join } from 'node:path';
 // convention is one edit, and so a reader looking for "where does RULES.md become
 // prose" lands on the answer.
 export const PROSE_FILE = 'RULES.md';
+// The manifest: `pack.json` is data, and `pack.mjs`, a module default-exporting the same
+// object, is the older spelling and still read. A directory carrying either is a pack;
+// carrying both, the JSON wins. Every reader that finds or names a manifest asks here.
+export const MANIFEST_JSON = 'pack.json';
+export const MANIFEST_MODULE = 'pack.mjs';
+export const MANIFEST_FILES = [MANIFEST_JSON, MANIFEST_MODULE];
+// The manifest a pack directory carries, preferred spelling first, or null. `exists`
+// answers for a file name inside that directory, so a caller holding a tree listing, a
+// git ref or the disk asks the same question.
+export const manifestFileIn = (exists) => MANIFEST_FILES.find((name) => exists(name)) ?? null;
 export const BADGE_FILE = 'badge.svg';
 export const SKILLS_DIR = 'skills';
 // The pack's decision log, one file per element beside the carriers

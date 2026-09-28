@@ -70,3 +70,8 @@
   it.
 - **Mechanism:** the description, as before.
 - **Actor:** @missingbulb (owner).
+
+## 2026-09-28 · trigger-changed · forced on a pack.json edit too
+- **Reason:** a manifest may now be pack.json, and an edit to one is the same edit as to a pack.mjs.
+- **Actor:** @missingbulb (owner), asking for pack.json manifests.
+- **Mechanism:** force-load-on-file-edits-paths gains `**/packs/*/pack.json`.

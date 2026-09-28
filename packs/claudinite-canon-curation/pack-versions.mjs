@@ -26,6 +26,8 @@ import * as conventions from '../../engine/pack_loader/pack-conventions.mjs';
 
 const { PROVENANCE_DIR } = conventions;
 const VERSIONS_FILE = conventions.VERSIONS_FILE ?? 'VERSIONS.md';
+// An engine older than the JSON manifest reads the module spelling alone.
+const MANIFEST_FILES = conventions.MANIFEST_FILES ?? ['pack.mjs'];
 import {
   VERSION_SOURCE, versionFromLiteral, compareVersions, versionsEqual, nextVersion, versionAbove,
 } from '../../engine/version.mjs';
@@ -63,10 +65,10 @@ export function packOf(path) {
   return m ? m[1] : null;
 }
 
-// The `version:` a pack manifest declares, or null when it declares none (a manifest
-// absent on one side of the history, or one the schema check owns). The preceding
-// character class is what keeps `minEngineVersion:` out of it.
-const PACK_VERSION_RE = new RegExp(String.raw`(?:^|[\s{,])version:\s*'?(${VERSION_SOURCE})'?`, 'm');
+// The `version` a pack manifest declares, either spelling, or null when it declares none
+// (a manifest absent on one side of the history, or one the schema check owns). The
+// preceding character class is what keeps `minEngineVersion` out of it.
+const PACK_VERSION_RE = new RegExp(String.raw`(?:^|[\s{,])"?version"?:\s*['"]?(${VERSION_SOURCE})['"]?`, 'm');
 export function declaredPackVersion(text) {
   const m = PACK_VERSION_RE.exec(text ?? '');
   return m ? versionFromLiteral(m[1]) : null;
@@ -100,11 +102,20 @@ export function withDirectoryVersions(text, bumps) {
 // working directory: the checkout may be sitting on another task's branch.
 export function shelfPacks(git, ref) {
   const paths = git(['ls-tree', '--name-only', '-r', ref, `${SHELF}/`]).split('\n');
-  return paths.map((p) => /^packs\/([^/]+)\/pack\.mjs$/.exec(p)?.[1]).filter(Boolean).sort();
+  return [...new Set(paths.map((p) => /^packs\/([^/]+)\/pack\.(?:json|mjs)$/.exec(p)?.[1]).filter(Boolean))].sort();
 }
 
 export function fileAt(git, ref, path) {
   try { return git(['show', `${ref}:${path}`]); } catch { return null; }
+}
+
+// A pack's manifest text at a commit, whichever spelling it had there.
+export function manifestAt(git, ref, id) {
+  for (const f of MANIFEST_FILES) {
+    const text = fileAt(git, ref, `${SHELF}/${id}/${f}`);
+    if (text !== null) return { path: `${SHELF}/${id}/${f}`, text };
+  }
+  return null;
 }
 
 // Every commit on the base branch's first-parent line that MOVED this pack's version
@@ -114,14 +125,14 @@ export function fileAt(git, ref, path) {
 // merge is a first-parent commit, so `--first-parent` reads the branch as it was
 // landed and never wanders into a merged branch's own history.
 export function bumpCommits(git, ref, id) {
-  const manifest = `${SHELF}/${id}/pack.mjs`;
-  const lines = git(['log', '--first-parent', '--format=%H %cs', ref, '--', manifest]).split('\n').filter(Boolean);
+  const manifests = MANIFEST_FILES.map((f) => `${SHELF}/${id}/${f}`);
+  const lines = git(['log', '--first-parent', '--format=%H %cs', ref, '--', ...manifests]).split('\n').filter(Boolean);
   const out = [];
   for (const line of lines) {
     const [sha, date] = line.split(' ');
-    const here = declaredPackVersion(fileAt(git, sha, manifest));
+    const here = declaredPackVersion(manifestAt(git, sha, id)?.text);
     if (here === null) continue;
-    const before = declaredPackVersion(fileAt(git, `${sha}^`, manifest));
+    const before = declaredPackVersion(manifestAt(git, `${sha}^`, id)?.text);
     if (before === null || !versionsEqual(here, before)) out.push({ sha, version: here, date });
   }
   return out;
@@ -141,8 +152,7 @@ export function shippingChanges(git, from, to, id) {
 export function planBumps(git, ref, { today = new Date() } = {}) {
   const bumps = [];
   for (const id of shelfPacks(git, ref)) {
-    const manifest = `${SHELF}/${id}/pack.mjs`;
-    const text = fileAt(git, ref, manifest);
+    const { path: manifest, text } = manifestAt(git, ref, id) ?? {};
     const current = declaredPackVersion(text);
     if (current === null) continue;
     const [last] = bumpCommits(git, ref, id);
@@ -227,7 +237,7 @@ export function renderRow({ version, date, commits }) {
 const HEADER = (id) => [
   '# Version history',
   '',
-  `Records for \`packs/${id}/pack.mjs\`'s \`version\` field, one row per version, newest first.`,
+  `Records for the \`version\` field of \`packs/${id}/\`'s manifest, one row per version, newest first.`,
   'A version is cut on `main` after its changes land, so a row names the pull requests that',
   'landed between the previous version and this one; the weekly history task writes the rows',
   'a version is missing and leaves every row that already stands.',

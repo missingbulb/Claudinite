@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runRule } from '../../../engine/checks/helpers/work.mjs';
-import pack from '../pack.mjs';
+import { loadPacks } from '../../../engine/pack_loader/pack-registry.mjs';
 import * as detectorSpec from '../../../engine/pack_loader/relevance-detector.mjs';
 import releaseWorkflows, {
   shipsReleasePipeline, SHIPS_PIPELINE_PATH_RE, SHIPS_PIPELINE_TEXT_RE,
@@ -22,6 +22,7 @@ const privacyPermissionAlignment = declaredCheck('packs/chrome-extension', 'cer/
 const permissionAddedStoreIssue = declaredCheck('packs/chrome-extension', 'cer/permission-added-store-issue');
 
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))));
+const pack = (await loadPacks()).find((p) => p.id === 'chrome-extension'); // @real-entity the pack under test
 
 const run = (rule, root, opts) => runRule(rule, buildContext({ root, mode: 'all' }), opts);
 

@@ -176,11 +176,16 @@ test('real corpus: no canon pack restates what its directory already says', asyn
   assert.ok(packs.length > 0, 'no packs discovered');
   const restated = [];
   for (const pack of packs) {
-    const src = readFileSync(join(pack.dir, 'pack.mjs'), 'utf8');
+    const src = readFileSync(join(pack.dir, pack.manifestFile), 'utf8');
+    const declared = pack.manifestFile.endsWith('.json') ? JSON.parse(src) : null;
     for (const field of ['id', 'badge', 'prose', 'skills', 'worldRules', 'workRules', 'relevanceDetector: null', 'detect', 'marker']) {
-      const pattern = field.includes(':') ? String.raw`^\s{2}${field},` : String.raw`^\s{2}${field}:`;
-      if (new RegExp(pattern, 'm').test(src)) restated.push(`${pack.id}: ${field}`);
+      const [key, value] = field.split(': ');
+      const restates = declared
+        ? key in declared && (value === undefined || declared[key] === null)
+        : new RegExp(value === undefined ? String.raw`^\s{2}${key}:` : String.raw`^\s{2}${field},`, 'm').test(src);
+      if (restates) restated.push(`${pack.id}: ${field}`);
     }
   }
-  assert.deepEqual(restated, [], 'a pack.mjs must take these from its directory — drop the declaration unless it genuinely overrides it');
+  assert.ok(packs.filter((p) => p.manifestFile === 'pack.json').length >= 30, 'the sweep read the JSON manifests');
+  assert.deepEqual(restated, [], 'a manifest must take these from its directory — drop the declaration unless it genuinely overrides it');
 });

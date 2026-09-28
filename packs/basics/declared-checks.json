@@ -118,7 +118,7 @@
     },
     "requireIndexCoverage": [
       {
-        "eachTrackedPathMatching": "/^packs\\/(?<name>[^/]+)\\/pack\\.mjs$/",
+        "eachTrackedPathMatching": "/^packs\\/(?<name>[^/]+)\\/pack\\.(?:json|mjs)$/",
         "indexFile": "packs/README.md",
         "coveredByText": "({name}/",
         "whenIndexFileAbsent": "assertNothing",

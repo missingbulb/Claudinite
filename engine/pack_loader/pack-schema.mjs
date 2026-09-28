@@ -1,5 +1,5 @@
 // THE PACK MANIFEST SPEC — the single declarative statement of what a
-// `pack.mjs` may and must carry. Everything a pack declares about itself is
+// `pack.json` (or `pack.mjs`) may and must carry. Everything a pack declares about itself is
 // described here once, and `validateManifest` is the only thing that judges a
 // manifest against it. The loader calls it on every pack it imports (canon and a
 // consumer's own `local/packs/` alike), so a malformed or incomplete manifest
@@ -102,8 +102,10 @@ export const PACK_FIELDS = {
   prose: { describe: 'the filename injected at session start, or null — RULES.md by convention where one is present, so declare it only to name another file or to suppress it', valid: (v) => v === null || typeof v === 'string' },
   seededByDefault: { describe: 'whether bootstrap --init seeds this pack everywhere', valid: (v) => typeof v === 'boolean' },
   requires: { describe: 'pack ids this pack depends on, resolved when the declaration is written', valid: isStringArray },
-  contributes: { describe: 'rules addressed to another pack, keyed by that pack id', valid: isPlainObject },
-  contributedRules: { describe: 'the seam interpreting other packs contributions to this one', valid: (v) => typeof v === 'function' },
+  // @legacy-tolerance advisory:legacy-shape-in-use retire:#2395
+  contributes: { describe: 'the retired pack contributions; nothing reads it, and a local pack drops it', valid: isPlainObject },
+  // @legacy-tolerance advisory:legacy-shape-in-use retire:#2395
+  contributedRules: { describe: 'the retired seam interpreting other packs\' contributions; nothing calls it, and a local pack drops it', valid: (v) => typeof v === 'function' },
   env: { describe: 'environment requirements the pack needs to run its checks', valid: isPlainObject },
   questions: { describe: 'the pack adoption-interview questions', valid: (v) => Array.isArray(v) },
   skills: { describe: 'the skill directory names mounted from this pack skills/ — every subdirectory carrying a SKILL.md by convention, so declare it only to withhold one', valid: isStringArray },
@@ -125,7 +127,7 @@ export function validateManifest(mod, { label, skillDirs = [] } = {}) {
   const err = (what, fix) => errors.push({ what: `${at}${what}`, fix });
 
   if (!isPlainObject(mod)) {
-    err('the pack has no object default export', 'export default { version, ruleRoutingGuidance, ... } from its pack.mjs');
+    err('the manifest is not an object', 'make the manifest an object { version, ruleRoutingGuidance, ... }');
     return errors;
   }
 

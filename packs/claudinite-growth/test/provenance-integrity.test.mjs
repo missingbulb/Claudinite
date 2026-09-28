@@ -125,6 +125,14 @@ test('provenance-change-recorded: a reworded rule owes an entry, and the entry c
   assert.deepEqual(runWork({ ...reworded, [`${PACK}provenance/doing-thing.md`]: BORN + REWORDED }), []);
 });
 
+test('provenance-change-recorded: a pack.json manifest owes its entry when its data changes, and nothing when only its layout does', () => {
+  const { [`${PACK}pack.mjs`]: _module, ...rest } = filled;
+  const base = { ...rest, [`${PACK}pack.json`]: '{ "requires": [] }\n' };
+  const whats = runWork({ [`${PACK}pack.json`]: '{ "requires": ["acme-pack"] }\n' }, base).map((f) => f.what);
+  assert.deepEqual(whats.filter((w) => /the manifest changed/.test(w)).length, 1, whats.join('\n'));
+  assert.deepEqual(runWork({ [`${PACK}pack.json`]: '{\n  "requires": []\n}\n' }, base), [], 'a re-indent is not a decision');
+});
+
 test('provenance-change-recorded: a re-wrap, a marker added or moved, and a body declared owe nothing', () => {
   assert.deepEqual(runWork({
     [`${PACK}RULES.md`]: '- **Doing a thing** — the settled\n  way. (doing-thing)\n\n- **Doing another** — plainly. (doing-another)\n',

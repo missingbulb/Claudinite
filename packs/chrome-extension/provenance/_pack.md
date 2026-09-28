@@ -59,3 +59,34 @@
 - **Mechanism:** the manifest's `relevanceDetector` (engine/pack_loader/relevance-detector.mjs): `paths`, optional `text`,
   `search` terms; it answers exactly what the retired `detect` answered, proven over 4,000 composed
   repos before the change.
+
+## 2026-09-28 · reworded · the fingerprint's patterns are written as source strings
+- **Reason:** a manifest that is data cannot hold a RegExp; each pattern is its source string, or {
+  source, flags } where it carries a flag, and loads to the same RegExp.
+- **Actor:** @missingbulb (owner), asking for pack.json manifests.
+
+## 2026-09-28 · reworded · the manifest's comments leave it, their decisions recorded here
+- **Reason:** a manifest that is data carries no comments. What they decided: the release half is
+  gated on shipping rather than on a second declaration (#1057): shipsReleasePipeline gates the
+  coded rule and every declared check carries the same relevantWhen, so a repo that only codes an
+  extension sees none of them. The cer/ check ids outlived the retired chrome-extension-release
+  pack, because a member's accept entries name rules by id and a rename orphans them. The release
+  standard is skills rather than prose: it is long, and only the checks need to be eager.
+- **Actor:** @missingbulb (owner), asking for pack.json manifests, their comments deleted or moved
+  to a README or provenance.
+
+## 2026-09-28 · moved · the manifest becomes pack.json
+- **Reason:** a manifest that is data is read with no import and by any tool; the conversion wrote
+  the module's evaluated export, and the pack loads identically.
+- **Actor:** @missingbulb (owner), asking for pack.json manifests.
+- **Mechanism:** pack.json, which the loader prefers over pack.mjs; a canon pack now needs engine
+  60928.1, the first to read it.
+
+## 2026-09-28 · scope-changed · the fingerprint is an MV3 manifest at the root or one directory down
+- **Reason:** manifest_version alone fired on a Firefox-only MV2 extension and on a fixture
+  extension anywhere in the tree; the pack is written for MV3, and every other marker stops one
+  directory down.
+- **Actor:** @missingbulb (owner), in review of #2382.
+- **Mechanism:** paths over a near-root manifest.json, text over "manifest_version": 3.
+- **Rejected:** dropping it, since an extension declares no package dependency a manifest-based
+  fingerprint could read instead.

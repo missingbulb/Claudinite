@@ -51,7 +51,7 @@ the files it concerns.
 The Claude Code web sandbox boots without a Flutter SDK, so `flutter test`, `flutter analyze` and
 golden regeneration can't run until it is installed. The install belongs in the environment
 **image**, built once and snapshotted: this pack declares that need in its `env` block
-([pack.mjs](pack.mjs)), and a project pastes one
+([pack.json](pack.json)), and a project pastes one
 generic `environment-setup-command.sh` that runs every active pack's requirement via
 [engine/pack_loader/env-requirements.mjs](../../engine/pack_loader/env-requirements.mjs) and asserts
 it at session start (see [bootstrap.md](../../bootstrap.md) Part 9).

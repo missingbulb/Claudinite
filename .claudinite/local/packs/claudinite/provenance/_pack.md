@@ -22,3 +22,10 @@
   this file now; a reader of the code needs only what the pack is.
 - **Actor:** @missingbulb (owner), through the provenance backfill.
 - **Model:** Claude Opus 5
+
+## 2026-09-28 · moved · the manifest becomes pack.json
+- **Reason:** a manifest that is data is read with no import and by any tool; the conversion wrote
+  the module's evaluated export, and the pack loads identically.
+- **Actor:** @missingbulb (owner), asking for pack.json manifests.
+- **Mechanism:** pack.json, which the loader prefers over pack.mjs; a canon pack now needs engine
+  60928.1, the first to read it.

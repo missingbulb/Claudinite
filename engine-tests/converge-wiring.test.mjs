@@ -269,7 +269,7 @@ test('seedRepoLocalPack: creates the repo\'s own pack, declares it, and the inde
   assert.ok(r.changed.some((c) => c.includes('hello-world-flutter-app')), r.changed.join(', '));
 
   const dir = join(root, '.claudinite', 'local', 'packs', 'hello-world-flutter-app');
-  assert.ok(existsSync(join(dir, 'pack.mjs')));
+  assert.ok(existsSync(join(dir, 'pack.json')));
   assert.ok(existsSync(join(dir, 'RULES.md')));
   // No change record: a local pack is neither versioned nor distributed, so its
   // git history is the record, and an append-at-the-top table several growth runs

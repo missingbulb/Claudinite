@@ -34,6 +34,7 @@ function makeCanon() {
   // needs the spec module too — it is part of the loader, not an optional extra.
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-schema.mjs'), join(root, 'engine', 'pack_loader', 'pack-schema.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'relevance-detector.mjs'), join(root, 'engine', 'pack_loader', 'relevance-detector.mjs'));
+  copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-manifest.mjs'), join(root, 'engine', 'pack_loader', 'pack-manifest.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-conventions.mjs'), join(root, 'engine', 'pack_loader', 'pack-conventions.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'renamed-packs.mjs'), join(root, 'engine', 'pack_loader', 'renamed-packs.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'module-imports.mjs'), join(root, 'engine', 'checks', 'helpers', 'module-imports.mjs'));
@@ -175,6 +176,7 @@ test('#328: a canon tree nested in a FOREIGN git repo is rootless — upward .gi
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-registry.mjs'), join(canon, 'engine', 'pack_loader', 'pack-registry.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-schema.mjs'), join(canon, 'engine', 'pack_loader', 'pack-schema.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'relevance-detector.mjs'), join(canon, 'engine', 'pack_loader', 'relevance-detector.mjs'));
+  copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-manifest.mjs'), join(canon, 'engine', 'pack_loader', 'pack-manifest.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-conventions.mjs'), join(canon, 'engine', 'pack_loader', 'pack-conventions.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'renamed-packs.mjs'), join(canon, 'engine', 'pack_loader', 'renamed-packs.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'module-imports.mjs'), join(canon, 'engine', 'checks', 'helpers', 'module-imports.mjs'));

@@ -9,6 +9,9 @@
 //   about   what a person reads: the thing found, in words
 //   paths   a RegExp tested against each tracked path
 //   text    optional RegExp, or list of them, every one matching the same file
+//
+// A manifest written as JSON spells each pattern as its source string, or as
+// `{ source, flags }` where it needs a flag; `relevanceDetectorFromData` rebuilds them.
 //   search  code-search terms, required with `text`: a file `text` matches contains
 //           at least one of them, so a search for any of them finds every candidate
 //
@@ -70,5 +73,24 @@ export function relevanceDetectorData(relevanceDetector) {
     paths: patternData(relevanceDetector.paths),
     ...(relevanceDetector.text !== undefined ? { text: patterns(relevanceDetector.text).map(patternData) } : {}),
     ...(relevanceDetector.search ? { search: [...relevanceDetector.search] } : {}),
+  };
+}
+
+// The inverse, and the looser one: a pattern may arrive as a RegExp, a source string
+// or `{ source, flags }`, and leaves as a RegExp. Anything else passes through for
+// `validateRelevanceDetector` to name; a source that does not compile throws.
+const patternFrom = (v) => {
+  if (typeof v === 'string') return new RegExp(v);
+  if (v !== null && typeof v === 'object' && !(v instanceof RegExp) && typeof v.source === 'string') return new RegExp(v.source, v.flags ?? '');
+  return v;
+};
+
+export function relevanceDetectorFromData(relevanceDetector) {
+  if (relevanceDetector === null || typeof relevanceDetector !== 'object' || Array.isArray(relevanceDetector)) return relevanceDetector;
+  const { paths, text } = relevanceDetector;
+  return {
+    ...relevanceDetector,
+    ...(paths !== undefined ? { paths: patternFrom(paths) } : {}),
+    ...(text !== undefined ? { text: Array.isArray(text) ? text.map(patternFrom) : patternFrom(text) } : {}),
   };
 }

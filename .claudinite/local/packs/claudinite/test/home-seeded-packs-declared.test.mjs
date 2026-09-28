@@ -57,6 +57,21 @@ test('home-seeded-packs-declared: reports every undeclared seeded pack, not just
   }
 });
 
+test('home-seeded-packs-declared: reads a pack.json manifest as it reads a pack.mjs', () => {
+  const root = makeRepo({
+    base: {
+      'packs/acme-pack/pack.json': `${JSON.stringify({ seededByDefault: true }, null, 2)}\n`,
+      'packs/acme-pack-l/pack.json': `${JSON.stringify({ seededByDefault: false }, null, 2)}\n`,
+      '.claudinite-settings.json': settings([]),
+    },
+  });
+  try {
+    assert.deepEqual(run(root).map((f) => f.what.match(/"([^"]+)"/)[1]), ['acme-pack']);
+  } finally {
+    cleanup(root);
+  }
+});
+
 test('home-seeded-packs-declared: an entry object declares the pack just as a bare id does', () => {
   const root = makeRepo({
     base: {

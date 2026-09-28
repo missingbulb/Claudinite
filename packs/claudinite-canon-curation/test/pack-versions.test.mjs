@@ -97,6 +97,31 @@ const gitAtToday = (root) => {
   return (args, opts = {}) => git(args, { env, ...opts });
 };
 
+const jsonManifest = (version) => `${JSON.stringify({ version, minEngineVersion: '60822.1' }, null, 2)}\n`;
+
+test('declaredPackVersion/withPackVersion: a pack.json is read and rewritten like a pack.mjs', () => {
+  assert.equal(declaredPackVersion(jsonManifest('60901.3')), '60901.3');
+  assert.equal(withPackVersion(jsonManifest('60901.3'), '60905.1'), jsonManifest('60905.1'));
+});
+
+test('bumpCommits/planBumps: a manifest converted to pack.json keeps its history, and the conversion is no bump', () => {
+  const { dir, work } = fixture();
+  try {
+    land(work, 'Alpha becomes data (#20)', { 'packs/alpha/pack.json': jsonManifest('60901.1') }, { date: '2026-09-03T10:00:00Z' });
+    sh(work, 'rm', '--quiet', 'packs/alpha/pack.mjs');
+    sh(work, 'commit', '--quiet', '--amend', '--no-edit');
+    sh(work, 'push', '--quiet', '--force', 'origin', 'main');
+    const git = makeGit(work);
+    assert.deepEqual(shelfPacks(git, 'HEAD'), ['alpha', 'beta']);
+    assert.deepEqual(bumpCommits(git, 'HEAD', 'alpha').map((b) => b.version), ['60901.1']);
+    const [alpha] = planBumps(git, 'HEAD', { today: TODAY }).filter((b) => b.id === 'alpha');
+    assert.equal(alpha.manifest, 'packs/alpha/pack.json');
+    assert.equal(alpha.text, jsonManifest('60905.1'));
+  } finally {
+    removeTree(dir);
+  }
+});
+
 test('isShippingFile: pack content ships; tests, the record and a repo\'s own packs do not', () => {
   assert.equal(isShippingFile('packs/alpha/RULES.md'), true);
   assert.equal(isShippingFile('packs/alpha/pack.mjs'), true);
@@ -298,7 +323,7 @@ test('renderHistory adds only the rows a record lacks, keeps hand-written rows v
   assert.match(text, /^\| 60905\.1 \| 2026-09-05 \| One \(#3\); Two \\\| piped \(#4\) \|$/m);
   assert.match(text, /^\| 60905\.2 \| 2026-09-05 \| _no pull request is attributed to this version_ \|$/m);
   assert.doesNotMatch(text, /hand-written preamble/);
-  assert.match(text, /^Records for `packs\/alpha\/pack\.mjs`'s `version` field/m);
+  assert.match(text, /^Records for the `version` field of `packs\/alpha\/`'s manifest/m);
   // Stable: rendering the rendered text adds nothing.
   assert.equal(renderHistory('alpha', text, history), text);
   assert.equal(pullNumber('No number here'), null);

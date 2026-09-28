@@ -359,7 +359,7 @@ test('a pack the canon renamed takes its old mount directory with it', async () 
   await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
 
   assert.ok(!existsSync(legacy), 'the abandoned directory is the second copy of a pack the member already has');
-  assert.ok(existsSync(join(root, MOUNT, 'packs', 'basics', 'pack.mjs')), 'and the live one is laid down'); // @real-entity a real rename and absorption are what this converges
+  assert.ok(existsSync(join(root, MOUNT, 'packs', 'basics', 'pack.json')), 'and the live one is laid down'); // @real-entity a real rename and absorption are what this converges
   removeTree(root);
 });
 
@@ -394,7 +394,7 @@ test('an absorbed pack takes its own leftover mount directory with it, the same 
   // ever sees both directories at once.
   assert.equal(r.status, 'ok', r.detail);
   assert.ok(!existsSync(legacy), 'the absorbed pack\'s leftover directory is swept, same as a renamed one');
-  assert.ok(existsSync(join(root, MOUNT, 'packs', 'basics', 'pack.mjs')), 'and the surviving pack is laid down'); // @real-entity a real rename and absorption are what this converges
+  assert.ok(existsSync(join(root, MOUNT, 'packs', 'basics', 'pack.json')), 'and the surviving pack is laid down'); // @real-entity a real rename and absorption are what this converges
   removeTree(root);
 });
 

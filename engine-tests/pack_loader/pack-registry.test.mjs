@@ -182,6 +182,117 @@ test('discoverPacks: a broken local pack.mjs is isolated — an error, not a thr
   }
 });
 
+// Like makeLocalRoot, but each pack is a map of file name to content.
+function makeLocalTree(packs) {
+  const root = mkdtempSync(join(tmpdir(), 'claudinite-localpacks-'));
+  for (const [name, files] of Object.entries(packs)) {
+    const dir = join(root, '.claudinite', 'local', 'packs', name);
+    mkdirSync(dir, { recursive: true });
+    for (const [file, content] of Object.entries(files)) writeFileSync(join(dir, file), content);
+  }
+  return root;
+}
+
+const ROUTING = { belongs: 'this demo local pack', excludes: 'anything a canon pack owns' };
+
+test('discoverPacks: a pack.json manifest is a pack, read as data', async () => {
+  const root = makeLocalTree({ proj: { 'pack.json': JSON.stringify({ ruleRoutingGuidance: ROUTING, seededByDefault: false }) } });
+  try {
+    const { packs, errors } = await discoverPacks({ localRoot: root });
+    assert.deepEqual(errors, []);
+    const local = packs.find((p) => p.id === 'proj');
+    assert.ok(local, 'the pack.json pack is discovered');
+    assert.equal(local.local, true);
+    assert.deepEqual(local.ruleRoutingGuidance, ROUTING);
+  } finally {
+    removeTree(root);
+  }
+});
+
+test('discoverPacks: where a directory carries both manifests, pack.json wins', async () => {
+  const root = makeLocalTree({
+    proj: {
+      'pack.json': JSON.stringify({ ruleRoutingGuidance: ROUTING }),
+      'pack.mjs': `export default { ruleRoutingGuidance: { belongs: 'the module', excludes: 'the module' } };`,
+    },
+  });
+  try {
+    const { packs, errors } = await discoverPacks({ localRoot: root });
+    assert.deepEqual(errors, []);
+    assert.deepEqual(packs.find((p) => p.id === 'proj').ruleRoutingGuidance, ROUTING);
+  } finally {
+    removeTree(root);
+  }
+});
+
+test('discoverPacks: a pack.json that does not parse is a reported fault, and its neighbours load', async () => {
+  const root = makeLocalTree({
+    ok: { 'pack.json': JSON.stringify({ ruleRoutingGuidance: ROUTING }) },
+    broken: { 'pack.json': '{ "ruleRoutingGuidance": ' },
+  });
+  try {
+    const { packs, errors } = await discoverPacks({ localRoot: root });
+    assert.ok(packs.some((p) => p.id === 'ok'));
+    assert.ok(!packs.some((p) => p.id === 'broken'));
+    assert.ok(errors.some((e) => /broken/.test(e.what) && /pack\.json/.test(e.fix)), JSON.stringify(errors));
+  } finally {
+    removeTree(root);
+  }
+});
+
+test('discoverPacks: a JSON relevanceDetector writes its patterns as strings or { source, flags }', async () => {
+  const relevanceDetector = {
+    about: 'a thing',
+    paths: '^thing\\.txt$',
+    text: [{ source: '^THING', flags: 'im' }, 'x+'],
+    search: ['thing'],
+  };
+  const root = makeLocalTree({ proj: { 'pack.json': JSON.stringify({ ruleRoutingGuidance: ROUTING, relevanceDetector }) } });
+  try {
+    const { packs, errors } = await discoverPacks({ localRoot: root });
+    assert.deepEqual(errors, []);
+    const { relevanceDetector: loaded } = packs.find((p) => p.id === 'proj');
+    assert.ok(loaded.paths.test('thing.txt') && !loaded.paths.test('a/thing.txt'));
+    assert.deepEqual(loaded.text.map((r) => [r.source, r.flags]), [['^THING', 'im'], ['x+', '']]);
+  } finally {
+    removeTree(root);
+  }
+});
+
+test('discoverPacks: a pattern that does not compile fails the pack\'s load, naming it', async () => {
+  const root = makeLocalTree({ proj: { 'pack.json': JSON.stringify({ ruleRoutingGuidance: ROUTING, relevanceDetector: { about: 'a thing', paths: '(' } }) } });
+  try {
+    const { packs, errors } = await discoverPacks({ localRoot: root });
+    assert.ok(!packs.some((p) => p.id === 'proj'));
+    assert.ok(errors.some((e) => /proj/.test(e.what) && /regular expression/i.test(e.what)), JSON.stringify(errors));
+  } finally {
+    removeTree(root);
+  }
+});
+
+// Pack contributions are retired (#2395): a manifest still carrying either field loads
+// clean, and neither the field nor a seam beside it yields a rule.
+test('discoverPacks: a retired contributes or contributedRules loads, and no pack rule comes of it', async () => {
+  const root = makeLocalTree({
+    proj: {
+      'pack.mjs': `export default { ruleRoutingGuidance: ${JSON.stringify(ROUTING)}, contributedRules: () => [{ id: 'seam-rule', run: () => [] }] };`,
+      'contributed-rules.mjs': `export default () => [{ id: 'file-rule', run: () => [] }];`,
+    },
+    giver: { 'pack.json': JSON.stringify({ ruleRoutingGuidance: ROUTING, contributes: { barriers: [{ id: 'acme-barrier', edges: [] }] } }) },
+  });
+  try {
+    const { packs, errors } = await discoverPacks({ localRoot: root });
+    assert.deepEqual(errors, []);
+    const mine = packs.filter((p) => p.id === 'proj' || p.id === 'giver');
+    assert.equal(mine.length, 2);
+    const { packRules } = await import('../../engine/checks/run-active-pack-rules.mjs');
+    const ids = packRules(mine).map((r) => r.id);
+    for (const id of ['seam-rule', 'file-rule', 'acme-barrier']) assert.ok(!ids.includes(id), `${id} ran`);
+  } finally {
+    removeTree(root);
+  }
+});
+
 test('discoverPacks: a non-directory at the local-packs path is a reported fault, not a throw', async () => {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-nondir-'));
   mkdirSync(join(root, '.claudinite', 'local'), { recursive: true });
