@@ -1,5 +1,5 @@
 {
-  "version": "60927.1",
+  "version": "60928.1",
   "minEngineVersion": "60928.1",
   "ruleRoutingGuidance": {
     "belongs": "scheduled work — the work-item queue, the executor, the task contract and its signals, run records, code-work, delivery",

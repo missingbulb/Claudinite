@@ -180,3 +180,25 @@
   pack's `ruleRoutingGuidance` excludes and routes to `claudinite-canon-curation`, and a
   growth-extract run may write only the repo's own local packs.
 - **Actor:** run 36347796455, work item #2377.
+
+## 2026-09-28 · declined · load searching-for-a-tool before the ToolSearch merge-to-main asks for
+- **Source:** capture 2026-09-28 session f6b90b34 (#2383) at 10:18Z, and this run at 10:25Z: both
+  followed step 1 of `merge-to-main` verbatim, both were denied `skill-not-loaded-for-call
+  ToolSearch needs searching-for-a-tool`, and both spent a turn loading it.
+  `packs/git-github/skills/merge-to-main/SKILL.md:17` is the corpus's only instruction to call
+  `ToolSearch`, so the denial is deterministic on every merge this repo's owner authorises.
+- **Reason:** routing, not strength. The fix is one clause in a canon pack's skill, which this local
+  pack's `ruleRoutingGuidance` excludes, and a rule here telling sessions what the guard's own
+  message already says would carry the cost without fixing the cause. Filed as #2389 instead.
+- **Actor:** the growth-extract run over the 2026-09-28 window, work item #2386.
+
+## 2026-09-28 · declined · pass the merge-policy engine origin/main, not the base branch's bare name
+- **Source:** this run. `deliver-pr.md`'s fenced block reads `--base <the PR's base branch>`, so the
+  substitution is `--base main`; local `main` sat at bd944ef1 (#2281, 2026-09-22) against
+  `origin/main` at f170024, and the verdict came back `AUTOMERGE: no` over six days of history the
+  run had not written. `--base origin/main` gives `AUTOMERGE: yes`.
+- **Reason:** routing, and already covered. The session-side half is git-github-advanced's "never
+  branch from the bare local `main` in a checkout nothing keeps current", which this case is one
+  more dressing of; what is new is the doc inviting the bare name, and `claudinite-tasks` is a canon
+  pack this run may not write. Filed as #2391 instead.
+- **Actor:** the growth-extract run over the 2026-09-28 window, work item #2386.

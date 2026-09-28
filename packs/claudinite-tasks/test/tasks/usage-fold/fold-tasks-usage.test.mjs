@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   foldTasksUsage, foldDays, foldHours, costsByRun, withItemCosts, addDayToWeek, isoWeek,
-} from '../../../tasks/tasks-usage-fold/fold-tasks-usage.mjs';
+} from '../../../tasks/usage-fold/fold-tasks-usage.mjs';
 import {
   encodeTasksUsageFile, decodeTasksUsageFile, renderTasksUsageFile, withoutStamp,
   WEEK_GROUPS,

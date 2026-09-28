@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   parseLogName, parseEntries,
-  parseCommitLog, dayFieldsFrom, dayLadder, deepenHistory,
+  parseCommitLog, dayFieldsFrom, dayLadder, deepenHistory, deliverFolds,
 } from '../../../tasks/usage-fold/worker.mjs';
 import { parseLogFilename, logFilename } from '../../../../claudinite-growth/capture-log.mjs';
 
@@ -113,4 +113,45 @@ test('a deepen that could not run says so, rather than passing for one that did'
     throw new Error('the server will not deepen');
   };
   assert.equal(deepenHistory(git, '/r', 'https://x/y', 'main', '2026-07-22T00:00:00Z'), 'unchanged');
+});
+
+// --- one delivery for both halves ------------------------------------------------
+
+const half = (path, text, moves = {}) => async () => ({ files: { [path]: text }, moves, summary: `${path} folded` });
+const unchanged = (summary) => async () => ({ files: {}, moves: {}, summary });
+const recorder = () => {
+  const calls = [];
+  return { calls, deliver: async (args) => { calls.push(args); return { number: 7, reused: false, merged: true, branch: 'b' }; } };
+};
+
+test('deliverFolds puts both halves\' files, and both moves, on ONE pull request', async () => {
+  const { calls, deliver } = recorder();
+  await deliverFolds({
+    halves: { sessions: half('a.json', 'A', { 'old-a': 'a.json' }), machinery: half('b.json', 'B', { 'old-b': 'b.json' }) },
+    deliver, automerge: 'x', log: () => {},
+  });
+  assert.equal(calls.length, 1);
+  assert.deepEqual(calls[0].files, { 'a.json': 'A', 'b.json': 'B' });
+  assert.deepEqual(calls[0].moves, { 'old-a': 'a.json', 'old-b': 'b.json' });
+});
+
+test('deliverFolds opens nothing when neither half changed a byte', async () => {
+  const { calls, deliver } = recorder();
+  await deliverFolds({ halves: { sessions: unchanged('s'), machinery: unchanged('m') }, deliver, automerge: 'x', log: () => {} });
+  assert.equal(calls.length, 0);
+});
+
+test('a half that throws costs only its own file: the other still lands, then the run fails loud', async () => {
+  const { calls, deliver } = recorder();
+  const lines = [];
+  await assert.rejects(
+    deliverFolds({
+      halves: { sessions: async () => { throw new Error('logs branch unreadable'); }, machinery: half('b.json', 'B') },
+      deliver, automerge: 'x', log: (l) => lines.push(l),
+    }),
+    /sessions.*logs branch unreadable/,
+  );
+  assert.equal(calls.length, 1);
+  assert.deepEqual(calls[0].files, { 'b.json': 'B' });
+  assert.ok(lines.some((l) => /sessions half failed/.test(l)), lines.join('\n'));
 });
