@@ -20,7 +20,7 @@ export const DEFAULT_DOC = 'packs/basics/barriers.md';
 //                               gateDir? }] }
 //
 // The runner's generic seam hands this pack the ACTIVE pack list
-// (`contributedRules` on pack.mjs); this factory builds a first-class rule per
+// (the `contributedRules` seam); this factory builds a first-class rule per
 // contribution — the contribution's own id, so per-rule overrides
 // (`rules: { "<id>": "off" }`) and acceptances keep addressing it exactly as
 // they addressed the formerly code-composed rule. `gateDir` is the one
@@ -84,7 +84,7 @@ export function contributedBarrierRules(activePacks) {
   for (const pack of activePacks) {
     const contrib = pack.contributes?.barriers;
     if (contrib === undefined || contrib === null) continue;
-    const manifest = `${pack.local ? LOCAL_PACKS_SUBDIR : 'packs'}/${pack.id}/pack.mjs`;
+    const manifest = `${pack.local ? LOCAL_PACKS_SUBDIR : 'packs'}/${pack.id}/${pack.manifestFile ?? 'pack.json'}`;
     if (!Array.isArray(contrib)) {
       rules.push(faultRule(manifest, `the "${pack.id}" pack's contributes.barriers is not an array`));
       continue;

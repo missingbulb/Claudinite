@@ -19,6 +19,6 @@ change, and a week with no shipping change has nothing to record. `supersede_exi
 record still under review is retired by the next week's — which recomputes every missing row from
 the history and therefore contains it — rather than standing beside a second pull request for the
 same files. The automerge policy is the pack's own `pack-version-history`
-diff class (`merge-rules.json` beside `pack.mjs`): a run that touched anything but a version
+diff class (`merge-rules.json` beside the manifest): a run that touched anything but a version
 record parks for a person. Agentless: which pull requests a version carried is a fact of the
 history, and the subject of a squash merge is the pull request's title.

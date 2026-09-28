@@ -296,13 +296,13 @@ test('packs without contributions add nothing; a malformed contribution is a blo
   assert.deepEqual(contributedBarrierRules([{ id: 'plain' }, { id: 'other', contributes: {} }]), []);
   const rules = contributedBarrierRules([
     { id: 'bad-shape', contributes: { barriers: { id: 'not-an-array' } } },
-    { id: 'no-id', local: true, contributes: { barriers: [{ edges: [] }] } },
+    { id: 'no-id', local: true, manifestFile: 'pack.mjs', contributes: { barriers: [{ edges: [] }] } },
   ]);
   assert.equal(rules.length, 2);
   const findings = rules.flatMap((r) => r.run());
   assert.equal(findings.length, 2);
   assert.ok(findings.every((f) => f.on_fail === 'block'));
-  assert.equal(findings[0].file, 'packs/bad-shape/pack.mjs');
+  assert.equal(findings[0].file, 'packs/bad-shape/pack.json');
   assert.match(findings[0].what, /not an array/);
   assert.match(findings[1].file, /local\/packs\/no-id\/pack\.mjs$/);
   assert.match(findings[1].what, /no string "id"/);

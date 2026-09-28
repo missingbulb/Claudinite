@@ -26,7 +26,7 @@ only to extend the *mechanism*, never to add one project's rule or task:
 | Engine piece | Home | What it is |
 |---|---|---|
 | Checks runner + hooks | [`checks/`](engine/checks/README.md) | the dependency-free runner, its lib, the Stop hook, the PreToolUse guard — runs the packs' checks; owns no rule itself |
-| Pack discovery + rules index | `engine/pack_loader/pack-registry.mjs`, `engine/pack_loader/generate-rules-index.mjs` | structural scan of `packs/*/pack.mjs`; the generated `@`-import index the repo's CLAUDE.md loads the active packs' prose through (#807) |
+| Pack discovery + rules index | `engine/pack_loader/pack-registry.mjs`, `engine/pack_loader/generate-rules-index.mjs` | structural scan of `packs/*/pack.json` (or `pack.mjs`); the generated `@`-import index the repo's CLAUDE.md loads the active packs' prose through (#807) |
 | Skill mounting | `engine/pack_loader/mount-skills.mjs` | per-session symlink of the active packs' bundled-skill union (`<pack>/skills/<name>/`) |
 | Adoption interviews | `packs/claudinite-lifecycle/skills/adopt-claudinite/interview.mjs` | the gap computation (a pack's declared questions minus the entry's stored answers) and the SessionStart nudge; owns no question itself — bundled in the adoption skill, resolved fail-soft by the engine |
 | Migration-record mechanism | [`engine/migrations/`](engine/migrations/README.md) | the read-side resolver and write-side rename for a relocation; a record lives under the flow that owns it (the engine's, or `packs/<pack>/migrations/`), records are kept forever, and vendoring's 7-day recency window decides what ships to consumers |
@@ -41,7 +41,7 @@ scheduled — a supported state, not a degraded one. The engine is pack distribu
 
 ## What a pack contributes
 
-A pack is a directory `packs/<name>/pack.mjs` exporting contribution slots (any subset
+A pack is a directory `packs/<name>/` whose `pack.json` manifest states what the tree cannot, beside contribution slots (any subset
 — a pack may carry only prose, only a task, only checks):
 
 | Slot | Field | Carries |
@@ -49,7 +49,7 @@ A pack is a directory `packs/<name>/pack.mjs` exporting contribution slots (any 
 | **Prose** | `<pack>/RULES.md` | always-relevant-to-a-project guidance, injected into context when the pack is active — found by convention, not declared |
 | **Checks** | `<pack>/worldRules/`, `<pack>/workRules/` | deterministic conformance rules run at every Stop and in CI — one module per rule, the directory naming its scope; found by convention, not declared |
 | **Skills** | `<pack>/skills/<name>/` | activity-scoped procedures bundled in the pack's own tree, mounted wherever the pack is declared — found by convention, not declared |
-| **Scheduled tasks** | `<pack>/tasks/<name>/` | a `task.json` declaration (frequency, preconditions, expected outcome; the agentic fields optional) plus its worker — `task.md` for an agent stage, `worker.mjs` for deterministic code-work — found structurally by the repo's scheduler, not listed on `pack.mjs` |
+| **Scheduled tasks** | `<pack>/tasks/<name>/` | a `task.json` declaration (frequency, preconditions, expected outcome; the agentic fields optional) plus its worker - `task.md` for an agent stage, `worker.mjs` for deterministic code-work - found structurally by the repo's scheduler, not listed on the manifest |
 | **Questions** | `questions: [...]` | mandatory adoption-interview questions; the owner's answers live verbatim on the project's pack entry ([packs/README.md](packs/README.md#adoption-interview-questions)) |
 | **Contributed config** | `contributes: { <pack>: ... }` | configuration addressed to another (required) pack — a fixed folder-barrier is the canonical case. The target pack interprets its active contributors' data via its own `contributedRules(activePacks)` seam, returning first-class rules; the runner wires the two together, so composition is declaration + data, never a cross-pack import |
 

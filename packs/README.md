@@ -1,6 +1,6 @@
 # packs/ — the corpus content, active by declaration
 
-Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session start when the pack is active), its **checks** (run at every Stop), and its **bundled skills** (`<pack>/skills/`, mounted at session start). **No pack is active by default** — every pack, `basics` included, activates only when declared in `.claudinite-settings.json` (bootstrap's `--init` seeds `basics` plus the fingerprinted technology packs; the nightly update backfills the explicit `basics` declaration into existing consumers). Discovery is structural — any `packs/<name>/pack.mjs` is a pack, and that manifest is the pack's index: what it owns, the checks it runs in each scope, the skills it bundles. A pack's `README.md` is **optional** and carries only what the manifest cannot — provenance, design rationale, an index of its prose. A README that restates the manifest is duplication with a drift risk, and several had already drifted.
+Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session start when the pack is active), its **checks** (run at every Stop), and its **bundled skills** (`<pack>/skills/`, mounted at session start). **No pack is active by default** - every pack, `basics` included, activates only when declared in `.claudinite-settings.json` (bootstrap's `--init` seeds `basics` plus the fingerprinted technology packs; the nightly update backfills the explicit `basics` declaration into existing consumers). Discovery is structural - any `packs/<name>/` carrying a `pack.json` (or `pack.mjs`) is a pack, and that manifest is the pack's index: what it owns, the checks it runs in each scope, the skills it bundles. A pack's `README.md` is **optional** and carries only what the manifest cannot - provenance, design rationale, an index of its prose. A README that restates the manifest is duplication with a drift risk, and several had already drifted.
 
 ## Packs
 
@@ -88,13 +88,19 @@ The `"packs"` list and the rest of `.claudinite-settings.json` are validated **w
 
 ## Pack dependencies (`requires`)
 
-A pack states the packs it depends on in an optional `requires` field on its `pack.mjs` — a plain array of pack ids: a project-class pack leans on the framework that implements it (`spec-driven-product` requires `executable-requirements`).
+A pack states the packs it depends on in an optional `requires` field on its manifest - a plain array of pack ids: a project-class pack leans on the framework that implements it (`spec-driven-product` requires `executable-requirements`).
 
 This is **not a check** — a pack can't be imported without its dependencies, so the resolution happens **when the declaration is written**, at bootstrap `--init` and the update backfill ([bootstrap.md](../bootstrap.md) Part 2): [`resolveDeclaredPacks`](../engine/pack_loader/pack-registry.mjs) pulls each declared pack's transitive `requires` closure into `.claudinite-settings.json`. The prerequisite is materialized and visible in the file — droppable like every other entry, the same reason `basics` is written explicitly rather than defaulted — rather than resolved implicitly at run time. Declared ids keep their order; each pack's pulled-in dependencies land right after it.
 
-## The manifest spec (`pack.mjs`)
+## The manifest spec (`pack.json`)
 
-What a `pack.mjs` may and must carry is declared once, in [`engine/pack_loader/pack-schema.mjs`](../engine/pack_loader/pack-schema.mjs), and [`validateManifest`](../engine/pack_loader/pack-schema.mjs) is the only thing that judges a manifest against it. The **loader** runs it on every pack it imports, canon and local alike, so an incomplete or malformed declaration surfaces as a blocking `config` error at load — the same class as invalid JSON in `.claudinite-settings.json`, and for the same reason: a required manifest field is part of the pack contract, not a conformance opinion about a repo's content. A conformance *check* would have to be declared by a pack, run only when that pack is active, and re-derive the manifest by reading its source text — enforcing the shape of the system from inside one of its members.
+A pack's manifest is `pack.json`: data, read without running anything. The loader still reads a `pack.mjs` default-exporting the same object, and where a directory carries both the JSON wins ([`pack-manifest.mjs`](../engine/pack_loader/pack-manifest.mjs)). Three things JSON cannot spell have a form of their own:
+
+- **A `relevanceDetector` pattern** is its source string (`"paths": "^([^/]+/)?package\\.json$"`), or `{ "source": …, "flags": "m" }` where it needs a flag; the loader compiles both.
+- **A templated `env` field** is `{ "forEach", "whenUnset", "template" }` (below).
+- **The `contributedRules` seam** is code, so it is a `contributed-rules.mjs` beside the manifest default-exporting `(activePacks) => rules`, found by name like `worldRules/`.
+
+What a manifest may and must carry is declared once, in [`engine/pack_loader/pack-schema.mjs`](../engine/pack_loader/pack-schema.mjs), and [`validateManifest`](../engine/pack_loader/pack-schema.mjs) is the only thing that judges a manifest against it. The **loader** runs it on every pack it imports, canon and local alike, so an incomplete or malformed declaration surfaces as a blocking `config` error at load - the same class as invalid JSON in `.claudinite-settings.json`, and for the same reason: a required manifest field is part of the pack contract, not a conformance opinion about a repo's content. A conformance *check* would have to be declared by a pack, run only when that pack is active, and re-derive the manifest by reading its source text - enforcing the shape of the system from inside one of its members.
 
 Reporting is not fatal: a pack whose declaration is incomplete still loads and still runs its checks. Silently disabling a repo's own rules is a worse failure than the one being reported. The field vocabulary is **closed** — an undeclared key is an error, so a typo (`rule:`, `skill:`) fails loudly instead of being ignored forever.
 
@@ -219,7 +225,7 @@ can show which Claudinite packs it runs. It is `badge.svg` beside the pack's man
 convention rather than named by it (above).
 
 **The badge file is the artwork's source of truth.** Its colour and its glyph live in the SVG, not
-in `pack.mjs`: they are visible to anyone who opens the file, editable without touching a manifest,
+in the manifest: they are visible to anyone who opens the file, editable without touching a manifest,
 and reviewable as the image they describe. The glyph is an SVG path on the 32-unit grid, stroked in
 white with a round-capped 2.2 line — so a dot is a zero-length segment (`M16 16h0`) and the whole
 mark is one path. No `<text>` anywhere, so a badge renders identically wherever it is loaded.
@@ -246,23 +252,23 @@ titled with the pack whose directory holds it.
 
 ## Environment requirements (`env`)
 
-A pack may declare a toolchain (or per-repo deps) a cloud session needs but the Claude Code Web base image doesn't ship — the `flutter` pack needs the Flutter SDK; the `node` pack needs the repo's `npm` modules. Install belongs in the environment **image** (built once, snapshotted, reused), never a per-session hook. A pack declares it in an optional `env` field on its `pack.mjs`:
+A pack may declare a toolchain (or per-repo deps) a cloud session needs but the Claude Code Web base image doesn't ship - the `flutter` pack needs the Flutter SDK; the `node` pack needs the repo's `npm` modules. Install belongs in the environment **image** (built once, snapshotted, reused), never a per-session hook. A pack declares it in an optional `env` field on its manifest: a `label` naming it in the check's messages, a `setup` that is an idempotent install fragment for the image, and a `probe` that exits 0 iff the requirement is present in the running environment:
 
-```js
-env: {
-  label: 'Flutter SDK',                         // human name for the check's messages
-  setup: '<bash>',                              // idempotent install fragment for the image
-  probe: 'command -v flutter >/dev/null 2>&1',  // exit 0 iff present in the running env
+```json
+"env": {
+  "label": "Flutter SDK",
+  "setup": "<bash>",
+  "probe": "command -v flutter >/dev/null 2>&1"
 }
 ```
 
-`setup` and `probe` may be a **string**, or a **function of the project's per-pack params** — a project supplies parameters about its own usage as `config` on the pack's entry in `.claudinite-settings.json`, so one pack fragment fits every repo. The `node` pack uses this for where `npm ci` runs:
+`setup` and `probe` may be a **string**, or a **template repeated once per value of one of the project's per-pack params** - a project supplies parameters about its own usage as `config` on the pack's entry in `.claudinite-settings.json`, so one pack fragment fits every repo. `{}` in the `template` stands for the value, `whenUnset` answers for an absent or empty param, and the copies of a `setup` run as lines while the copies of a `probe` must all hold. The `node` pack uses this for where `npm ci` runs:
 
-```js
-// packs/node/pack.mjs
-setup: (p) => (p.dirs?.length ? p.dirs : ['.']).map((d) => `( cd "${d}" && npm ci ) || true`).join('\n'),
-// a repo's .claudinite-settings.json: { "packs": [ { "id": "node", "config": { "dirs": ["firebase/functions"] } } ] }
+```json
+"setup": { "forEach": "dirs", "whenUnset": ["."], "template": "( cd \"{}\" && npm ci ) || true" }
 ```
+
+and a repo points it elsewhere with `{ "packs": [ { "id": "node", "config": { "dirs": ["firebase/functions"] } } ] }`. A `pack.mjs` may still give either as a function of the params.
 
 [`env-requirements.mjs`](../engine/pack_loader/env-requirements.mjs) drives everything from the repo's **active** packs (same activation as prose/checks):
 
@@ -277,11 +283,11 @@ Wiring a consumer up — the check hook + the pack entries' `config`, with the s
 A pack that needs to know the project's **intent** before it can provide value (a research wiki
 can't cite anything before learning what the product is; a visual-testing pack can't assert
 anything before learning how this repo should be tested) declares the mandatory questions its
-adoption must ask, in an optional `questions` field on its `pack.mjs` — stable-id'd entries,
+adoption must ask, in an optional `questions` field on its manifest - stable-id'd entries,
 `distill` saying how the answer becomes the entry's `config`:
 
-```js
-questions: [{ id: 'ui_testing', prompt: 'How are the executable UI requirements exercised — …?', distill: 'record the mechanism as config.ui_testing …' }],
+```json
+"questions": [{ "id": "ui_testing", "prompt": "How are the executable UI requirements exercised - …?", "distill": "record the mechanism as config.ui_testing …" }]
 ```
 
 Only a pack a project **chooses** earns one. A pack that arrives through another's `requires` was

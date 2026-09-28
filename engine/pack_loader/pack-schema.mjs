@@ -1,5 +1,5 @@
 // THE PACK MANIFEST SPEC — the single declarative statement of what a
-// `pack.mjs` may and must carry. Everything a pack declares about itself is
+// `pack.json` (or `pack.mjs`) may and must carry. Everything a pack declares about itself is
 // described here once, and `validateManifest` is the only thing that judges a
 // manifest against it. The loader calls it on every pack it imports (canon and a
 // consumer's own `local/packs/` alike), so a malformed or incomplete manifest
@@ -125,7 +125,7 @@ export function validateManifest(mod, { label, skillDirs = [] } = {}) {
   const err = (what, fix) => errors.push({ what: `${at}${what}`, fix });
 
   if (!isPlainObject(mod)) {
-    err('the pack has no object default export', 'export default { version, ruleRoutingGuidance, ... } from its pack.mjs');
+    err('the manifest is not an object', 'make the manifest an object { version, ruleRoutingGuidance, ... }');
     return errors;
   }
 

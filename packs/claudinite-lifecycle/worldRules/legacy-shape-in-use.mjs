@@ -16,8 +16,8 @@ import * as findings from '../../../engine/checks/helpers/findings.mjs';
 // A declared-checks file the member wrote: its own local packs', a skill's included.
 const LOCAL_DECLARED = /^\.claudinite\/local\/packs\/.*declared-checks\.json$/;
 // A manifest the member wrote: its own local packs'.
-const LOCAL_MANIFEST = /^\.claudinite\/local\/packs\/[^/]+\/pack\.mjs$/;
-const RETIRED_FINGERPRINT = /^[ \t]*(detect|marker)[ \t]*:/m;
+const LOCAL_MANIFEST = /^\.claudinite\/local\/packs\/[^/]+\/pack\.(?:json|mjs)$/;
+const RETIRED_FINGERPRINT = /^[ \t]*"?(detect|marker)"?[ \t]*:/m;
 
 // THE ADVISORY HALF OF EVERY DECLARATION-SHAPE TOLERANCE the engine still
 // carries. Each of those tolerances lets a member's own file be read in a shape

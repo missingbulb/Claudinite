@@ -1,6 +1,6 @@
 ---
 name: writing-pack-prose
-description: How pack prose is written: brevity, structure, triggerability, the provenance marker, a pack's pitch. Loaded for any edit of a pack's RULES.md, SKILL.md or pack.mjs, and when landing a lesson as prose.
+description: How pack prose is written: brevity, structure, triggerability, the provenance marker, a pack's pitch. Loaded for any edit of a pack's RULES.md, SKILL.md or manifest, and when landing a lesson as prose.
 metadata:
   body: guidelines
   usage:
@@ -8,6 +8,7 @@ metadata:
   force-load-on-file-edits-paths:
     - "**/packs/*/RULES.md"
     - "**/packs/*/skills/*/SKILL.md"
+    - "**/packs/*/pack.json"
     - "**/packs/*/pack.mjs"
 ---
 

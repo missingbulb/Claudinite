@@ -5,6 +5,7 @@ import { RENAMED_PACKS } from '../pack_loader/renamed-packs.mjs';
 import { SETTINGS_FILE } from '../settings-file.mjs';
 import { LOCAL_PACK_ROOT, taskDirsWithJson, updateTaskSchedulingFields } from './task-declarations-to-json.mjs';
 import { markPack, convertReferences } from '../checks/helpers/provenance.mjs';
+import { MANIFEST_JSON, MANIFEST_MODULE, manifestFileIn } from '../pack_loader/pack-conventions.mjs';
 
 // <corpus>/engine/migrations/ — records are addressed corpus-relative, because they
 // no longer share one directory with this module: an engine record sits beside it,
@@ -262,7 +263,7 @@ export async function applyLocalDeclarationNormalization(migration, { read, writ
     const id = typeof entry === 'string' ? entry : entry?.id;
     if (typeof id !== 'string' || id.startsWith(LOCAL_DECL)) { packs.push(entry); continue; }
     // A bare id: local only if this repo actually carries that pack.
-    if (!(await exists(`.claudinite/local/packs/${id}/pack.mjs`))) { packs.push(entry); continue; }
+    if (!(await exists(`.claudinite/local/packs/${id}/${MANIFEST_JSON}`)) && !(await exists(`.claudinite/local/packs/${id}/${MANIFEST_MODULE}`))) { packs.push(entry); continue; }
     const token = `${LOCAL_DECL}${id}`;
     packs.push(typeof entry === 'string' ? token : { ...entry, id: token });
     done.push(`${file}: ${id} -> ${token}`);
@@ -555,7 +556,7 @@ export async function applyProvenanceMarking(migration, io) {
   const applied = [];
   for (const pack of (io.listDir(LOCAL_PACK_ROOT) ?? []).sort()) {
     const dir = `${LOCAL_PACK_ROOT}/${pack}`;
-    if (!io.exists(`${dir}/pack.mjs`)) continue;
+    if (!manifestFileIn((f) => io.exists(`${dir}/${f}`))) continue;
     applied.push(...convertReferences(dir, io));
     applied.push(...markPack(dir, io));
   }

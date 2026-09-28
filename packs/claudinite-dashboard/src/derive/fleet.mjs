@@ -54,7 +54,7 @@ const ms = (t) => (t == null ? null : new Date(t).getTime());
 // so prose naming the field can never be mistaken for it, and null — never a guess —
 // when the pattern is not there.
 const ENGINE_VERSION_RE = new RegExp(String.raw`ENGINE_VERSION\s*=\s*'?(${VERSION_SOURCE})'?`);
-const PACK_VERSION_RE = new RegExp(String.raw`(?:^|[{,\s])version:\s*'?(${VERSION_SOURCE})'?`, 'm');
+const PACK_VERSION_RE = new RegExp(String.raw`(?:^|[{,\s])"?version"?:\s*['"]?(${VERSION_SOURCE})['"]?`, 'm');
 
 // Every pack the canon's catalog offers, at the version its Version column carries:
 // the whole canon side priced in one read. Null when the catalog has no such column,

@@ -70,3 +70,8 @@
 - **Actor:** @missingbulb (owner).
 - **Mechanism:** `canonVersions` reads `packs/directory.GENERATED.md` once; a pack it does not
   offer, or a catalog it cannot read, falls back to the manifest.
+
+## 2026-09-28 · policy-changed · prices a pack off pack.json before pack.mjs
+- **Reason:** the canon's manifests may now be pack.json.
+- **Actor:** @missingbulb (owner), asking for pack.json manifests.
+- **Mechanism:** the worker's manifest read tries pack.json, then pack.mjs.

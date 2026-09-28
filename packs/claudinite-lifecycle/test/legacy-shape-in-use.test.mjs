@@ -144,3 +144,11 @@ test('legacy-shape-in-use: a local pack still spelling the retired fingerprint f
   assert.equal(findings[0].line, 3);
   assert.match(findings[0].what, /retired fingerprint/);
 });
+
+test('legacy-shape-in-use: a local pack.json spelling the retired fingerprint fields is reported too', () => {
+  const findings = rule.run(ctx({
+    [SETTINGS_FILE]: JSON.stringify({ packs: ['local/own'] }),
+    '.claudinite/local/packs/own/pack.json': '{\n  "ruleRoutingGuidance": { "belongs": "b", "excludes": "e" },\n  "detect": null\n}\n',
+  }));
+  assert.deepEqual(findings.map((f) => [f.file, f.line]), [['.claudinite/local/packs/own/pack.json', 3]]);
+});
