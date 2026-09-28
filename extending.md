@@ -51,7 +51,6 @@ A pack is a directory `packs/<name>/` whose `pack.json` manifest states what the
 | **Skills** | `<pack>/skills/<name>/` | activity-scoped procedures bundled in the pack's own tree, mounted wherever the pack is declared — found by convention, not declared |
 | **Scheduled tasks** | `<pack>/tasks/<name>/` | a `task.json` declaration (frequency, preconditions, expected outcome; the agentic fields optional) plus its worker - `task.md` for an agent stage, `worker.mjs` for deterministic code-work - found structurally by the repo's scheduler, not listed on the manifest |
 | **Questions** | `questions: [...]` | mandatory adoption-interview questions; the owner's answers live verbatim on the project's pack entry ([packs/README.md](packs/README.md#adoption-interview-questions)) |
-| **Contributed config** | `contributes: { <pack>: ... }` | configuration addressed to another (required) pack — a fixed folder-barrier is the canonical case. The target pack interprets its active contributors' data via its own `contributedRules(activePacks)` seam, returning first-class rules; the runner wires the two together, so composition is declaration + data, never a cross-pack import |
 
 **Packs are independent.** A pack's code imports only its **own** files and the engine surface
 (`checks/`, `mount/`, the machinery `.mjs` at the `packs/`/`skills/` roots) — never another

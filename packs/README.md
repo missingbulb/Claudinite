@@ -94,11 +94,10 @@ This is **not a check** — a pack can't be imported without its dependencies, s
 
 ## The manifest spec (`pack.json`)
 
-A pack's manifest is `pack.json`: data, read without running anything. The loader still reads a `pack.mjs` default-exporting the same object, and where a directory carries both the JSON wins ([`pack-manifest.mjs`](../engine/pack_loader/pack-manifest.mjs)). Three things JSON cannot spell have a form of their own:
+A pack's manifest is `pack.json`: data, read without running anything. The loader still reads a `pack.mjs` default-exporting the same object, and where a directory carries both the JSON wins ([`pack-manifest.mjs`](../engine/pack_loader/pack-manifest.mjs)). Two things JSON cannot spell have a form of their own:
 
 - **A `relevanceDetector` pattern** is its source string (`"paths": "^([^/]+/)?package\\.json$"`), or `{ "source": …, "flags": "m" }` where it needs a flag; the loader compiles both.
 - **A templated `env` field** is `{ "forEach", "whenUnset", "template" }` (below).
-- **The `contributedRules` seam** is code, so it is a `contributed-rules.mjs` beside the manifest default-exporting `(activePacks) => rules`, found by name like `worldRules/`.
 
 What a manifest may and must carry is declared once, in [`engine/pack_loader/pack-schema.mjs`](../engine/pack_loader/pack-schema.mjs), and [`validateManifest`](../engine/pack_loader/pack-schema.mjs) is the only thing that judges a manifest against it. The **loader** runs it on every pack it imports, canon and local alike, so an incomplete or malformed declaration surfaces as a blocking `config` error at load - the same class as invalid JSON in `.claudinite-settings.json`, and for the same reason: a required manifest field is part of the pack contract, not a conformance opinion about a repo's content. A conformance *check* would have to be declared by a pack, run only when that pack is active, and re-derive the manifest by reading its source text - enforcing the shape of the system from inside one of its members.
 

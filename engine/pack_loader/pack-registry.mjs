@@ -2,7 +2,7 @@ import { readdirSync, existsSync } from 'node:fs';
 import { join, dirname, resolve, basename } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { validateManifest, normalizeManifest } from './pack-schema.mjs';
-import { applyPackConventions, bundledSkillDirs, ruleModuleFiles, RULE_DIRS, CONTRIBUTED_RULES_FILE, manifestFileIn } from './pack-conventions.mjs';
+import { applyPackConventions, bundledSkillDirs, ruleModuleFiles, RULE_DIRS, manifestFileIn } from './pack-conventions.mjs';
 import { readManifest } from './pack-manifest.mjs';
 import { canonicalPackId, canonicalPackIdAmong } from './renamed-packs.mjs';
 
@@ -237,22 +237,6 @@ async function scanPackDir(dir, { local, temp, subdir, checksFor }, errors) {
         dir: packDir,
       });
       continue;
-    }
-    // The contributed-rules seam, where the manifest leaves it unspoken: code beside a
-    // manifest that may be data. Imported whatever `checksFor` says, since the seam
-    // interprets OTHER packs' contributions and a caller running any rule may need it.
-    if (mod.contributedRules === undefined && existsSync(join(packDir, CONTRIBUTED_RULES_FILE))) {
-      try {
-        const seam = (await import(pathToFileURL(join(packDir, CONTRIBUTED_RULES_FILE)).href)).default;
-        if (typeof seam !== 'function') throw new Error('its default export is not a function');
-        mod = { ...mod, contributedRules: seam };
-      } catch (e) {
-        errors.push({
-          what: `${rel}/${CONTRIBUTED_RULES_FILE} failed to load: ${e.message}`,
-          fix: `default-export (activePacks) => rules from ${CONTRIBUTED_RULES_FILE}, or remove it`,
-          dir: packDir,
-        });
-      }
     }
     // A malformed `questions` manifest field is a load fault like any other —
     // reported here so the runner surfaces it pack-agnostically, no interview

@@ -1,7 +1,7 @@
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
 
 // Pack discovery EAGERLY IMPORTS the pack tree: `discoverPacks` imports every
-// module manifest and `contributed-rules.mjs` on disk and `scanSkillChecks` imports every
+// module manifest on disk and `scanSkillChecks` imports every
 // `<pack>/skills/<skill>/checks.mjs` beside it — before activation is consulted,
 // so a repo that declares none of them still loads all of them. Any module in
 // that import graph is therefore re-entered while it is still evaluating, if it
@@ -22,7 +22,7 @@ import { finding } from '../../../engine/checks/helpers/findings.mjs';
 // discovery graph. This walks the graph from the real manifests, with comments
 // and string bodies blanked first, and judges only the entry block.
 
-const SEED = /^(?:\.claudinite\/local\/packs|packs)\/[^/]+\/(?:pack\.mjs|contributed-rules\.mjs|skills\/[^/]+\/checks\.mjs)$/;
+const SEED = /^(?:\.claudinite\/local\/packs|packs)\/[^/]+\/(?:pack\.mjs|skills\/[^/]+\/checks\.mjs)$/;
 // The CLI-entry idiom the corpus uses: `import.meta.url === pathToFileURL(...)`.
 const ENTRY = /import\.meta\.url\s*===/;
 const AWAIT = /(?:^|[^\w.$])await[\s(]/;

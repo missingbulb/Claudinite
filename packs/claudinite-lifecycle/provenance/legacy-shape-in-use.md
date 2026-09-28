@@ -80,3 +80,9 @@
   by the pack.mjs name alone.
 - **Actor:** @missingbulb (owner), asking for pack.json manifests.
 - **Mechanism:** unchanged carrier; its path and field patterns name both spellings.
+
+## 2026-09-28 · scope-changed · names a local manifest still carrying contributes or contributedRules
+- **Reason:** both fields are retired and tolerated for one window (#2395); a member carrying one
+  has a barrier that enforces nothing and needs telling.
+- **Actor:** @missingbulb (owner), asking to drop pack contributions altogether.
+- **Mechanism:** unchanged carrier; one more pattern over local manifests.

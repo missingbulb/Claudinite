@@ -126,12 +126,9 @@ async function sweep() {
   // other active-pack rules; a malformed `questions` field arrives as a load fault
   // in packErrors above. Neither names a pack here.)
 
-  // The world rules: everything not scoped to the work. A broken contributedRules
-  // seam is a config-level fault surfaced here (the world runner owns diagnostics).
+  // The world rules: everything not scoped to the work.
   findings.push(...runActivePackRules(ctx, packs, {
     includeRule: (rule) => rule.scope !== 'work' && rule.scope !== 'action',
-    onContributeError: (pack, e) => findings.push(configError(
-      `the "${pack.id}" pack's contributedRules failed: ${e.message}`, 'fix the pack manifest, or the contribution it interprets')),
   }));
   // No timing record here: a clean world run prints nothing and exits 0, which is
   // the contract its callers read silence against. The Stop hook's own sweep

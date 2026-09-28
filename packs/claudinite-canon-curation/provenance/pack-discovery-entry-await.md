@@ -34,3 +34,8 @@
   by the pack.mjs name alone.
 - **Actor:** @missingbulb (owner), asking for pack.json manifests.
 - **Mechanism:** unchanged carrier; its path and field patterns name both spellings.
+
+## 2026-09-28 · scope-changed · discovery imports no contributed-rules.mjs any more
+- **Reason:** the seam file is gone with pack contributions.
+- **Actor:** @missingbulb (owner), asking to drop pack contributions altogether.
+- **Mechanism:** unchanged carrier; its import graph seeds from module manifests and skill checks.

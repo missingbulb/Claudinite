@@ -102,3 +102,10 @@
 - **Actor:** @missingbulb (owner), asking for pack.json manifests.
 - **Mechanism:** pack.json, which the loader prefers over pack.mjs; a canon pack now needs engine
   60928.1, the first to read it.
+
+## 2026-09-28 · scope-changed · pack contributions are retired, and basics interprets none
+- **Reason:** no pack contributed a barrier, so the seam built nothing; a pack's fixed barrier is a
+  declared forbidReferences check, and a repo's own is config.barriers.rules.
+- **Actor:** @missingbulb (owner), asking to drop pack contributions altogether.
+- **Mechanism:** none; contributed-rules.mjs and barriers.mjs are deleted, the engine calls no seam,
+  and legacy-shape-in-use names a local manifest still carrying either field until #2395.

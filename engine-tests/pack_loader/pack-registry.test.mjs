@@ -270,31 +270,24 @@ test('discoverPacks: a pattern that does not compile fails the pack\'s load, nam
   }
 });
 
-test('discoverPacks: a pack\'s contributed-rules.mjs is its contributedRules seam', async () => {
+// Pack contributions are retired (#2395): a manifest still carrying either field loads
+// clean, and neither the field nor a seam beside it yields a rule.
+test('discoverPacks: a retired contributes or contributedRules loads, and no pack rule comes of it', async () => {
   const root = makeLocalTree({
     proj: {
-      'pack.json': JSON.stringify({ ruleRoutingGuidance: ROUTING }),
-      'contributed-rules.mjs': `export default (activePacks) => activePacks.map((p) => ({ id: 'seen-' + p.id }));`,
+      'pack.mjs': `export default { ruleRoutingGuidance: ${JSON.stringify(ROUTING)}, contributedRules: () => [{ id: 'seam-rule', run: () => [] }] };`,
+      'contributed-rules.mjs': `export default () => [{ id: 'file-rule', run: () => [] }];`,
     },
-    plain: { 'pack.json': JSON.stringify({ ruleRoutingGuidance: ROUTING }) },
+    giver: { 'pack.json': JSON.stringify({ ruleRoutingGuidance: ROUTING, contributes: { barriers: [{ id: 'acme-barrier', edges: [] }] } }) },
   });
   try {
     const { packs, errors } = await discoverPacks({ localRoot: root });
     assert.deepEqual(errors, []);
-    assert.deepEqual(packs.find((p) => p.id === 'proj').contributedRules([{ id: 'a' }]), [{ id: 'seen-a' }]);
-    assert.equal(packs.find((p) => p.id === 'plain').contributedRules, undefined);
-  } finally {
-    removeTree(root);
-  }
-});
-
-test('discoverPacks: a contributed-rules.mjs exporting no function is a reported fault', async () => {
-  const root = makeLocalTree({
-    proj: { 'pack.json': JSON.stringify({ ruleRoutingGuidance: ROUTING }), 'contributed-rules.mjs': 'export default 42;' },
-  });
-  try {
-    const { errors } = await discoverPacks({ localRoot: root });
-    assert.ok(errors.some((e) => /contributed-rules\.mjs/.test(e.what)), JSON.stringify(errors));
+    const mine = packs.filter((p) => p.id === 'proj' || p.id === 'giver');
+    assert.equal(mine.length, 2);
+    const { packRules } = await import('../../engine/checks/run-active-pack-rules.mjs');
+    const ids = packRules(mine).map((r) => r.id);
+    for (const id of ['seam-rule', 'file-rule', 'acme-barrier']) assert.ok(!ids.includes(id), `${id} ran`);
   } finally {
     removeTree(root);
   }

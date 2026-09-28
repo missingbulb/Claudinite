@@ -60,13 +60,6 @@ export const VERSIONS_FILE = 'VERSIONS.md';
 // still the single vocabulary both sides read.
 export const RULE_DIRS = ['worldRules', 'workRules'];
 
-// THE CONTRIBUTED-RULES SEAM a pack may ship: a module default-exporting the function
-// that interprets other active packs' `contributes` as rules of this pack. It is code,
-// which a manifest written as data cannot hold, so it sits beside the manifest by name
-// like the rule directories do; a manifest that still declares `contributedRules`
-// overrides it.
-export const CONTRIBUTED_RULES_FILE = 'contributed-rules.mjs';
-
 // A pack with no fingerprint says nothing at all. `null` is what every reader
 // already means by "not fingerprinted" — the declaration is authoritative and the
 // drift check stands down in both directions — so silence resolves to it rather
