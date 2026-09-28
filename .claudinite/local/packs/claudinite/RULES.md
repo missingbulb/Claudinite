@@ -616,6 +616,11 @@ Below are rules on how to work on this repo.
   neighbouring entry another run appended; under `rebase` that base side is `--ours`, not
   `--theirs`. (resolving-conflict-declared)
 
+- **Scoping a fix to the lines this change added, when the change also moved files** - drop the
+  pathspec: narrowed to the move's destination, `-M` has no source to pair and reports every line
+  of each moved file as added, so the fix rewrites files the change never touched.
+  (scoping-fix-added-lines)
+
 - **Rebasing a branch that moved files onto a `main` that edited them** — git raises the
   conflict at the old path only, so resolving it in favour of the move drops `main`'s hunks
   silently; audit every line `main` added under the moved tree for survival before pushing.
