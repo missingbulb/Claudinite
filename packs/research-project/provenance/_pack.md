@@ -66,3 +66,10 @@
   so it outlives the pack's growth.
 - **Actor:** @missingbulb (owner).
 - **Mechanism:** the manifest's `pitch` field, beside `ruleRoutingGuidance`.
+
+## 2026-09-28 · moved · the manifest becomes pack.json
+- **Reason:** a manifest that is data is read with no import and by any tool; the conversion wrote
+  the module's evaluated export, and the pack loads identically.
+- **Actor:** @missingbulb (owner), asking for pack.json manifests.
+- **Mechanism:** pack.json, which the loader prefers over pack.mjs; a canon pack now needs engine
+  60928.1, the first to read it.

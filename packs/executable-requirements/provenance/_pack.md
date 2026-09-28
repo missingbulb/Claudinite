@@ -78,3 +78,10 @@
 - **Reason:** a manifest that is data cannot hold a RegExp; each pattern is its source string, or {
   source, flags } where it carries a flag, and loads to the same RegExp.
 - **Actor:** @missingbulb (owner), asking for pack.json manifests.
+
+## 2026-09-28 · moved · the manifest becomes pack.json
+- **Reason:** a manifest that is data is read with no import and by any tool; the conversion wrote
+  the module's evaluated export, and the pack loads identically.
+- **Actor:** @missingbulb (owner), asking for pack.json manifests.
+- **Mechanism:** pack.json, which the loader prefers over pack.mjs; a canon pack now needs engine
+  60928.1, the first to read it.

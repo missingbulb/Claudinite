@@ -385,7 +385,7 @@ test('real corpus: the barrier mechanism vendors with the baseline and is import
   const { computeVendorSet } = await import('./compute-vendor-set.mjs');
   const { files, errors } = await computeVendorSet(['basics']); // @real-entity computed against the real canon tree, whose operational files this pins
   assert.deepEqual(errors, [], 'basics: the vendor set must be coherent');
-  for (const carried of ['packs/basics/pack.mjs', 'packs/basics/barriers.mjs', // @real-entity computed against the real canon tree, whose operational files this pins
+  for (const carried of ['packs/basics/pack.json', 'packs/basics/contributed-rules.mjs', 'packs/basics/barriers.mjs', // @real-entity computed against the real canon tree, whose operational files this pins
     'packs/basics/worldRules/barrier.mjs', 'engine/checks/helpers/reference-scanning.mjs']) { // @real-entity computed against the real canon tree, whose operational files this pins
     assert.ok(files.includes(carried), `basics must vendor ${carried}`);
   }
@@ -491,7 +491,7 @@ test("no canon pack ships its docs/ — over the real corpus, not a fixture", as
   assert.deepEqual(errors, []);
   assert.deepEqual(files.filter((f) => f.split('/').includes('docs')), []);
   assert.ok(files.includes('packs/claudinite-tasks/public/instructions.md'), 'claudinite-tasks still ships its operational tree'); // @real-entity computed against the real canon tree, whose operational files this pins
-  assert.ok(files.includes('packs/claudinite-dashboard/pack.mjs'), 'claudinite-dashboard still ships'); // @real-entity computed against the real canon tree, whose operational files this pins
+  assert.ok(files.includes('packs/claudinite-dashboard/pack.json'), 'claudinite-dashboard still ships'); // @real-entity computed against the real canon tree, whose operational files this pins
 
   const docsFiles = execFileSync('git', ['ls-files', ':(glob)packs/*/docs/**'], { cwd: REPO_ROOT, encoding: 'utf8' })
     .split('\n').filter(Boolean);
