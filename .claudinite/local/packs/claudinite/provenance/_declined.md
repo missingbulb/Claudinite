@@ -180,3 +180,14 @@
   pack's `ruleRoutingGuidance` excludes and routes to `claudinite-canon-curation`, and a
   growth-extract run may write only the repo's own local packs.
 - **Actor:** run 36347796455, work item #2377.
+
+## 2026-09-28 · declined · load searching-for-a-tool before the ToolSearch merge-to-main asks for
+- **Source:** capture 2026-09-28 session f6b90b34 (#2383) at 10:18Z, and this run at 10:25Z: both
+  followed step 1 of `merge-to-main` verbatim, both were denied `skill-not-loaded-for-call
+  ToolSearch needs searching-for-a-tool`, and both spent a turn loading it.
+  `packs/git-github/skills/merge-to-main/SKILL.md:17` is the corpus's only instruction to call
+  `ToolSearch`, so the denial is deterministic on every merge this repo's owner authorises.
+- **Reason:** routing, not strength. The fix is one clause in a canon pack's skill, which this local
+  pack's `ruleRoutingGuidance` excludes, and a rule here telling sessions what the guard's own
+  message already says would carry the cost without fixing the cause. Filed as #2389 instead.
+- **Actor:** the growth-extract run over the 2026-09-28 window, work item #2386.
