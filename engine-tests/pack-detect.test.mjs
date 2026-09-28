@@ -2,10 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from './helpers.mjs';
 import { buildContext } from '../engine/checks/helpers/repo-context.mjs';
-import flutter from '../packs/flutter/pack.mjs';
-import node from '../packs/node/pack.mjs';
-import firebase from '../packs/firebase/pack.mjs';
+import { loadPacks } from '../engine/pack_loader/pack-registry.mjs';
 import { detectsRelevance } from '../engine/pack_loader/relevance-detector.mjs';
+
+const canon = await loadPacks();
+const [flutter, node, firebase] = ['flutter', 'node', 'firebase'].map((id) => canon.find((p) => p.id === id)); // @real-entity the shared marker-depth convention is asserted across these packs
 
 // Deliberately stays in engine/test/, not co-located into any one pack: each
 // test asserts the *shared* marker-depth detect convention (marker at the repo

@@ -67,3 +67,8 @@
 - **Reason:** a manifest that is data cannot hold the functions that expanded one command per
   directory; the template renders the same commands.
 - **Actor:** @missingbulb (owner), asking for pack.json manifests.
+
+## 2026-09-28 · reworded · the fingerprint's patterns are written as source strings
+- **Reason:** a manifest that is data cannot hold a RegExp; each pattern is its source string, or {
+  source, flags } where it carries a flag, and loads to the same RegExp.
+- **Actor:** @missingbulb (owner), asking for pack.json manifests.

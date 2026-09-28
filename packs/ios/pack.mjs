@@ -7,5 +7,5 @@ export default {
     excludes: 'shipping builds to the App Store — that is app-store-release; Android equivalents are android',
   },
   pitch: 'An iOS repo worked on by Claude Code sessions runs into two recurring traps, and this pack names both. Its couple of rules explain that a sandbox has no macOS or Swift toolchain, so a change counts as verified only once the macOS CI runner reports on it, and that Apple\'s developer documentation pages render in JavaScript, so sessions should read the JSON mirror instead. It is prose only, and is where the repo\'s further lessons about Xcode, signing and devices will accumulate.',
-  relevanceDetector: { about: 'ios/Runner/Info.plist', paths: /ios\/Runner\/Info\.plist$/ },
+  relevanceDetector: { about: 'ios/Runner/Info.plist', paths: "ios/Runner/Info\\.plist$" },
 };

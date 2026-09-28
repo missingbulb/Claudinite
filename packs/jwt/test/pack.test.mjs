@@ -1,7 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import pack from '../pack.mjs';
+import { loadPacks } from '../../../engine/pack_loader/pack-registry.mjs';
 import * as detectorSpec from '../../../engine/pack_loader/relevance-detector.mjs';
+
+const pack = (await loadPacks()).find((p) => p.id === 'jwt'); // @real-entity the pack under test
 
 // A minimal detect context: `tracked` names the files, `read` serves their text.
 const ctx = (files) => ({

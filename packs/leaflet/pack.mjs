@@ -14,9 +14,9 @@ export default {
   // terms still reach the repo.
   relevanceDetector: {
     about: 'a Leaflet reference (CDN asset, or an L.map/L.tileLayer/L.markerClusterGroup call) in HTML/JS source',
-    paths: /\.(html?|mjs|cjs|jsx?|tsx?)$/,
+    paths: "\\.(html?|mjs|cjs|jsx?|tsx?)$",
     // `leaflet` in any case, spelled out: the `L.map(` half must not ignore case.
-    text: /\b[lL][eE][aA][fF][lL][eE][tT](\.[jJ][sS]|\.[cC][sS][sS]|@[\d.]|[-/][dD][iI][sS][tT])|\bL\.(map|tileLayer|markerClusterGroup)\s*\(/,
+    text: "\\b[lL][eE][aA][fF][lL][eE][tT](\\.[jJ][sS]|\\.[cC][sS][sS]|@[\\d.]|[-/][dD][iI][sS][tT])|\\bL\\.(map|tileLayer|markerClusterGroup)\\s*\\(",
     search: ['leaflet', 'tileLayer', 'markerClusterGroup'],
   },
 };
