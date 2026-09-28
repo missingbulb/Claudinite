@@ -341,7 +341,7 @@ test('the usage folds\' delivery shape — their rolling file, and its one move 
   assert.deepEqual(errors, []);
   for (const [task, file, legacy] of [
     ['usage-fold', '.claudinite/usage/sessions-and-elements.json', '.claudinite/local/usage.GENERATED.json'],
-    ['tasks-usage-fold', '.claudinite/usage/task-runs-and-costs.json', '.claudinite/local/tasks-usage.GENERATED.json'],
+    ['usage-fold', '.claudinite/usage/task-runs-and-costs.json', '.claudinite/local/tasks-usage.GENERATED.json'],
   ]) {
     const { default: json } = await import(`../../tasks/${task}/task.json`, { with: { type: 'json' } });
     const verdict = (entries) => policyVerdict({ policy: json.automerge, entries, declaredRules: rules });
@@ -353,6 +353,20 @@ test('the usage folds\' delivery shape — their rolling file, and its one move 
     }
     assert.equal(verdict([edited(legacy, '{}', '{"a":1}')]).mergeable, false, `${task}: the old path is only ever moved off`);
   }
+});
+
+test('one usage-fold delivery carrying both rolling files, and both moves, lands', async () => {
+  const { rules } = tasksPackRules();
+  const { default: json } = await import('../../tasks/usage-fold/task.json', { with: { type: 'json' } });
+  const verdict = (entries) => policyVerdict({ policy: json.automerge, entries, declaredRules: rules });
+  assert.equal(verdict([
+    edited('.claudinite/usage/sessions-and-elements.json', '{}', '{"a":1}'),
+    edited('.claudinite/usage/task-runs-and-costs.json', '{}', '{"a":1}'),
+  ]).mergeable, true);
+  assert.equal(verdict([
+    added('.claudinite/usage/sessions-and-elements.json', '{}'), deleted('.claudinite/local/usage.GENERATED.json'),
+    added('.claudinite/usage/task-runs-and-costs.json', '{}'), deleted('.claudinite/local/tasks-usage.GENERATED.json'),
+  ]).mergeable, true);
 });
 
 // --- the trims class and the mount exemption ----------------------------------

@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   latencyOf, parksIn, costsIn, readClosedItems,
-} from '../../../tasks/tasks-usage-fold/read-items.mjs';
+} from '../../../tasks/usage-fold/read-items.mjs';
 import { RUN_COST_TAG } from '../../../src/items/run-record.mjs';
 
 const NOW = '2026-09-15T12:00:00Z';

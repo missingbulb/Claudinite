@@ -142,7 +142,7 @@ test('a repo that folds no machinery file says which file and which task writes 
   const text = render(machinePanel(tasksMachine(null, { now: NOW, span: 7 })));
   assert.match(text, /folds no machinery usage file/);
   assert.match(text, /task-runs-and-costs\.json/);
-  assert.match(text, /tasks-usage-fold/);
+  assert.match(text, /\busage-fold task/);
   // It does not borrow the sessions' file to fill the gap.
   assert.doesNotMatch(text, /acme-task-g task writes[^]*sessions/);
 });

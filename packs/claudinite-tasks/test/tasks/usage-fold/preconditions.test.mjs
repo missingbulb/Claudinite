@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
-import { terms } from '../../../tasks/tasks-usage-fold/preconditions.mjs';
+import { terms } from '../../../tasks/usage-fold/preconditions.mjs';
 import {
   TASKS_USAGE_PATH, encodeTasksUsageFile, renderTasksUsageFile,
 } from '../../../src/items/tasks-usage-format.mjs';
