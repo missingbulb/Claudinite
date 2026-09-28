@@ -6,6 +6,7 @@ import { SETTINGS_FILE } from '../settings-file.mjs';
 import { LOCAL_PACK_ROOT, taskDirsWithJson, updateTaskSchedulingFields } from './task-declarations-to-json.mjs';
 import { markPack, convertReferences } from '../checks/helpers/provenance.mjs';
 import { MANIFEST_JSON, MANIFEST_MODULE, manifestFileIn } from '../pack_loader/pack-conventions.mjs';
+import { manifestsToJson } from './manifests-to-json.mjs';
 
 // <corpus>/engine/migrations/ — records are addressed corpus-relative, because they
 // no longer share one directory with this module: an engine record sits beside it,
@@ -631,6 +632,20 @@ export async function applyOnFailRename(migration, io) {
   return applied;
 }
 
+// Write side - "a pack's manifest is data": every local pack's `pack.mjs` becomes the
+// `pack.json` the loader prefers. A NAMED CODEMOD like the ones above, the conversion
+// shipping with the engine (manifests-to-json.mjs, the same one its CLI runs): which
+// packs carry a module manifest is the repo's own disk, so it needs `listDir`, and it
+// needs `remove` for the module it replaces - an io without either converts nothing
+// rather than leaving two manifests. A manifest JSON cannot carry stays a module, which
+// the loader still reads, and the line says why.
+export async function applyManifestsToJson(migration, io) {
+  if (!migration.manifestsToJson) return [];
+  if (typeof io.listDir !== 'function' || typeof io.remove !== 'function') return [];
+  if (migration.appliesTo && !(await migration.appliesTo(io.read))) return [];
+  return manifestsToJson(LOCAL_PACK_ROOT, io);
+}
+
 export async function applyMigration(migration, io) {
   const applied = [];
   applied.push(...(await applyFileAliases(migration, io)));
@@ -641,6 +656,7 @@ export async function applyMigration(migration, io) {
   applied.push(...(await applyTaskSchedulingFields(migration, io)));
   applied.push(...(await applyProvenanceMarking(migration, io)));
   applied.push(...(await applyOnFailRename(migration, io)));
+  applied.push(...(await applyManifestsToJson(migration, io)));
   applied.push(...(await applyPackRenames(migration, io)));
   // AFTER the renames: a setting moving onto a pack's entry has to find that entry
   // under the id the pack carries TODAY, which is what the rename above just settled.
