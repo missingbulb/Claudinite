@@ -1,5 +1,5 @@
 {
-  "version": "60927.2",
+  "version": "60928.1",
   "minEngineVersion": "60928.1",
   "ruleRoutingGuidance": {
     "belongs": "running a numbered spec as tests: dev/requirements layout, requirement ids, kinds, coverage and gallery gates, determinism rules",

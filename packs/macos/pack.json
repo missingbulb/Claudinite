@@ -1,5 +1,5 @@
 {
-  "version": "60927.2",
+  "version": "60928.1",
   "minEngineVersion": "60928.1",
   "ruleRoutingGuidance": {
     "belongs": "native macOS apps: app-bundle assembly, TCC usage strings, Hardened Runtime entitlements, Developer ID signing, notarization and DMG distribution",

@@ -1,5 +1,5 @@
 {
-  "version": "60927.1",
+  "version": "60928.1",
   "minEngineVersion": "60928.1",
   "ruleRoutingGuidance": {
     "belongs": "hand-authored HTML markup gotchas — element nesting, injected content placement, live browser verification of a page",

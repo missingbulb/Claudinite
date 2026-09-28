@@ -1,5 +1,5 @@
 {
-  "version": "60927.1",
+  "version": "60928.1",
   "minEngineVersion": "60928.1",
   "ruleRoutingGuidance": {
     "belongs": "driving a web app you do not own — its DOM, synthetic input, change watching, injected UI",

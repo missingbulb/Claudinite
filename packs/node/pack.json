@@ -1,5 +1,5 @@
 {
-  "version": "60927.2",
+  "version": "60928.1",
   "minEngineVersion": "60928.1",
   "ruleRoutingGuidance": {
     "belongs": "conventions for a Node/npm project — module resolution, ESM vs CJS, dependency justification, jsdom test divergences",

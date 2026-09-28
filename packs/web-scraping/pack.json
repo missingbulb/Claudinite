@@ -1,5 +1,5 @@
 {
-  "version": "60927.1",
+  "version": "60928.1",
   "minEngineVersion": "60928.1",
   "ruleRoutingGuidance": {
     "belongs": "acquiring data from a site you do not own: finding its data surface, fetching defensively, caching raw payloads",

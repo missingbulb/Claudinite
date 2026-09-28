@@ -1,5 +1,5 @@
 {
-  "version": "60927.2",
+  "version": "60928.1",
   "minEngineVersion": "60928.1",
   "ruleRoutingGuidance": {
     "belongs": "minting and validating JSON Web Tokens: algorithm pinning, claim validation, key strength and secrecy, expiry, JWE",

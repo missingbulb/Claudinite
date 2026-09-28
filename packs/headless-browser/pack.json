@@ -1,5 +1,5 @@
 {
-  "version": "60927.4",
+  "version": "60928.1",
   "minEngineVersion": "60928.1",
   "ruleRoutingGuidance": {
     "belongs": "driving a real browser from code — resolving and pinning the build, faking the page world, capture mechanics",

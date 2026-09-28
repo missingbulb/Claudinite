@@ -1,5 +1,5 @@
 {
-  "version": "60927.1",
+  "version": "60928.1",
   "minEngineVersion": "60928.1",
   "ruleRoutingGuidance": {
     "belongs": "shipping an Android app to Google Play — Play Console, signing, integrity, staged rollout",

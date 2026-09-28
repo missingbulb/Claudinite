@@ -1,5 +1,5 @@
 {
-  "version": "60927.2",
+  "version": "60928.1",
   "minEngineVersion": "60928.1",
   "ruleRoutingGuidance": {
     "belongs": "serving a site from GitHub Pages: the nightly release, the vendored deploy workflow, site.config, the serving subpath",
