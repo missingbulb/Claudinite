@@ -12,12 +12,13 @@
 // `environment-setup-command.sh` is the generic body a project pastes into its web
 // environment's Setup script field. What a repo does with the pack is its README.
 export default {
-  version: '60925.2',
+  version: '60927.1',
   minEngineVersion: '60925.1',
   ruleRoutingGuidance: {
     belongs: 'what a project offers people working from Claude Code on the web, where the session knows who they are',
     excludes: 'project conventions and process — those are the packs that own each subject',
   },
+  pitch: 'Makes Claude Code on the web fit the person using it. Each contributor can keep a personal pack of rules, skills and checks in a store repository, and it is copied into every web session they open on this repo, so their preferences travel with them without being committed here. It also supplies one generic setup script for the web environment that installs every toolchain the repo\'s packs need. A few rules and a few checks keep the store\'s directories correctly named and protected.',
   seededByDefault: true,
   questions: [
     {

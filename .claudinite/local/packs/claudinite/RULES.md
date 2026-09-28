@@ -121,9 +121,9 @@ Below are rules on how to work on this repo.
 
 
 
-- **Reading a tool result the harness saved to a file** — it is one unbroken line, so `Read`'s
-  `offset`/`limit` won't shrink it; parse it with `python3 -c 'json.load(...)'` or `jq` instead.
-  (reading-tool-result)
+- **Reading a tool result the harness saved to a file** - an MCP result is one unbroken line, so
+  `Read`'s `offset`/`limit` won't shrink it; parse it with `python3 -c 'json.load(...)'` or `jq`
+  instead. A saved Bash result is ordinary lines and slices normally. (reading-tool-result)
 
 - **Re-waiting on a signal that already failed to move** — read the code that governs when it
   *can* change before waiting a second time on the same premise. (re-waiting-signal)
@@ -153,6 +153,11 @@ Below are rules on how to work on this repo.
   inside a worktree-isolated agent** — drop straight to the plain, literal, unsubstituted form.
   The guard reads syntax, not intent, so a loop, a heredoc, or `$(...)` around the same call
   keeps failing exactly the same way. (bash-command-refused)
+
+- **Bundling a file write into a Bash command that also runs a guarded call** (`node --test`, a
+  `git commit`, a `curl`) - split them: a PreToolUse guard reads the whole command string, matches
+  a token inside heredoc data as readily as a command, and blocks the call before any of it runs, so
+  the write is lost. (bundling-write-guarded)
 
 - **Calling `EnterWorktree` in an unattended queue session** — nobody is present to approve it,
   so it is denied after about a minute; go straight to `git worktree add`/`git checkout -b`
@@ -602,10 +607,19 @@ Below are rules on how to work on this repo.
   move, a renamed path) can turn a once-clean branch conflicted without a new run ever failing.
   (merging-pr-has)
 
+- **A PR head showing no check runs at all** - read its mergeability before its triggers: GitHub
+  starts no `pull_request` run while the branch conflicts with its base, and merging the base in is
+  what starts CI. (pr-head-no-checks)
+
 - **Resolving a conflict in a `declared-checks.json`** — take the base branch's whole file and
   re-append your one entry rather than hand-merging the markers, since the collision is a
   neighbouring entry another run appended; under `rebase` that base side is `--ours`, not
   `--theirs`. (resolving-conflict-declared)
+
+- **Scoping a fix to the lines this change added, when the change also moved files** - drop the
+  pathspec: narrowed to the move's destination, `-M` has no source to pair and reports every line
+  of each moved file as added, so the fix rewrites files the change never touched.
+  (scoping-fix-added-lines)
 
 - **Rebasing a branch that moved files onto a `main` that edited them** — git raises the
   conflict at the old path only, so resolving it in favour of the move drops `main`'s hunks

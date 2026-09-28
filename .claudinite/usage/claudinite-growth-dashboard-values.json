@@ -1,11 +1,17 @@
 {
   "usage-findings": {
-    "value": 75,
-    "previous": 72,
-    "note": "2026-08-29 to 2026-09-25"
+    "value": 73,
+    "previous": 77,
+    "note": "2026-08-31 to 2026-09-27"
   },
   "usage-newest": {
     "rows": [
+      {
+        "subject": "call-hook-latency-measured",
+        "rule": "check-never-fires",
+        "cause": "unknown",
+        "since": "2026-09-27"
+      },
       {
         "subject": "check-sweep-read-blocking-only",
         "rule": "guard-overruled",
@@ -14,12 +20,6 @@
       },
       {
         "subject": "flat-declarations-current",
-        "rule": "check-never-fires",
-        "cause": "unknown",
-        "since": "2026-09-26"
-      },
-      {
-        "subject": "generated-file-carries-no-banner",
         "rule": "check-never-fires",
         "cause": "unknown",
         "since": "2026-09-26"

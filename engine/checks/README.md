@@ -29,10 +29,7 @@ branch into its remote-tracking ref — no local branch, index, or working tree 
 It is best-effort and bounded: no network, no remote, or an unresponsive server and the run
 continues against the ref as it stands (~10ms to fail, 8s ceiling when a server accepts and
 stalls; ~0.3s when it succeeds). `CLAUDINITE_CHECKS_NO_FETCH=1` skips it — for a sealed
-sandbox, or to pin the base deliberately. `squash-merge-history` is one of these delta
-rules: it scopes to the merge commits the current change introduces since that merge-base,
-not the repo's whole history, and a merge already on the base branch is filtered out even
-when a criss-cross or shallow-clone merge-base leaves it inside that range.
+sandbox, or to pin the base deliberately.
 
 **Stale-mount note:** a stale mount can likewise surface a spurious finding that an
 already-merged canon fix would skip — the mount is refreshed by the SessionStart sync hook, so a
@@ -141,6 +138,10 @@ the change in front of the session, one about the repo as a whole:
   loop, judging what the session just did (and the conversation-surface rules, which only exist
   at Stop). On blocking findings it exits 2 so the session fixes them before stopping.
   Self-limiting: after blocking twice on identical findings it lets the stop through.
+  Before any of that, once per session and clean tree or not, it runs the self-test's
+  rules-loaded probe ([../selftest.mjs](../selftest.mjs)): the pack prose the harness recorded
+  loading, against every active pack's prose on disk. A miss blocks the first stop once, then
+  only advises.
 - **Action scope → the PreToolUse hook, and the Stop hook again.** A declaration with
   `scope: "action"` (`guardToolCalls`) is judged by [../hooks/pretooluse-command.mjs](../hooks/pretooluse-command.mjs)
   against the call about to run — a blocking finding denies it and hands the agent the text, an
@@ -194,7 +195,7 @@ would be a suppression wearing a creation date. A project that sets the rule to 
 its own settings overrides the grace and gets enforcement from day one. The window is measured from the
 declared date, not from the day a consumer received the rule — so a canon rule's grace is spent by the time
 a member converges onto it, and a rule going out to the fleet still has to be one the fleet can satisfy. A whole
-new pack is just a `../packs/<name>/` directory with a `pack.mjs` (its fingerprint `detect` and its
+new pack is just a `../packs/<name>/` directory with a `pack.mjs` (its fingerprint `relevanceDetector` and its
 rules; the id, prose, badge and bundled skills come from the directory itself) —
 [engine/pack_loader/pack-registry.mjs](../pack_loader/pack-registry.mjs) discovers it structurally,
 no list to edit.
@@ -250,7 +251,7 @@ at the top of `run`.
 an unknown *pack name* (only it holds the registry). Each surfaces as a blocking `config` error, because a
 wrong pack name is as much a settings error as invalid JSON. This deliberately replaced a `pack-declaration`
 conformance check: whether a repo declares a pack its fingerprint suggests, or drops one whose marker is
-gone, is the **project's** call — a `marker` is a way to *suspect* a pack is needed, never proof it must (or
+gone, is the **project's** call: a `relevanceDetector` is a way to *suspect* a pack is needed, never proof it must (or
 must not) be declared — so the checker no longer second-guesses it.
 
 Pack **dependencies** are likewise *not* a check: a pack can't be imported without the packs it requires, so

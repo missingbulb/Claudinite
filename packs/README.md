@@ -29,7 +29,7 @@ declares `hidden: true` and is withheld from that catalog; this table still carr
 | <img src="numpy-image-processing/badge.svg" width="18" height="18" alt=""> [numpy-image-processing](numpy-image-processing/README.md) | numpy + scipy named together in a near-root manifest | 0 | 9 |
 | <img src="web-speech/badge.svg" width="18" height="18" alt=""> [web-speech](web-speech/README.md) | speech API in JS/TS source | 6 (+ 3 in its skill) | 17 |
 | <img src="leaflet/badge.svg" width="18" height="18" alt=""> [leaflet](leaflet/README.md) | Leaflet reference in HTML/JS source | 2 | 4 |
-| <img src="headless-browser/badge.svg" width="18" height="18" alt=""> [headless-browser](headless-browser/README.md) | driver reference in JS/TS source | 0 | 18 |
+| <img src="headless-browser/badge.svg" width="18" height="18" alt=""> [headless-browser](headless-browser/README.md) | driver reference in JS/TS source | 3 | 20 |
 | <img src="host-page/badge.svg" width="18" height="18" alt=""> [host-page](host-page/README.md) | declared (opt-in) | 3 | 11 |
 | <img src="aws-sam/badge.svg" width="18" height="18" alt=""> [aws-sam](aws-sam/README.md) | SAM template | 3 | 6 (+ 2 skills: sam-template, sam-build-and-deps) |
 | <img src="google-identity/badge.svg" width="18" height="18" alt=""> [google-identity](google-identity/README.md) | declared | 0 (3 in its skill) | 0 |
@@ -62,7 +62,7 @@ same engine as these canon packs. `discoverPacks({ localRoot })` ([registry.mjs]
 bundled skills resolve off it) and a `local` flag. A local pack:
 
 - is **declared by hand** in `.claudinite-settings.json` like any pack — never fingerprinted or seeded
-  (`detect`/`marker` null) — by its **namespaced token `local/<name>`** (the canonical form;
+  (no `relevanceDetector`), by its **namespaced token `local/<name>`** (the canonical form;
   the engine's [`packEntryId`](../engine/pack_loader/pack-registry.mjs) resolves it and the bare id
   alike to the bare pack id, and it keeps resolving both permanently), and its id must
   be unique (it may not shadow a canon id — the collision is a blocking `config` finding);
@@ -84,7 +84,7 @@ as the project's capture surface.
 
 ## Settings validity
 
-The `"packs"` list and the rest of `.claudinite-settings.json` are validated **when the file loads**, not by a conformance check: [`loadConfig`](../engine/checks/helpers/repo-context.mjs) reports malformed JSON and an unknown top-level property, and the runner adds an unknown *pack name* (it holds the registry). Each becomes a blocking `config` error — a wrong pack name is as much a settings error as invalid JSON. A pack's `detect`/`marker` only **suspects** a pack is wanted; declaring it is the project's call, so a declared pack without its marker (or a marker without its declaration) is **not** flagged.
+The `"packs"` list and the rest of `.claudinite-settings.json` are validated **when the file loads**, not by a conformance check: [`loadConfig`](../engine/checks/helpers/repo-context.mjs) reports malformed JSON and an unknown top-level property, and the runner adds an unknown *pack name* (it holds the registry). Each becomes a blocking `config` error: a wrong pack name is as much a settings error as invalid JSON. A pack's `relevanceDetector` only **suspects** a pack is wanted; declaring it is the project's call, so a declared pack whose fingerprint is absent (or a fingerprint without its declaration) is **not** flagged.
 
 ## Pack dependencies (`requires`)
 
@@ -110,7 +110,7 @@ Most of the manifest's fields had, in every pack ever written, exactly one corre
 | `skills` | the subdirectories of `<pack>/skills/` |
 | `worldRules` | the modules in `<pack>/worldRules/`, in filename order |
 | `workRules` | the modules in `<pack>/workRules/`, in filename order |
-| `detect`, `marker` | `null` — silence *is* "this pack carries no fingerprint" |
+| `relevanceDetector` | `null`: silence *is* "this pack carries no fingerprint" |
 
 A manifest field still **overrides** the resolution where a pack genuinely differs — `prose: null` beside a `RULES.md` that is documentation rather than injected rules, a `skills` subset that withholds a directory from mounting. Only an *absent* field falls through, so an explicitly declared `null` overrides too. Declaring a field that merely restates the tree is what [`engine-tests/pack_loader/pack-conventions.test.mjs`](../engine-tests/pack_loader/pack-conventions.test.mjs) refuses across the corpus.
 

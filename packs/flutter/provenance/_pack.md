@@ -99,3 +99,19 @@
   update holds this version until the member's engine is at 60925.1.
 - **Actor:** @missingbulb (owner).
 - **Mechanism:** the manifest's `minEngineVersion`, which the pack update enforces.
+
+## 2026-09-27 · born · a pitch paragraph for the dashboard's plain-repo view
+- **Reason:** the dashboard shows a repo that does not run Claudinite the packs that fit it, and the
+  owner asked for one paragraph per pack naming its main skills and process gains, with rough counts
+  so it outlives the pack's growth.
+- **Actor:** @missingbulb (owner).
+- **Mechanism:** the manifest's `pitch` field, beside `ruleRoutingGuidance`.
+
+## 2026-09-27 · scope-changed · the fingerprint is a `relevanceDetector` spec, not a function
+- **Reason:** the owner asked for fingerprints a reader holding only GitHub's API can judge cheaply
+  - a tree listing, a code search, then only the files that search names - which a function over a
+  synchronous `read` cannot offer.
+- **Actor:** @missingbulb (owner).
+- **Mechanism:** the manifest's `relevanceDetector` (engine/pack_loader/relevance-detector.mjs): `paths`, optional `text`,
+  `search` terms; it answers exactly what the retired `detect` answered, proven over 4,000 composed
+  repos before the change.

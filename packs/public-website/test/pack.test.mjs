@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import { cleanup, makeRepo } from '../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
 import pack from '../pack.mjs';
+import * as detectorSpec from '../../../engine/pack_loader/relevance-detector.mjs';
 
-const detect = (root) => pack.detect(buildContext({ root, mode: 'all' }));
+const detect = (root) => detectorSpec.detectsRelevance(pack.relevanceDetector, buildContext({ root, mode: 'all' }));
 
 test('the pack fingerprints a repo whose page carries the version stamp', () => {
   const root = makeRepo({ base: {

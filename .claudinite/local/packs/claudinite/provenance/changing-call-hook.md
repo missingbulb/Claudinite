@@ -8,3 +8,11 @@
 - **Mechanism:** prose
 - **Retire when:** Retire the rule when the harness runs hooks in-process or the per-call hooks are
   gone.
+
+## 2026-09-27 · converted · the measurement half is now a check (#2354)
+- **Source:** the `claudinite-growth/prose-to-checks-sweep` run on work item #2354.
+- **Mechanism:** `call-hook-latency-measured`, a coded work rule (its own file carries why coded).
+- **Reason:** deletion test - the bullet stays whole. It carries three directives and the check
+  carries one: the guest-in-the-harness half is `hook-judges-never-exit`'s, and recording the
+  numbers in the retrospective brief is carried by nothing.
+- **Actor:** the `claudinite-growth/prose-to-checks-sweep` run on work item #2354.

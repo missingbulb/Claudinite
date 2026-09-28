@@ -49,3 +49,16 @@
 - **Mechanism:** automerge `rolling-usage-files` plus `rolling-usage-file-moves`; the precondition
   reads the watermark from either path.
 - **Landed:** #2322
+
+## 2026-09-28 · merged · folded into usage-fold, which now runs this fold as its machinery half (#2247)
+- **Source:** candidate A of #2247, approved by the owner in conversation.
+- **Reason:** same cadence, outcome and automerge as usage-fold: two items and two pull requests a
+  day for one kind of delivery.
+- **Actor:** @missingbulb (owner).
+- **Model:** Opus 5.5
+- **Mechanism:** the modules and the `runs-since-fold` term moved under usage-fold unchanged; the
+  file and its watermarks stay its own.
+
+## 2026-09-28 · retired · the task id is gone; its fold runs on as usage-fold's machinery half (#2247)
+- **Reason:** see the merged entry above.
+- **Actor:** @missingbulb (owner).

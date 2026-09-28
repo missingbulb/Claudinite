@@ -1,6 +1,6 @@
 // Which packs does this repo's shape suspect, that its declaration does not carry?
 //
-// A pack's `detect` fingerprint is consulted exactly once today — at bootstrap's
+// A pack's `relevanceDetector` fingerprint is consulted exactly once today - at bootstrap's
 // `--init`, when the declaration is first written. Nothing re-asks afterwards, so a
 // repo that grows into a pack months later (adds a package.json, a firebase.json, a
 // JWT library) is never told the pack exists. This module is the re-ask, and it is
@@ -15,19 +15,20 @@
 //
 // Still pack-agnostic by construction: it names no pack and reads no pack's
 // internals beyond the manifest fields every pack has. `evaluate` is injected rather
-// than calling `pack.detect(ctx)` here, because a caller that cannot serve file
-// CONTENTS synchronously (a remote tree listing, say) must be able to answer "I could
-// not decide this one" without that being mistaken for "no".
+// than judging `pack.relevanceDetector` here, because a caller that cannot serve file CONTENTS
+// cheaply (a remote tree listing, say) must be able to answer "I could not decide
+// this one" without that being mistaken for "no".
 
 import { packEntryId } from '../../../../engine/pack_loader/pack-registry.mjs';
+import * as detectorSpec from '../../../../engine/pack_loader/relevance-detector.mjs';
 
 // The packs a fit sweep may consider at all: canon packs (a local pack is declared by
 // hand, never fingerprinted — pack-registry) that carry a fingerprint and are not
-// already declared. A pack with `detect: null` is declaration-authoritative in BOTH
+// already declared. A pack with `relevanceDetector: null` is declaration-authoritative in BOTH
 // directions and is not a candidate — its absence from a declaration says nothing.
 export function fitCandidates(packs, declaredEntries = []) {
   const declared = new Set((declaredEntries ?? []).map(packEntryId).filter((id) => id !== undefined));
-  return packs.filter((p) => typeof p.detect === 'function' && !p.local && !declared.has(p.id));
+  return packs.filter((p) => p.relevanceDetector && !p.local && !declared.has(p.id));
 }
 
 // Run each candidate's fingerprint and split the answers three ways.
@@ -78,5 +79,5 @@ export async function undeclaredFits({ packs, declared = [], evaluate }) {
 // a session in the repo itself should use — it is the complete answer the remote,
 // path-only view can only approximate.
 export function localFits({ ctx, packs, declared = [] }) {
-  return undeclaredFits({ packs, declared, evaluate: (pack) => pack.detect(ctx) === true });
+  return undeclaredFits({ packs, declared, evaluate: (pack) => detectorSpec.detectsRelevance(pack.relevanceDetector, ctx) });
 }

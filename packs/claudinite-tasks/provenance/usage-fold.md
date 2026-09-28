@@ -148,3 +148,15 @@
   replacing `under:.claudinite/local && generated-file-changes`, which no longer matches the file.
 - **Retire when:** #2323 removes the old-path read and the move rule.
 - **Landed:** #2322
+
+## 2026-09-28 · merged · tasks-usage-fold folded in: one occurrence folds both usage files (#2247)
+- **Source:** candidate A of #2247, deferred there, approved by the owner in conversation.
+- **Reason:** both folds ran daily with the same outcome and automerge, so every day paid two items,
+  two sessions of the executor and two pull requests against the same folder.
+- **Actor:** @missingbulb (owner).
+- **Model:** Opus 5.5
+- **Mechanism:** one code-work worker running two halves, each over its own file and watermarks and
+  fail-soft on its own, delivered on one pull request; a half that throws still lets the other land,
+  then fails the run. The gate is the union, `any-commit || session-captured || runs-since-fold`.
+- **Rejected:** folding the two files into one - their sources differ in read cost, and one outage
+  would cost the other's rows.

@@ -138,3 +138,67 @@
   reads, and the moment the rule applies already carries `legacy-tolerance-scheduled`, so a second
   advisory on the same added marker would fire on every legitimate tolerance too.
 - **Actor:** the `claudinite-growth/growth-extract` run on work item #2335.
+
+## 2026-09-27 · declined · a pack prose edit must run `engine-tests/rule-index.test.mjs`, as a check
+- **Source:** the `prose-to-checks-sweep` run on work item #2354, re-deriving the
+  `running-the-suite` skill's `editing-rules-md` bullet. Neither sweep catches a stale index
+  (probed: a broken size band in a pack README leaves `check_the_world` and `check_the_work` silent
+  at exit 0, and only that test red), so a transcript rule over "pack prose changed, the test never
+  ran" would have been the carrier.
+- **Reason:** the same territory the owner already closed on #987 ("drop this rule") for a canon
+  pack's RULES.md owing its README rule-index row, and on the co-change shape declined 2026-09-22. A
+  third spelling of it is re-litigating a settled call, not a new candidate.
+- **Actor:** the `claudinite-growth/prose-to-checks-sweep` run on work item #2354.
+
+## 2026-09-27 · declined · `spawning-child-process`, as a check over a worker's spawn options
+- **Source:** row 94 of `docs/declarative-checks/rule-inventory.md`, re-derived against today's
+  tree. Its recorded objection is about the declared block relations only, which a coded rule would
+  not have.
+- **Reason:** the objection stands for a different reason, so the row is stale rather than waiting
+  on a key. Eleven of the twelve real child-process call sites under `packs/*/tasks/` pass the root
+  positionally as `git -C <root>` and carry no `cwd` option at all, which satisfies the rule and
+  fails the signature - so "the options object has no `cwd`" would fire on almost every worker in
+  the tree.
+- **Actor:** the `claudinite-growth/prose-to-checks-sweep` run on work item #2354.
+
+## 2026-09-27 · declined · `writing-task-output`, as a check over a worker naming `GENERATED`
+- **Source:** row 115 of `docs/declarative-checks/rule-inventory.md`, re-derived because its
+  recorded objection - the `basics/baselining` exception - died with that task.
+- **Reason:** the signature died with it too. Delivery reaches every worker through
+  `worker-entry.mjs`'s bag rather than an import, so no worker imports `deliverGenerated`, and all
+  five remaining `GENERATED` mentions under `packs/*/tasks/` are legacy read paths or comments. The
+  rule's own prose still names `basics/baselining` as the deliberate exception, which no longer
+  exists.
+- **Actor:** the `claudinite-growth/prose-to-checks-sweep` run on work item #2354.
+
+## 2026-09-27 · declined · a pack manifest inlines its own literals, as a world check over `pack.mjs`
+- **Source:** the owner on #2369, "Inline these constants. Here and in other packs.", after
+  each relevance detector's pattern had been factored into a named top-level const in its
+  `pack.mjs`; the sweep in 10da6fb removed all of them, so the tree carries none and a `matchLines`
+  forbidding `^const ` over `pack.mjs` would land green.
+- **Reason:** routing, not strength. The rule is about the shelf's manifests, which this local
+  pack's `ruleRoutingGuidance` excludes and routes to `claudinite-canon-curation`, and a
+  growth-extract run may write only the repo's own local packs.
+- **Actor:** run 36347796455, work item #2377.
+
+## 2026-09-28 · declined · load searching-for-a-tool before the ToolSearch merge-to-main asks for
+- **Source:** capture 2026-09-28 session f6b90b34 (#2383) at 10:18Z, and this run at 10:25Z: both
+  followed step 1 of `merge-to-main` verbatim, both were denied `skill-not-loaded-for-call
+  ToolSearch needs searching-for-a-tool`, and both spent a turn loading it.
+  `packs/git-github/skills/merge-to-main/SKILL.md:17` is the corpus's only instruction to call
+  `ToolSearch`, so the denial is deterministic on every merge this repo's owner authorises.
+- **Reason:** routing, not strength. The fix is one clause in a canon pack's skill, which this local
+  pack's `ruleRoutingGuidance` excludes, and a rule here telling sessions what the guard's own
+  message already says would carry the cost without fixing the cause. Filed as #2389 instead.
+- **Actor:** the growth-extract run over the 2026-09-28 window, work item #2386.
+
+## 2026-09-28 · declined · pass the merge-policy engine origin/main, not the base branch's bare name
+- **Source:** this run. `deliver-pr.md`'s fenced block reads `--base <the PR's base branch>`, so the
+  substitution is `--base main`; local `main` sat at bd944ef1 (#2281, 2026-09-22) against
+  `origin/main` at f170024, and the verdict came back `AUTOMERGE: no` over six days of history the
+  run had not written. `--base origin/main` gives `AUTOMERGE: yes`.
+- **Reason:** routing, and already covered. The session-side half is git-github-advanced's "never
+  branch from the bare local `main` in a checkout nothing keeps current", which this case is one
+  more dressing of; what is new is the doc inviting the bare name, and `claudinite-tasks` is a canon
+  pack this run may not write. Filed as #2391 instead.
+- **Actor:** the growth-extract run over the 2026-09-28 window, work item #2386.

@@ -101,7 +101,31 @@ test('canonVersions: reads engine and pack manifests once each, however many mem
   assert.equal(await v.engine(), 4);
   assert.equal(await v.pack('acme-pack'), 7);
   assert.equal(await v.pack('acme-pack'), 7);
-  assert.equal(seen.length, 2, 'a fleet of 30 members must not re-read canon 30 times');
+  assert.equal(seen.length, 3, 'a fleet of 30 members must not re-read canon 30 times');
+});
+
+const CATALOG = [
+  '| Pack | Version | What it covers | Not this pack | Activation | Requires |',
+  '|---|---|---|---|---|---|',
+  '| `acme-pack` | 60927.2 | acme \\| things | — | declared by hand (opt-in) | — |',
+  '| `acme-legacy` | 7 | an integer-versioned pack | — | declared by hand (opt-in) | — |', '',
+].join('\n');
+
+test('canonVersions: a catalog carrying versions prices every pack it offers in that one read', async () => {
+  const { gh, seen } = textGh({ ...CANON_FILES, 'o/canon:packs/directory.GENERATED.md': CATALOG });
+  const v = canonVersions(gh, 'o/canon');
+  assert.equal(await v.pack('acme-pack'), '60927.2');
+  assert.equal(await v.pack('acme-legacy'), 7);
+  assert.deepEqual(seen, ['/repos/o/canon/contents/packs/directory.GENERATED.md']);
+  // A pack the catalog does not offer is still read off its manifest.
+  const hidden = textGh({ ...CANON_FILES, 'o/canon:packs/directory.GENERATED.md': CATALOG.replace(/^\| `acme-pack`.*\n/m, '') });
+  assert.equal(await canonVersions(hidden.gh, 'o/canon').pack('acme-pack'), 7);
+});
+
+test('canonVersions: a catalog with no Version column prices nothing and every pack falls back to its manifest', async () => {
+  const unversioned = CATALOG.replace(/\| Version /, '').replace(/\| (60927\.2|7) \| /g, '| ');
+  const { gh } = textGh({ ...CANON_FILES, 'o/canon:packs/directory.GENERATED.md': unversioned });
+  assert.equal(await canonVersions(gh, 'o/canon').pack('acme-pack'), 7);
 });
 
 test('canonVersions: a pack canon no longer carries reads as absent, not as zero', async () => {

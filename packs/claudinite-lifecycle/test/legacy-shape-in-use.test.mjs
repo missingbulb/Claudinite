@@ -131,3 +131,16 @@ test('legacy-shape-in-use: files left at the pre-flat and pre-usage paths are ea
     '.claudinite/local/usage.GENERATED.json',
   ]);
 });
+
+test('legacy-shape-in-use: a local pack still spelling the retired fingerprint fields is reported, a vendored one is not', () => {
+  const manifest = "export default {\n  ruleRoutingGuidance: { belongs: 'b', excludes: 'e' },\n  detect: null,\n  marker: null,\n};\n";
+  const findings = rule.run(ctx({
+    [SETTINGS_FILE]: JSON.stringify({ packs: ['local/own'] }),
+    '.claudinite/local/packs/own/pack.mjs': manifest,
+    '.claudinite/shared/packs/acme-pack/pack.mjs': manifest,
+  }));
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].file, '.claudinite/local/packs/own/pack.mjs');
+  assert.equal(findings[0].line, 3);
+  assert.match(findings[0].what, /retired fingerprint/);
+});

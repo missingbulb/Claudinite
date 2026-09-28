@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validateManifest, normalizeManifest, PACK_FIELDS, RULE_SCOPES, MAX_ROUTING_WORDS } from '../../engine/pack_loader/pack-schema.mjs';
+import { validateManifest, normalizeManifest, PACK_FIELDS, RULE_SCOPES, MAX_ROUTING_WORDS, MAX_PITCH_WORDS } from '../../engine/pack_loader/pack-schema.mjs';
 import { loadPacks } from '../../engine/pack_loader/pack-registry.mjs';
 
 const rule = (id) => ({ id, on_fail: 'block', description: 'd', doc: 'x.md', why: 'w', run: () => [] });
@@ -38,6 +38,8 @@ test('an undeclared field is an error — the vocabulary is closed', () => {
 test('a declared field of the wrong type is an error', () => {
   assert.match(whats({ ...valid, requires: 'barriers' }), /"requires" is not a valid value/);
   assert.match(whats({ ...valid, detect: 'yes' }), /"detect" is not a valid value/);
+  assert.match(whats({ ...valid, relevanceDetector: [] }), /"relevanceDetector" is not a valid value/);
+  assert.match(whats({ ...valid, relevanceDetector: { about: 'x', paths: /x/, text: /y/ } }), /relevanceDetector\.search/);
   assert.match(whats({ ...valid, worldRules: [{ id: 'x' }] }), /"worldRules" is not a valid value/);
 });
 
@@ -49,6 +51,15 @@ test('both routing sides are required and capped', () => {
     whats({ ...valid, ruleRoutingGuidance: { ...valid.ruleRoutingGuidance, belongs: over } }),
     new RegExp(`ruleRoutingGuidance\\.belongs is ${MAX_ROUTING_WORDS + 2} words, over the ${MAX_ROUTING_WORDS}-word cap`)
   );
+});
+
+test('a pitch is a non-empty paragraph under its cap', () => {
+  const pitch = Array.from({ length: 40 }, (_, i) => `w${i}`).join(' ');
+  assert.deepEqual(validateManifest({ ...valid, pitch }), []);
+  assert.match(whats({ ...valid, pitch: '  ' }), /"pitch" is not a valid value/);
+  assert.match(whats({ ...valid, pitch: ['x'] }), /"pitch" is not a valid value/);
+  const over = Array.from({ length: MAX_PITCH_WORDS + 1 }, (_, i) => `w${i}`).join(' ');
+  assert.match(whats({ ...valid, pitch: over }), new RegExp(`pitch is ${MAX_PITCH_WORDS + 1} words, over the ${MAX_PITCH_WORDS}-word cap`));
 });
 
 test('a rule whose own scope contradicts its placement is drift', () => {

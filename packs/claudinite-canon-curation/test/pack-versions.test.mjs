@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import {
   isShippingFile, declaredPackVersion, withPackVersion, shelfPacks, bumpCommits, planBumps,
-  versionHistory, renderHistory, planHistory, rowVersions, pullNumber, BUMP_TASK,
+  versionHistory, renderHistory, planHistory, rowVersions, pullNumber, BUMP_TASK, withDirectoryVersions,
 } from '../pack-versions.mjs';
 import { run, makeGit, pushOnto } from '../tasks/pack-version-bump/worker.mjs';
 import { removeTree } from '../../../engine/remove-tree.mjs';
@@ -118,6 +118,34 @@ test('declaredPackVersion reads `version:` and not `minEngineVersion:`; withPack
   assert.match(bumped, /minEngineVersion: '60822\.1'/);
   assert.equal(bumped.replace("'60905.1'", "'60901.1'"), text);
   assert.equal(declaredPackVersion('export default {}'), null);
+});
+
+const directory = (alpha, beta) => [
+  '# catalog', '',
+  '| Pack | Version | What it covers | Not this pack | Activation | Requires |',
+  '|---|---|---|---|---|---|',
+  `| \`alpha\` | ${alpha} | pipes \\| inside | — | declared by hand (opt-in) | — |`,
+  `| \`beta\` | ${beta} | beta things | — | declared by hand (opt-in) | \`alpha\` |`, '',
+].join('\n');
+
+test('withDirectoryVersions moves only the bumped rows\' Version cells, and leaves a catalog it cannot place a version in alone', () => {
+  const before = directory('60901.1', '60902.1');
+  assert.equal(withDirectoryVersions(before, [{ id: 'alpha', to: '60905.1' }]), directory('60905.1', '60902.1'));
+  assert.equal(withDirectoryVersions(before, [{ id: 'hidden', to: '60905.1' }]), before, 'a pack the catalog does not offer has no row to move');
+  const unversioned = before.replace('| Version ', '').replace('|---|---|---|---|---|---|', '|---|---|---|---|---|')
+    .replace('| 60901.1 ', '').replace('| 60902.1 ', '');
+  assert.equal(withDirectoryVersions(unversioned, [{ id: 'alpha', to: '60905.1' }]), unversioned, 'a catalog with no Version column is not rewritten');
+});
+
+test('run: a shelf carrying the catalog gets its Version cells moved in the same bump commit', async () => {
+  const { dir, origin, work } = fixture();
+  try {
+    land(work, 'Render the catalog (#13)', { 'packs/directory.GENERATED.md': directory('60901.1', '60902.1') }, { date: '2026-09-03T10:00:00Z' });
+    const { bumped, commit } = await run({ root: work, remote: origin, base: 'main', today: TODAY, log: quiet, git: gitAtToday(work) });
+    assert.deepEqual(bumped.map((b) => b.id), ['alpha']);
+    assert.deepEqual(sh(work, 'diff', '--name-only', `${commit}^`, commit).trim().split('\n'), ['packs/alpha/pack.mjs', 'packs/directory.GENERATED.md']);
+    assert.equal(sh(work, 'show', `${commit}:packs/directory.GENERATED.md`), directory('60905.1', '60902.1'));
+  } finally { removeTree(dir); }
 });
 
 test('bumpCommits: every first-parent commit that moved a pack\'s version, newest first, the introduction included', () => {

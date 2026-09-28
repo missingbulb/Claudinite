@@ -22,3 +22,14 @@
   reason.
 - **Actor:** @missingbulb (owner).
 - **Landed:** #2161 (Refs #2150).
+
+## 2026-09-27 · reworded · Claudinite growth: rule revalidation (#2363)
+- **Source:** the weekly revalidation's re-probe of this pack's environment claims.
+- **Reason:** the 2026-09-20 entry recorded an unmatched glob exiting 1; isolating the forms on the
+  same node v22.22.2 shows only a literal path carrying no `*` does that, while an unmatched glob
+  runs zero tests and exits 0. Calling the subset glob the one silent shape licensed the quietest
+  one.
+- **Actor:** the weekly rule-revalidation run, work item #2355.
+- **Model:** Claude Opus 5, per the commit trailer.
+- **Retire when:** Retire the glob caveat if `node --test` stops expanding a pattern itself.
+- **Landed:** #2363 (Refs #2355).

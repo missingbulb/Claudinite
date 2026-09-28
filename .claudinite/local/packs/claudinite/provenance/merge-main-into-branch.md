@@ -17,3 +17,8 @@
 - **Reason:** owner decision, 2026-09-25: the field names what happens when the check fails, and
   *severity* keeps its impact sense; what this element enforces is unchanged.
 - **Actor:** @missingbulb (owner).
+
+## 2026-09-27 · retired · its premise, squash-merge-history, is retired
+- **Reason:** a merge of main into the branch tripped nothing else, and under squash merging it
+  lands the same commit as a rebase without rewriting a shared branch.
+- **Actor:** @missingbulb (owner).

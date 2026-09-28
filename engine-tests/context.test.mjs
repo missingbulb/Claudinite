@@ -292,8 +292,8 @@ test('buildContext: the shared mount is structurally out of scope; local packs s
 
 // A remote-tracking base ref goes stale the moment the base branch moves, and a cloud
 // session's clone freezes it at container-creation time. Everything the base gained since
-// then sits in `mergeBase..HEAD` and gets billed to the work — squash-merge-history (a
-// blocking rule) reporting other people's merge commits as introduced by this change.
+// then sits in `mergeBase..HEAD` and gets billed to the work — a delta rule reporting other
+// people's merge commits as introduced by this change.
 test('buildContext: a stale remote base ref is refreshed, so the base branch\'s own merges are not the work\'s', () => {
   const origin = mkdtempSync(join(tmpdir(), 'claudinite-origin-'));
   git(origin, 'init', '-q', '-b', 'main');
@@ -583,4 +583,37 @@ test('the retired claudinite and maintenance blocks are errors, not a second spe
     });
     assert.deepEqual(loadConfig(root).packs, ['acme-pack-b']);
   } finally { removeTree(root); }
+});
+
+// The base tree in one listing, agreeing with readBase path for path: a file the change
+// added is not in it, one the change deleted still is, and an untouched one is.
+test('listBase names exactly the paths readBase finds at the merge-base', () => {
+  const root = makeRepo({ base: { 'kept.txt': 'k\n', 'gone.txt': 'g\n' }, changed: { 'added.txt': 'a\n' } });
+  try {
+    git(root, 'rm', '-q', 'gone.txt');
+    git(root, 'commit', '-q', '-m', 'drop gone Refs #1');
+    const ctx = buildContext({ root, mode: 'all' });
+    const listed = new Set(ctx.listBase());
+    for (const p of ['kept.txt', 'gone.txt', 'added.txt']) {
+      assert.equal(listed.has(p), ctx.readBase(p) !== null, `listBase and readBase disagree on ${p}`);
+    }
+    assert.ok(listed.has('gone.txt') && !listed.has('added.txt'));
+  } finally { cleanup(root); }
+});
+
+// One batch read standing in for a `show` per path must answer every path exactly as
+// that `show` would: a changed file's base text, a deleted one's, null for one the
+// change added, and a directory left to readBase's own answer.
+test('prefetchBase fills readBase with exactly what a per-path read returns', () => {
+  const root = makeRepo({ base: { 'kept.txt': 'k\n', 'edited.txt': 'before\n', 'gone.txt': 'g\n', 'dir/in.txt': 'i' }, changed: { 'added.txt': 'a\n', 'edited.txt': 'after\n' } });
+  try {
+    git(root, 'rm', '-q', 'gone.txt');
+    git(root, 'commit', '-q', '-m', 'drop gone Refs #1');
+    const paths = ['kept.txt', 'edited.txt', 'gone.txt', 'added.txt', 'dir', 'dir/in.txt', 'no/such.txt'];
+    const fresh = buildContext({ root, mode: 'all' });
+    const batched = buildContext({ root, mode: 'all' });
+    batched.prefetchBase(paths);
+    assert.deepEqual(paths.map((p) => batched.readBase(p)), paths.map((p) => fresh.readBase(p)));
+    assert.equal(batched.readBase('edited.txt'), 'before\n');
+  } finally { cleanup(root); }
 });

@@ -52,3 +52,10 @@
   same work runs, exits the same way and prints the same markers.
 - **Actor:** @missingbulb (owner), who asked why every task re-implements one runner's job.
 - **Model:** Opus 5
+
+## 2026-09-27 · policy-changed · the bump commit also moves the catalog's Version cells
+- **Reason:** the dashboard and the fleet roster price canon's packs off the catalog in one read
+  instead of one per pack, so it must move with the manifests.
+- **Actor:** @missingbulb (owner).
+- **Mechanism:** the worker patches `packs/directory.GENERATED.md` in the same commit; the
+  renderer's drift guard holds the patch byte-identical to a fresh render.

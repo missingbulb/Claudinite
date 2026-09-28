@@ -9,12 +9,13 @@
 // descriptor at `packs/<id>/dashboard.json`. Publishing is the `publish-pages` task plus the
 // four-step workflow `seedOps` writes below; what a repo does with the pack is its README.
 export default {
-  version: '60925.2',
+  version: '60928.1',
   minEngineVersion: '60925.1',
   ruleRoutingGuidance: {
     belongs: 'the browser dashboard over Claudinite scheduler state and the site that publishes it',
     excludes: 'how the scheduler behaves — core; workflow practice — git-github; product sites — public-website',
   },
+  pitch: 'Gives the repo a read-only web page showing what its automated Claude work is doing: what is stuck, what is queued, what has already run, and what the rules and checks have been costing and catching. It can also cover a whole fleet of repositories from one overview. Two scheduled tasks keep it live, one republishing the page to GitHub Pages whenever its sources change and one deploying the sign-in endpoint, and neither reports success until the deployed result actually answers.',
 
   // Never fingerprinted. Nothing in a repo's shape implies wanting a dashboard, and a
   // scan that suspected one from the presence of a scheduler would suspect it in every

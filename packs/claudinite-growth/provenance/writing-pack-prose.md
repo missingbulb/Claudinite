@@ -24,3 +24,10 @@
   it.
 - **Mechanism:** the description, as before.
 - **Actor:** @missingbulb (owner).
+
+## 2026-09-27 · trigger-changed · a pack's pitch is pack prose too
+- **Reason:** the manifest gained a `pitch`, and the owner asked the pack-writing skill to say how
+  one is written and who it is for.
+- **Actor:** @missingbulb (owner).
+- **Mechanism:** a section of this skill, force-loaded on `pack.mjs` edits beside RULES.md and
+  SKILL.md, since the pitch lives in the manifest.

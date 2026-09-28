@@ -12,9 +12,8 @@ const judge = (id, commands) => {
   finally { cleanup(root); session.cleanup(); }
 };
 
-test('the git guards: pull, merge of main, GitHub through the shell', () => {
+test('the git guards: pull, GitHub through the shell', () => {
   assert.deepEqual(judge('git-pull-on-shallow-clone', ['git pull origin main', 'git fetch origin main && git reset --hard origin/main']), ['a git pull']);
-  assert.deepEqual(judge('merge-main-into-branch', ['git merge origin/main', 'git rebase origin/main', 'git merge feature']), ['a merge of main into the branch']);
   assert.deepEqual(judge('github-api-via-shell', ['curl -s https://api.github.com/repos/o/r/pulls', 'gh pr view 1', 'git fetch origin', 'echo "see api.github.com"']), [
     'a GitHub read through the shell: "curl -s https://api.github.com"', 'a GitHub read through the shell: "gh "',
   ]);

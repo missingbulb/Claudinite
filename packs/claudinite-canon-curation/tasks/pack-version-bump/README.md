@@ -5,7 +5,8 @@ has installed, so every shipping change under `packs/<id>/` needs a new number â
 two changes both claim strands whichever members took the first one. This task is the one
 writer of that number: it reads the base branch, finds each pack's last version bump, and cuts
 the next version cut today for every pack with a shipping change since, in one commit pushed
-straight onto the base branch. No pull request bumps a version itself, and nothing checks that
+straight onto the base branch, which also moves those packs' Version cells in
+`packs/directory.GENERATED.md` so readers can price every pack from that one file. No pull request bumps a version itself, and nothing checks that
 one did.
 
 Two triggers run the same worker:

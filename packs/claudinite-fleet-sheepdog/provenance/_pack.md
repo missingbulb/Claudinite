@@ -77,3 +77,16 @@
   update holds this version until the member's engine is at 60925.1.
 - **Actor:** @missingbulb (owner).
 - **Mechanism:** the manifest's `minEngineVersion`, which the pack update enforces.
+
+## 2026-09-27 · born · a pitch paragraph for the dashboard's plain-repo view
+- **Reason:** the dashboard shows a repo that does not run Claudinite the packs that fit it, and the
+  owner asked for one paragraph per pack naming its main skills and process gains, with rough counts
+  so it outlives the pack's growth.
+- **Actor:** @missingbulb (owner).
+- **Mechanism:** the manifest's `pitch` field, beside `ruleRoutingGuidance`.
+
+## 2026-09-27 · scope-changed · the pack requires engine 60927.1
+- **Reason:** its missing-packs sweep reads the `relevanceDetector` spec, which no older engine
+  carries.
+- **Actor:** @missingbulb (owner).
+- **Mechanism:** `minEngineVersion`, which the pack update enforces.
