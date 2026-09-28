@@ -85,3 +85,14 @@
 - **Actor:** @missingbulb (owner), asking for pack.json manifests.
 - **Mechanism:** pack.json, which the loader prefers over pack.mjs; a canon pack now needs engine
   60928.1, the first to read it.
+
+## 2026-09-28 · scope-changed · the fingerprint is dropped; the pack is declared by hand
+- **Reason:** no file shape identifies a repo that runs its spec this way;
+  dev/requirements/requirements.md was one project's layout.
+- **Actor:** @missingbulb (owner), in review of #2382.
+- **Mechanism:** no relevanceDetector, so --init and the fleet sweep never suggest it.
+
+## 2026-09-28 · reworded · the layout rule no longer calls the spec path the pack's fingerprint
+- **Reason:** the fingerprint is gone, so the sentence saying the pack activates on that path was
+  false.
+- **Actor:** @missingbulb (owner), in review of #2382.

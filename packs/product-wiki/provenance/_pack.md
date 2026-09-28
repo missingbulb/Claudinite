@@ -70,3 +70,9 @@
 - **Actor:** @missingbulb (owner), asking for pack.json manifests.
 - **Mechanism:** pack.json, which the loader prefers over pack.mjs; a canon pack now needs engine
   60928.1, the first to read it.
+
+## 2026-09-28 · scope-changed · the fingerprint is dropped; the pack is declared by hand
+- **Reason:** the sink README is the pack's own artifact, so it is only there once the pack is
+  adopted: not an indicator for adoption.
+- **Actor:** @missingbulb (owner), in review of #2382.
+- **Mechanism:** no relevanceDetector, so --init and the fleet sweep never suggest it.

@@ -10,11 +10,10 @@ import { discoverPacks } from '../engine/pack_loader/pack-registry.mjs';
 const SAMPLES = { // @real-entity each real pack's own search terms are what is under test
   'chrome-extension': ['{ "manifest_version": 3 }'], // @real-entity
   'cloudflare-site': ['{ "assets": { "directory": "./site" } }'], // @real-entity
-  'headless-browser': ["import { chromium } from 'playwright';", "const p = require('puppeteer-core');", 'await webkit.launch()'], // @real-entity
-  jwt: ["require('jsonwebtoken')", "import { jwtVerify } from 'jose'", 'import jwt\n', 'from jwt.utils import x', "require('express-jwt')", "require('jwks-rsa')", "require('node-jose')"], // @real-entity
+  'headless-browser': ['{ "devDependencies": { "@playwright/test": "^1.47.0" } }', '"puppeteer-core": "^23.0.0"', 'playwright==1.47.0\n', 'dependencies = ["pyppeteer>=1.0"]'], // @real-entity
+  jwt: ['"jsonwebtoken": "^9.0.2"', '"jose": "^5.9.0"', '"express-jwt": "^8.4.1"', '"jwks-rsa": "^3.1.0"', '"node-jose": "^2.2.0"', 'PyJWT==2.9.0\n', 'python-jose[cryptography]>=3.3\n'], // @real-entity
   leaflet: ['<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">', 'L.tileLayer(url)', 'L.markerClusterGroup()'], // @real-entity
   'numpy-image-processing': ['numpy\nscipy\n'], // @real-entity
-  'public-website': ['<footer title="version 1.2.3">'], // @real-entity
   'web-speech': ['new webkitSpeechRecognition()', 'new SpeechRecognition()', 'speechSynthesis.speak(u)', 'new SpeechSynthesisUtterance(t)', 'chrome.tts.speak(t)', 'SpeechRecognitionPhrase'], // @real-entity
 };
 

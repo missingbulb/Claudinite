@@ -11,13 +11,18 @@ const ctx = (files) => ({
   read: (f) => files[f] ?? null,
 });
 
-test('jwt: fingerprint fires on a JWT library reference in source, and only there', () => {
-  assert.equal(detectorSpec.detectsRelevance(pack.relevanceDetector, ctx({ 'server/auth.js': "const jwt = require('jsonwebtoken');\n" })), true);
-  assert.equal(detectorSpec.detectsRelevance(pack.relevanceDetector, ctx({ 'api/token.py': 'import jwt\n\ntoken = jwt.encode(claims, key)\n' })), true);
-  assert.equal(detectorSpec.detectsRelevance(pack.relevanceDetector, ctx({ 'lib/verify.ts': "import { jwtVerify } from 'jose';\n" })), true);
-  // The library names only count in source files, and only as module references.
-  assert.equal(detectorSpec.detectsRelevance(pack.relevanceDetector, ctx({ 'docs/notes.md': "we might use 'jsonwebtoken' someday\n" })), false);
-  assert.equal(detectorSpec.detectsRelevance(pack.relevanceDetector, ctx({ 'src/app.js': "console.log('hello');\n" })), false);
-  // `import jwt` must be an import statement, not a substring.
-  assert.equal(detectorSpec.detectsRelevance(pack.relevanceDetector, ctx({ 'src/app.py': 'important = True\n' })), false);
+const fires = (files) => detectorSpec.detectsRelevance(pack.relevanceDetector, ctx(files));
+
+test('jwt: fingerprint fires on a JWT library a dependency manifest declares', () => {
+  assert.equal(fires({ 'package.json': '{ "dependencies": { "jsonwebtoken": "^9.0.2" } }\n' }), true);
+  assert.equal(fires({ 'api/package.json': '{ "dependencies": { "jose": "^5.9.0" } }\n' }), true);
+  assert.equal(fires({ 'requirements.txt': 'flask==3.0\nPyJWT==2.9.0\n' }), true);
+  assert.equal(fires({ 'pyproject.toml': '[project]\ndependencies = ["python-jose[cryptography]>=3.3"]\n' }), true);
+});
+
+test('jwt: fingerprint is silent on source that uses a library no manifest declares, and on a name in prose', () => {
+  assert.equal(fires({ 'server/auth.js': "const jwt = require('jsonwebtoken');\n" }), false);
+  assert.equal(fires({ 'package.json': '{ "description": "jose tokens, someday" }\n' }), false);
+  assert.equal(fires({ 'package.json': '{ "dependencies": { "jose-utils": "^1.0.0" } }\n' }), false);
+  assert.equal(fires({ 'a/b/package.json': '{ "dependencies": { "jsonwebtoken": "^9.0.2" } }\n' }), false);
 });

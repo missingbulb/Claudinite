@@ -102,3 +102,8 @@
 - **Actor:** @missingbulb (owner), asking for pack.json manifests.
 - **Mechanism:** pack.json, which the loader prefers over pack.mjs; a canon pack now needs engine
   60928.1, the first to read it.
+
+## 2026-09-28 · scope-changed · the fingerprint is dropped; the pack is declared by hand
+- **Reason:** a version stamp on a page is the pack's own artifact, not a sign a repo would want it.
+- **Actor:** @missingbulb (owner), in review of #2382.
+- **Mechanism:** no relevanceDetector, so --init and the fleet sweep never suggest it.

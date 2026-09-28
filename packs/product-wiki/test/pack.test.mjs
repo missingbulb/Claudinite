@@ -6,8 +6,6 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { makeRepo, cleanup, writeFiles, declaredCheck } from '../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
-import { loadPacks } from '../../../engine/pack_loader/pack-registry.mjs';
-import { SINK_README } from '../lib.mjs';
 import { skillMetadata } from '../../../engine/pack_loader/skill-frontmatter.mjs';
 
 const layout = declaredCheck('packs/product-wiki', 'product-wiki-layout');
@@ -18,7 +16,6 @@ const sources = declaredCheck('packs/product-wiki', 'product-wiki-sources');
 const freshness = declaredCheck('packs/product-wiki', 'product-wiki-freshness');
 import wikiGrowthJson from '../tasks/wiki-growth/task.json' with { type: 'json' };
 import { normalizeTaskDeclaration } from '../../claudinite-tasks/public/task-declaration.mjs';
-import * as detectorSpec from '../../../engine/pack_loader/relevance-detector.mjs';
 // The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
 const wikiGrowth = normalizeTaskDeclaration(wikiGrowthJson);
 // Built through the real path: a forbidReferences entry in the pack's own
@@ -66,15 +63,6 @@ test('the writing-wiki-pages skill scopes itself to the tree, and the weekly wor
   // doc that names it.
   assert.ok(skillMetadata(join(here, '..', 'skills', 'writing-wiki-pages')).forceLoadPaths.length, 'the skill forces itself for files');
   assert.ok(readFileSync(join(here, '..', 'tasks', 'wiki-growth', 'task.md'), 'utf8').includes('skill: `writing-wiki-pages`'));
-});
-
-const pack = (await loadPacks()).find((p) => p.id === 'product-wiki'); // @real-entity the pack under test
-
-// The manifest spells out the lib's sink path, which the wall and the layout check read.
-test('detect fires exactly on the sink marker the lib names', () => {
-  assert.equal(pack.relevanceDetector.about, SINK_README);
-  assert.equal(detectorSpec.detectsRelevance(pack.relevanceDetector, { tracked: [SINK_README], read: () => null }), true);
-  assert.equal(detectorSpec.detectsRelevance(pack.relevanceDetector, { tracked: ['product-wiki/Market/README.md'], read: () => null }), false);
 });
 
 // --- product-wiki-layout ------------------------------------------------------

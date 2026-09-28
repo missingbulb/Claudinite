@@ -81,3 +81,12 @@
 - **Actor:** @missingbulb (owner), asking for pack.json manifests.
 - **Mechanism:** pack.json, which the loader prefers over pack.mjs; a canon pack now needs engine
   60928.1, the first to read it.
+
+## 2026-09-28 · scope-changed · the fingerprint is an MV3 manifest at the root or one directory down
+- **Reason:** manifest_version alone fired on a Firefox-only MV2 extension and on a fixture
+  extension anywhere in the tree; the pack is written for MV3, and every other marker stops one
+  directory down.
+- **Actor:** @missingbulb (owner), in review of #2382.
+- **Mechanism:** paths over a near-root manifest.json, text over "manifest_version": 3.
+- **Rejected:** dropping it, since an extension declares no package dependency a manifest-based
+  fingerprint could read instead.

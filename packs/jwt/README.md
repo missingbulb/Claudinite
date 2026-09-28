@@ -1,7 +1,8 @@
 # jwt pack
 
-For projects that **mint or validate JSON Web Tokens** — fingerprinted by a JWT library
-(`jsonwebtoken` / `jose` / PyJWT / …) referenced in JS/TS/Python source. It contributes no
+For projects that **mint or validate JSON Web Tokens** — suggested when a near-root
+`package.json`, `requirements*.txt` or `pyproject.toml` declares a JWT library (`jsonwebtoken`,
+`jose`, PyJWT and the like). It contributes no
 session-start prose: its five checks run at every Stop and in CI, and its two action skills,
 [`jwt-minting`](skills/jwt-minting/SKILL.md) and [`jwt-validation`](skills/jwt-validation/SKILL.md),
 are read when token-issuing or verification code is being added or changed.
