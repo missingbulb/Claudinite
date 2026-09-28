@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import {
   makeReader, readRunCosts, billedMinutes, readCostFromLog,
   SCHEDULER_RUNS_PER_FOLD,
-} from '../../../tasks/tasks-usage-fold/read-run-costs.mjs';
+} from '../../../tasks/usage-fold/read-run-costs.mjs';
 import { RUN_COST_TAG } from '../../../src/items/run-record.mjs';
 
 const NOW = '2026-09-15T12:00:00Z';

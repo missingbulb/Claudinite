@@ -1,5 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import usageFoldJson from '../../../tasks/usage-fold/task.json' with { type: 'json' };
@@ -7,6 +9,7 @@ import { evaluatePrecondition } from '../../../src/contract/precondition.mjs';
 import { loadTaskTerms } from '../../../src/contract/task-terms.mjs';
 import { preconditionSignals } from '../../../src/contract/precondition-policy.mjs';
 import { normalizeTaskDeclaration } from '../../../src/contract/task-contract.mjs';
+import { TASKS_USAGE_PATH, encodeTasksUsageFile, renderTasksUsageFile } from '../../../src/items/tasks-usage-format.mjs';
 // The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
 const usageFold = normalizeTaskDeclaration(usageFoldJson);
 
@@ -22,7 +25,27 @@ const terms = await loadTaskTerms(TASK_DIR);
 const SCHEDULE = { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 };
 const AT = '2026-09-05T16:00:00Z';
 const NO_RUNS = { runs: { list: [] } };
-const verdict = (signals) => evaluatePrecondition({ decl: usageFold, terms }, { ...NO_RUNS, ...signals }, {}, null, AT, SCHEDULE);
+
+// The machinery half's term reads the checkout's own file, so every verdict is taken
+// against a checkout whose run watermark is `mark` — by default one already past AT's
+// day anchor, so the session half's signals decide unless a test says otherwise.
+function checkout(mark) {
+  const root = mkdtempSync(join(tmpdir(), 'usage-fold-'));
+  const path = join(root, TASKS_USAGE_PATH);
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, renderTasksUsageFile(encodeTasksUsageFile({ runsFoldedThrough: mark })));
+  return root;
+}
+const CAUGHT_UP = checkout('2026-09-05T15:00:00Z');
+const verdict = (signals, root = CAUGHT_UP) => {
+  const before = process.env.CLAUDINITE_REPO_ROOT;
+  process.env.CLAUDINITE_REPO_ROOT = root;
+  try { return evaluatePrecondition({ decl: usageFold, terms }, { ...NO_RUNS, ...signals }, {}, null, AT, SCHEDULE); }
+  finally {
+    if (before === undefined) delete process.env.CLAUDINITE_REPO_ROOT;
+    else process.env.CLAUDINITE_REPO_ROOT = before;
+  }
+};
 
 // --- usage-fold (the skill-usage aggregate) ----------------------------------
 
@@ -58,6 +81,14 @@ test('usage-fold: a quiet period declines, and loses nothing by it', () => {
   assert.equal(quiet.run, false);
   assert.match(quiet.reason, /no default-branch commit/);
   assert.match(quiet.reason, /no conversation log was captured/);
+});
+
+test('usage-fold: machinery that ran unfolded runs it on an otherwise silent repo', () => {
+  // A repo whose only activity is its own queue has no commit and no capture, yet
+  // its scheduler ticked: the machinery half has rows to fold, so the task runs.
+  const machinery = verdict({ commits: { count: 0 }, conversationLogs: { newestLogAgeDays: 3 } }, checkout('2026-09-04T17:00:00Z'));
+  assert.equal(machinery.run, true);
+  assert.match(machinery.reason, /folded through 2026-09-04T17:00:00Z/);
 });
 
 test('usage-fold: an unknown signal is not movement — and does not wedge the task', () => {

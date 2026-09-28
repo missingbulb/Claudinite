@@ -79,7 +79,7 @@ export function machinePanel(m) {
       el('p', {
         className: 'sub',
         textContent: 'Everything in this panel comes from `.claudinite/usage/task-runs-and-costs.json`, '
-          + 'which the claudinite-tasks pack\'s tasks-usage-fold task writes. Declare that pack and the '
+          + 'which the claudinite-tasks pack\'s usage-fold task writes. Declare that pack and the '
           + 'panel fills in from its first run; nothing else on this page depends on it.',
       }),
     ])];
@@ -270,7 +270,7 @@ export function fleetMachinePanel(f, onOpen = null) {
         className: 'sub',
         textContent: `${f.readable} readable member(s), none of them folding `
           + '`.claudinite/usage/task-runs-and-costs.json` — everything here waits on the '
-          + 'claudinite-tasks pack\'s tasks-usage-fold task.',
+          + 'claudinite-tasks pack\'s usage-fold task.',
       }),
     ])];
   }
