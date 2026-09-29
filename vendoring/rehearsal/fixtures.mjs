@@ -1046,7 +1046,7 @@ export const FIXTURES = [
   },
   {
     name: 'prose-only',
-    why: 'a local pack carrying no rules — zero rules must not look like a failed load',
+    why: 'a local pack carrying no rules, its pack.mjs still spelling the retired detect and marker - zero rules must not look like a failed load, and the pack.json the update converts it to, those fields dropped, must load the same',
     files: {
       'README.md': '# fixture-prose-only\n\nA rehearsal fixture.\n',
       '.claudinite-settings.json': checks(['basics', 'local/fixture-prose']),
