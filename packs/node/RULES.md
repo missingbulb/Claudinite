@@ -32,8 +32,8 @@
   session's own Node can be newer than CI's pin, so a local green run proves nothing about the
   version that will execute the code in CI. (relying-version-gated)
 
-- **Adding a `setup-node` step to a workflow** — declare its caching either way, `cache: npm` with a
-  committed lockfile and `package-manager-cache: false` without: v5 caches by itself once
+- **Adding a `setup-node` step to a workflow** — declare its caching either way, `cache: npm`
+  with a committed lockfile and `package-manager-cache: false` without: v5 caches by itself once
   `package.json` names `packageManager: npm`, and a cache with no lockfile fails the step. A
   workflow that can't assume a lockfile decides at run time:
   `cache: ${{ <has-lockfile> && 'npm' || '' }}`. (adding-setup-node)
@@ -61,6 +61,6 @@
 - **The same divergence is a production bug, not only a testing gotcha, wherever production code
   itself parses foreign HTML without a real browser** (a Node-side scraper, a DOM-emulation
   library). Reading an element's user-facing text off such a parse or clone inherits the identical
-  `<noscript>`/`<script>`/`<style>` leakage — strip those tags before reading `textContent`, rather
-  than treating the divergence as something only a test harness has to work around.
+  `<noscript>`/`<script>`/`<style>` leakage — strip those tags before reading `textContent`,
+  rather than treating the divergence as something only a test harness has to work around.
   (jsdom-divergence-hits-production)

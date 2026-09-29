@@ -128,6 +128,7 @@
   it is what starts that. (cdp-poll-dormant-worker)
 
 - **`declarativeContent`/`UrlFilter` host-matching can't be proven by CDP introspection or a
-  jsdom-style harness** — the actual URL→condition match runs inside Chrome's own matching engine,
-  invisible to both. Only a real, loaded-extension browser test exercises it; route this one
-  assertion to that heavy lane rather than trying to unit-test it. (declarativecontent-real-chrome-only)
+  jsdom-style harness** — the actual URL→condition match runs inside Chrome's own matching
+  engine, invisible to both. Only a real, loaded-extension browser test exercises it; route this
+  one assertion to that heavy lane rather than trying to unit-test it.
+  (declarativecontent-real-chrome-only)

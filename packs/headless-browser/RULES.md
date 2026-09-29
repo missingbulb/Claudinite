@@ -148,8 +148,8 @@
   before opening hover-driven UI on purpose. (park-pointer-after-gesture)
 
 - **Asserting a value driven by a CSS transition needs every frame, not one delayed sample.** A
-  single sample taken once the state change fires — even with a further wait added after it — can
-  still miss the transition on a loaded machine, since nothing pins *when* during the transition
+  single sample taken once the state change fires — even with a further wait added after it —
+  can still miss the transition on a loaded machine, since nothing pins *when* during the transition
   that sample lands. Sample continuously across the transition's window instead (a
   `MutationObserver`/`requestAnimationFrame` loop collecting frames), and assert that some sampled
   frame actually falls between the start and end values. (sample-transition-continuously)
