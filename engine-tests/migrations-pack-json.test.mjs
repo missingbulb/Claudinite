@@ -54,6 +54,14 @@ test('manifestToJson: the evaluated manifest as JSON, key order kept and pattern
   assert.match((await manifestToJson(IMPORTING)).why, /./);
 });
 
+test('manifestToJson: the retired fingerprint fields are dropped rather than carried into the JSON', async () => {
+  const retired = "export default {\n  ruleRoutingGuidance: { belongs: 'b', excludes: 'e' },\n  detect: null,\n  marker: null,\n  prose: 'RULES.md',\n};\n";
+  assert.deepEqual(JSON.parse((await manifestToJson(retired)).json), {
+    ruleRoutingGuidance: { belongs: 'b', excludes: 'e' },
+    prose: 'RULES.md',
+  });
+});
+
 test('manifestsToJson converts each local pack.mjs it can carry as data, and leaves the rest and the mount alone', async () => {
   const root = repo({
     [`${LOCAL}/plain/pack.mjs`]: PLAIN,
