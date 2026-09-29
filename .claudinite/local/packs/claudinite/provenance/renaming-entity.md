@@ -15,3 +15,10 @@
 - **Actor:** @missingbulb (owner).
 - **Model:** Claude Opus 5, per the commit trailer.
 - **Landed:** #1315 (Closes #1312).
+
+## 2026-09-27 · weakened · the sweep and generated-file halves are canon's now (#2353)
+- **Source:** the growth-dedup run over the window since 2026-09-20.
+- **Reason:** basics' repo-text-sweeps owns the reference sweep, comments included, and the
+  generated-file half is enforced by the `generated-file-hand-edit` check. What no canon element
+  states is leaving historical records alone, so that clause is what stays.
+- **Retire when:** the canon says what to do with a historical record under a rename.
