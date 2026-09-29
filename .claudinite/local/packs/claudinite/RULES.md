@@ -549,9 +549,10 @@ Below are rules on how to work on this repo.
   it writes; nothing else sees the prose fail. (changing-guidance-produced)
 
 
-- **Restoring source after a deliberate see-it-fail mutation** — `git checkout -- <file>` at the
-  moment of mutating, never a `.bak` taken earlier, which predates whatever else you edited in
-  between. (restoring-source-deliberate)
+- **Restoring source after a deliberate see-it-fail mutation** - stage your own edits to that file
+  first, since the restore comes from the index and takes unstaged work with the mutation, then
+  `git checkout -- <file>` at the moment of mutating, never a `.bak` taken earlier, which predates
+  whatever else you edited in between. (restoring-source-deliberate)
 
 
 - **Surveying whether something exists in the tree** — a code-search hit is evidence; a miss is
@@ -587,6 +588,10 @@ Below are rules on how to work on this repo.
 - **Verifying a bulk file-move or rewrite sweep preserved content** — check a structural invariant
   count before and after (total `test(` calls across the touched files). One sweep truncated 46
   test files to zero bytes and every one still "passed". (verifying-bulk-file)
+
+- **Proving a sweep left a module's loaded behaviour unchanged** - read the "before" and the
+  "after" in separate processes: Node's module cache serves an already-imported module from
+  before the rewrite, so an in-process comparison passes against itself. (proving-sweep-left)
 
 ## Editing, branching and merging here
 

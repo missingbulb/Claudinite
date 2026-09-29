@@ -24,3 +24,13 @@
 - **Actor:** @missingbulb (owner).
 - **Model:** Claude Opus 5, per the commit trailer.
 - **Landed:** #1315 (Closes #1312).
+
+## 2026-09-29 · strengthened · the restore reads the index, so unstaged work went with the mutation
+- **Source:** capture 2026-09-28, session 3ef6afc6-df10-51c5-acc6-51ff234e3308 (#2382): the restore
+  after a see-it-fail mutation of a pack manifest also discarded that file's unstaged inlining,
+  recovered only from a copy the rule tells sessions not to take.
+- **Reason:** the rule presumed the file held nothing but the mutation; staging first is the
+  precondition that makes its own advice safe.
+- **Actor:** the claudinite-growth/growth-extract run on #2398.
+- **Model:** claude-opus-5
+- **Retire when:** see-it-fail restores stop going through git checkout.
