@@ -73,6 +73,32 @@ test('node env defaults to the repo root when no config is given', async () => {
   } finally { cleanup(root); }
 });
 
+// The data form a JSON manifest can hold: a template repeated once per value of one of
+// the pack entry's config keys, setup lines joined as lines and probes as a conjunction.
+const TEMPLATED = {
+  id: 'acme-pack',
+  env: {
+    label: 'Acme deps',
+    setup: { forEach: 'dirs', whenUnset: ['.'], template: '( cd "{}" && acme install ) || true' },
+    probe: { forEach: 'dirs', whenUnset: ['.'], template: '[ -d "{}/acme_modules" ]' },
+  },
+};
+const templatedFor = (packEntry) => activeEnvs('/nowhere', { packs: [TEMPLATED], config: { packs: [packEntry], packConfig: { 'acme-pack': packEntry.config } } });
+
+test('activeEnvs expands a templated setup and probe once per configured value', async () => {
+  const [e] = await templatedFor({ id: 'acme-pack', config: { dirs: ['api', 'web app'] } });
+  assert.equal(e.setup, '( cd "api" && acme install ) || true\n( cd "web app" && acme install ) || true');
+  assert.equal(e.probe, '[ -d "api/acme_modules" ] && [ -d "web app/acme_modules" ]');
+});
+
+test('activeEnvs takes the template\'s whenUnset values for an absent or empty config key', async () => {
+  for (const config of [undefined, {}, { dirs: [] }]) {
+    const [e] = await templatedFor({ id: 'acme-pack', config });
+    assert.equal(e.setup, '( cd "." && acme install ) || true', JSON.stringify(config));
+    assert.equal(e.probe, '[ -d "./acme_modules" ]', JSON.stringify(config));
+  }
+});
+
 test('activeEnvs is empty when no env-declaring pack is active', async () => {
   const root = makeRepo({ base: { '.claudinite-settings.json': JSON.stringify({ packs: [] }) } });
   try {

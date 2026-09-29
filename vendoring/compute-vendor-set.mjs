@@ -116,7 +116,7 @@ function walk(relDir, files, errors, { engine = false, today, installed = null, 
   } catch (e) {
     errors.push({
       what: `${relDir} is not a readable directory in the canon tree: ${e.message}`,
-      fix: `restore ${relDir}, or fix what names it (an engine root, a pack.mjs skills list)`,
+      fix: `restore ${relDir}, or fix what names it (an engine root, a manifest's skills list)`,
     });
     return;
   }

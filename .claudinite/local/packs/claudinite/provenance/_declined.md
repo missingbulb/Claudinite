@@ -202,3 +202,22 @@
   more dressing of; what is new is the doc inviting the bare name, and `claudinite-tasks` is a canon
   pack this run may not write. Filed as #2391 instead.
 - **Actor:** the growth-extract run over the 2026-09-28 window, work item #2386.
+
+## 2026-09-29 · declined · what makes a relevanceDetector fingerprint reliable
+- **Source:** the owner's review on #2382, which dropped three fingerprints matching an artifact the
+  pack itself prescribes (product-wiki, public-website, executable-requirements) and rewrote two
+  that scanned every source file for a library in use (headless-browser, jwt) to read a near-root
+  dependency manifest instead.
+- **Reason:** routing, not strength. Authoring a shelf pack's manifest is
+  claudinite-canon-curation's, and this local pack's ruleRoutingGuidance excludes it; a growth run
+  writes only the local packs. Filed as #2402 instead, with the proposed rule and why it is not a
+  check - leaflet and web-speech legitimately scan source, having no manifest to declare them in.
+- **Actor:** the claudinite-growth/growth-extract run on #2398.
+
+## 2026-09-29 · declined · a check behind proving-sweep-left
+- **Source:** the upgrade pass over this run's own additions (#2398).
+- **Reason:** class G, no moment to hang on. The violation lives in a scratchpad codemod script that
+  is never tracked, so no world or work scope sees it, and an action guard would have to read a
+  Write's content and decide that it both rewrites a module and re-imports it in the same process -
+  not a signature that can be made confident. Prose stands.
+- **Actor:** the claudinite-growth/growth-extract run on #2398.

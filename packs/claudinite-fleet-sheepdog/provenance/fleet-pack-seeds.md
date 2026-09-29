@@ -57,3 +57,9 @@
 - **Reason:** owner decision: the mechanism that re-vendors a mount is called update; "converge"
   stays only for a work item reaching its end state.
 - **Actor:** @missingbulb (owner).
+
+## 2026-09-28 · policy-changed · a vendored pack is found by either manifest spelling
+- **Reason:** a member's mount may now carry pack.json where it carried pack.mjs.
+- **Actor:** @missingbulb (owner), asking for pack.json manifests.
+- **Mechanism:** the worker's vendored probe asks for pack.json and pack.mjs, mount and canon root
+  alike.

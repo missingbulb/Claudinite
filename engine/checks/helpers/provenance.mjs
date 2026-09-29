@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { parseFrontmatter, bodyOf } from '../../pack_loader/skill-frontmatter.mjs';
-import { PROSE_FILE, SKILLS_DIR, RULE_DIRS, PROVENANCE_DIR } from '../../pack_loader/pack-conventions.mjs';
+import { PROSE_FILE, SKILLS_DIR, RULE_DIRS, PROVENANCE_DIR, manifestFileIn } from '../../pack_loader/pack-conventions.mjs';
 
 // THE PROVENANCE LOG'S MECHANISM: the file grammar, the marker that binds a prose
 // rule to its file, how a pack's carriers are enumerated and which file each one
@@ -347,13 +347,17 @@ const isDir = (io, p) => io.listDir(p) !== null;
 const listDirs = (io, p) => (io.listDir(p) ?? []).filter((n) => !n.startsWith('.') && isDir(io, `${p}/${n}`)).sort();
 const listFiles = (io, p) => (io.listDir(p) ?? []).filter((n) => !isDir(io, `${p}/${n}`)).sort();
 
-// The `id:` a rule module declares - every string literal assigned to an `id` key,
-// which is how every coded rule in the corpus spells it.
+// The `id:` a rule module declares - every string literal assigned to an `id` key, and
+// a `const id = '…'` that an object takes by shorthand (`{ id, … }`), the spelling
+// member-authored rules use.
 export function checkIdsIn(source) {
+  const text = String(source ?? '');
   const out = [];
   const re = /\bid\s*:\s*['"]([^'"]+)['"]/g;
   let m;
-  while ((m = re.exec(String(source ?? ''))) !== null) out.push(m[1]);
+  while ((m = re.exec(text)) !== null) out.push(m[1]);
+  const constant = /\bconst\s+id\s*=\s*['"]([^'"]+)['"]/.exec(text);
+  if (constant && /[{,]\s*id\s*[,}]/.test(text) && !out.includes(constant[1])) out.push(constant[1]);
   return out;
 }
 
@@ -462,7 +466,7 @@ export function packCarriers(packDir, io) {
     const doc = readJson(io, `${packDir}/${f}`);
     for (const d of doc?.rules ?? []) if (typeof d?.id === 'string') declarations.push({ id: d.id, file: `${packDir}/${f}` });
   }
-  return { rules, guidelines, skills, checks, tasks, declarations, manifest: io.exists(`${packDir}/pack.mjs`) };
+  return { rules, guidelines, skills, checks, tasks, declarations, manifest: manifestFileIn((f) => io.exists(`${packDir}/${f}`)) !== null, manifestFile: manifestFileIn((f) => io.exists(`${packDir}/${f}`)) };
 }
 
 // The provenance files of a pack: id → { file, text, entries, errors, status, empty }.
@@ -552,7 +556,7 @@ export function auditPack(packDir, io) {
   for (const c of carriers.checks) name(elementIdOf(c.id), `check ${c.id}`, { file: c.file, line: null });
   for (const t of carriers.tasks) name(t.id, `task ${t.id}`, { file: t.file, line: null });
   for (const d of carriers.declarations) name(d.id, `declared rule ${d.id}`, { file: d.file, line: null });
-  if (carriers.manifest) name(PACK_ELEMENT, 'the manifest', { file: `${packDir}/pack.mjs`, line: null });
+  if (carriers.manifest) name(PACK_ELEMENT, 'the manifest', { file: `${packDir}/${carriers.manifestFile}`, line: null });
   for (const [id, f] of files) {
     for (const e of f.errors) out.parseErrors.push({ file: f.file, line: e.line, what: e.what });
     for (const e of entryFaults(f.entries)) out.entryFaults.push({ file: f.file, line: e.line, what: e.what });

@@ -1,7 +1,7 @@
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
 
 // Pack discovery EAGERLY IMPORTS the pack tree: `discoverPacks` imports every
-// `packs/<name>/pack.mjs` on disk and `scanSkillChecks` imports every
+// module manifest on disk and `scanSkillChecks` imports every
 // `<pack>/skills/<skill>/checks.mjs` beside it — before activation is consulted,
 // so a repo that declares none of them still loads all of them. Any module in
 // that import graph is therefore re-entered while it is still evaluating, if it

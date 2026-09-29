@@ -128,10 +128,6 @@ Below are rules on how to work on this repo.
 - **Re-waiting on a signal that already failed to move** — read the code that governs when it
   *can* change before waiting a second time on the same premise. (re-waiting-signal)
 
-- **Writing a step a human must do by hand into an issue** — make sure it is needed; a checklist
-  of no-ops teaches the reader to skim it. Link the deepest existing settings URL rather than
-  writing out a breadcrumb trail. (writing-step-human)
-
 - **Replying to an owner comment that raises more than one claim** — answer every claim in that
   first reply, including the one you intend to push back on. (replying-owner-comment)
 
@@ -427,10 +423,6 @@ Below are rules on how to work on this repo.
   mechanism's callers. A stale `run: false` becomes a live self-closing landmine.
   (scheduler-mechanism-flip)
 
-- **Writing a task's precondition** — gate on the objects' own movement in the window (a `touched`
-  list, a tip-commit date), never on standing state, which is true forever once true. (portable →
-  `claudinite-growth/skills/writing-tasks/SKILL.md`) (writing-tasks-precondition)
-
 - **A precondition signal that is true most days** — let it only *widen* an already-triggered run.
   (precondition-signal-true)
 
@@ -549,9 +541,10 @@ Below are rules on how to work on this repo.
   it writes; nothing else sees the prose fail. (changing-guidance-produced)
 
 
-- **Restoring source after a deliberate see-it-fail mutation** — `git checkout -- <file>` at the
-  moment of mutating, never a `.bak` taken earlier, which predates whatever else you edited in
-  between. (restoring-source-deliberate)
+- **Restoring source after a deliberate see-it-fail mutation** - stage your own edits to that file
+  first, since the restore comes from the index and takes unstaged work with the mutation, then
+  `git checkout -- <file>` at the moment of mutating, never a `.bak` taken earlier, which predates
+  whatever else you edited in between. (restoring-source-deliberate)
 
 
 - **Surveying whether something exists in the tree** — a code-search hit is evidence; a miss is
@@ -564,8 +557,7 @@ Below are rules on how to work on this repo.
 - **Deleting a writer** — it is the same change as marking its series historical. Its rows keep
   counting plausibly until the retention window ages out, then count nothing. (deleting-writer)
 
-- **Renaming an entity** — sweep for references in code and comments, don't change historical
-  records, and re-render generated files rather than editing them by hand. (renaming-entity)
+- **Renaming an entity** - don't change historical records. (renaming-entity)
 
 - **Sweeping a rename mid-migration across many PRs** — a file added or rewritten after the sweep
   starts can independently reinvent the retired constant as a comparison key; a state comparison
@@ -587,6 +579,10 @@ Below are rules on how to work on this repo.
 - **Verifying a bulk file-move or rewrite sweep preserved content** — check a structural invariant
   count before and after (total `test(` calls across the touched files). One sweep truncated 46
   test files to zero bytes and every one still "passed". (verifying-bulk-file)
+
+- **Proving a sweep left a module's loaded behaviour unchanged** - read the "before" and the
+  "after" in separate processes: Node's module cache serves an already-imported module from
+  before the rewrite, so an in-process comparison passes against itself. (proving-sweep-left)
 
 ## Editing, branching and merging here
 

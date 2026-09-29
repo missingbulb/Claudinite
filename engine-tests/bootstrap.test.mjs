@@ -80,7 +80,7 @@ test('bootstrap converges a fresh repo in one invocation', () => {
   assert.ok(existsSync(join(root, '.github/workflows/claudinite-executor.yml')));
   assert.ok(existsSync(join(root, '.claudinite/flat/claudinite-rules.GENERATED.md')));
   assert.ok(at(root, 'CLAUDE.md').includes('@.claudinite/flat/claudinite-rules.GENERATED.md'));
-  assert.ok(existsSync(join(root, `.claudinite/local/packs/${LOCAL_PACK_ID}/pack.mjs`)));
+  assert.ok(existsSync(join(root, `.claudinite/local/packs/${LOCAL_PACK_ID}/pack.json`)));
   assert.equal(at(root, 'README.md'), FIXTURE_README, "the repo's README is not bootstrap's to write");
 
   // A repo with no CI gets the minimal sweeps workflow.

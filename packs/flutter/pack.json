@@ -1,0 +1,18 @@
+{
+  "version": "60928.1",
+  "minEngineVersion": "60928.1",
+  "ruleRoutingGuidance": {
+    "belongs": "widget-tree architecture, ports and fakes, widget-test and golden mechanics, pub and analyze toolchain habits for Flutter",
+    "excludes": "native Android or iOS module concerns — android and ios; store shipping — play-store-release, app-store-release"
+  },
+  "pitch": "Flutter code drifts toward widgets that call plugins directly and golden tests that hang or render boxes. This pack gives Claude Code sessions about a dozen rules for keeping plugins behind ports, making anything that fetches injectable, guarding async lifecycles, and keeping flutter analyze at zero issues. Its skills cover widget and golden test mechanics and telling a real dependency change from pubspec lockfile churn, while a few checks catch network fetches inside the widget tree before they reach review.",
+  "relevanceDetector": {
+    "about": "pubspec.yaml (at the repo root or one directory down)",
+    "paths": "^([^/]+/)?pubspec\\.yaml$"
+  },
+  "env": {
+    "label": "Flutter SDK",
+    "setup": "if [ ! -x /opt/flutter/bin/flutter ]; then\n  git clone --depth 1 -b stable https://github.com/flutter/flutter.git /opt/flutter\nfi\nln -sf /opt/flutter/bin/flutter /usr/local/bin/flutter\nln -sf /opt/flutter/bin/dart /usr/local/bin/dart\ngit config --global --add safe.directory /opt/flutter || true\nflutter --version || true\nflutter precache || true   # warm host engine artifacts so the first test is fast",
+    "probe": "command -v flutter >/dev/null 2>&1"
+  }
+}

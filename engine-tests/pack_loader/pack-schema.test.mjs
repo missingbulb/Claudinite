@@ -26,9 +26,10 @@ test('a missing required field is an error naming it', () => {
   assert.match(whats(noId), /declares no "id"/);
 });
 
-test('a non-object default export is an error, not a throw', () => {
-  assert.match(whats(null), /has no object default export/);
-  assert.match(whats('nope'), /has no object default export/);
+test('a manifest that is not an object is an error, not a throw', () => {
+  assert.match(whats(null), /is not an object/);
+  assert.match(whats('nope'), /is not an object/);
+  assert.match(whats([]), /is not an object/);
 });
 
 test('an undeclared field is an error — the vocabulary is closed', () => {

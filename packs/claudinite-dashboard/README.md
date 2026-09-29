@@ -395,7 +395,7 @@ comparison:
 
 - **Mount drift** — each member's stamped `engineVersion` and `packVersions` against
   the canon's live ones (`engine/version.mjs`, and each declared pack's version off
-  `packs/directory.GENERATED.md`, or its `pack.mjs` where the catalog does not offer it).
+  `packs/directory.GENERATED.md`, or its manifest where the catalog does not offer it).
   Never judged on the stamp's `ref` or `updated`: the versioned flows stamp versions
   and nothing else, so those two hold the provenance of the last *full* re-vendor and
   read months stale on every healthy member. Needs `canonRepo` in the config; without

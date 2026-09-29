@@ -120,7 +120,7 @@ export function classifyFreshness({ hasScheduler, installed, canon }) {
 // or has no such column, falls back to that pack's own manifest. Memoized per reader,
 // promise and all: one reader is built per sweep and every member consults it.
 const ENGINE_VERSION_RE = new RegExp(String.raw`^export const ENGINE_VERSION = '?(${VERSION_SOURCE})'?;$`, 'm');
-const PACK_VERSION_RE = new RegExp(String.raw`^ {2}version: '?(${VERSION_SOURCE})'?,$`, 'm');
+const PACK_VERSION_RE = new RegExp(String.raw`^ {2}"?version"?: ['"]?(${VERSION_SOURCE})['"]?,?$`, 'm');
 
 // Every pack the catalog offers, at the version its Version column carries; null when
 // it has no such column.
@@ -167,10 +167,10 @@ export function canonVersions(gh, canonRepo) {
           // A pack the catalog does not offer is priced off its own manifest.
           const listed = (await catalog)?.[id];
           if (listed != null) return listed;
-          const text = await source(`packs/${id}/pack.mjs`);
+          const text = (await source(`packs/${id}/pack.json`)) ?? (await source(`packs/${id}/pack.mjs`));
           if (text === null) return null;
           const m = PACK_VERSION_RE.exec(text);
-          if (!m) throw new Error(`canon ${canonRepo} has no readable version in packs/${id}/pack.mjs`);
+          if (!m) throw new Error(`canon ${canonRepo} has no readable version in the packs/${id}/ manifest`);
           return versionFromLiteral(m[1]);
         })());
       }

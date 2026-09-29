@@ -461,6 +461,19 @@ test('checksOfModule follows an aggregator checks.mjs to the modules that declar
   } finally { removeTree(root); }
 });
 
+test('a rule module declaring its id as a const and exporting it by shorthand carries that id', () => {
+  const root = repo({
+    'packs/acme-pack/worldRules/acme-check.mjs': "const id = 'acme-pack/acme-check';\nconst on_fail = 'block';\nexport default {\n  id,\n  on_fail,\n  run: () => [],\n};\n",
+    'packs/acme-pack/worldRules/acme-inline.mjs': "export default { id, run: () => [] };\nconst id = 'acme-inline';\n",
+    'packs/acme-pack/worldRules/acme-helper.mjs': "const id = 'not-exported';\nexport default { key: id, run: () => [] };\n",
+    'packs/acme-pack/pack.json': '{}\n',
+  });
+  try {
+    const ids = packCarriers('packs/acme-pack', checkoutIo(root)).checks.map((c) => c.id).sort();
+    assert.deepEqual(ids, ['acme-inline', 'acme-pack/acme-check'], 'a const named id that no object exports by shorthand carries nothing');
+  } finally { removeTree(root); }
+});
+
 test('relativeModulesIn reads relative specifiers only', () => {
   assert.deepEqual(relativeModulesIn(AGGREGATOR), ['./optional-import-lazy.mjs', './optional-import-install-hint.mjs']);
   assert.deepEqual(relativeModulesIn("import x from 'node:fs';\nimport y from 'some-package/thing.mjs';\n"), []);

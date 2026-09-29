@@ -767,7 +767,7 @@ function validateEntryShapes(spec, where) {
       }
     }
     if (a.requirePathExists !== undefined && typeof a.requirePathExists !== 'string') {
-      throw new Error(`${where}: "requirePathExists" is a path template such as "packs/{value}/pack.mjs"`);
+      throw new Error(`${where}: "requirePathExists" is a path template such as "packs/{value}/pack.json"`);
     }
     if (a.requireTrackedPathMatching !== undefined &&
         (typeof a.requireTrackedPathMatching !== 'string' || !RE_FORM.test(a.requireTrackedPathMatching))) {

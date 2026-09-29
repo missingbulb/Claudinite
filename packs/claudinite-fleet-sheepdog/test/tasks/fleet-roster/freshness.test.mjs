@@ -91,8 +91,13 @@ function textGh(files) {
 
 const CANON_FILES = {
   'o/canon:engine/version.mjs': '// a comment mentioning ENGINE_VERSION\nexport const ENGINE_VERSION = 4;\n',
-  'o/canon:packs/acme-pack/pack.mjs': 'export default {\n  id: \'acme-pack\',\n  version: 7,\n  minEngineVersion: 1,\n};\n',
+  'o/canon:packs/acme-pack/pack.json': `${JSON.stringify({ version: 7, minEngineVersion: 1 }, null, 2)}\n`,
 };
+
+test('canonVersions: a canon still carrying a pack.mjs manifest is read off that', async () => {
+  const { gh } = textGh({ 'o/canon:packs/acme-pack/pack.mjs': 'export default {\n  version: \'60927.2\',\n  minEngineVersion: \'60925.1\',\n};\n' });
+  assert.equal(await canonVersions(gh, 'o/canon').pack('acme-pack'), '60927.2');
+});
 
 test('canonVersions: reads engine and pack manifests once each, however many members ask', async () => {
   const { gh, seen } = textGh(CANON_FILES);

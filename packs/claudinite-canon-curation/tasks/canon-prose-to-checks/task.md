@@ -23,8 +23,8 @@ don't re-derive it here. This worker frames the unattended run around it and nam
 1. **Pick convertible prose** under the corpus above — rules that govern **how we work** (not what a
    product does — see the skill's first gate), that are *always testable*, and that no existing check
    already covers. Converting one or two solid rules well beats churning many shakily.
-2. **Convert per the skill** — author the rule module in its owning pack, register it in that pack's
-   `pack.mjs`, and add the fixture test that fires on a violating input and stays quiet on a clean
+2. **Convert per the skill** - author the rule module in its owning pack's `worldRules/` or
+   `workRules/`, and add the fixture test that fires on a violating input and stays quiet on a clean
    one. Then apply the skill's **deletion test** to the prose the check now stands beside.
 3. **Deliver by the shared procedure —
    [deliver-pr.md](../../../claudinite-tasks/src/deliver/deliver-pr.md)**, under the title

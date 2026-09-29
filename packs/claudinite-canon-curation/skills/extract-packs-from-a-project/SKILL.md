@@ -133,7 +133,7 @@ stray (a single rule joins the nearest existing pack, or waits as a handoff note
   with the facet's one-line definition and "a default to adapt, not a contract". Principle-first, each
   rule carrying its why. It loads at session start for every declaring project, so every line pays
   rent — cover the facet, not everything you noticed.
-- **`pack.mjs`**: the manifest. Class/domain/aspect packs: `always: false` and no `relevanceDetector`
+- **`pack.json`**: the manifest. Class/domain/aspect packs: `always: false` and no `relevanceDetector`
   (declaration is authoritative). Technology packs: add the `relevanceDetector`
   fingerprint when the repo carries a reliable one, so `--init` seeds the pack into a fresh
   declaration; the marker only *suspects* a pack is wanted, it never forces its declaration.
@@ -164,17 +164,17 @@ for work under `client/`) — never around a technology or a methodology: those 
 (their portable half is a canon seed above; the project-specific residue lands in the structural pack
 that owns the work). Each local pack is a real pack:
 
-- **`pack.mjs`**: `{ version, ruleRoutingGuidance, rules: [...] }`. The id
-  is the directory name, the prose the `RULES.md` beside it and the skills its `skills/`
-  subdirectories, all by convention — none of them is declared.
+- **`pack.json`**: `{ "ruleRoutingGuidance": … }`. The id
+  is the directory name, the prose the `RULES.md` beside it, the skills its `skills/`
+  subdirectories and the checks its `worldRules/` and `workRules/` modules, all by convention - none of them is declared.
   A local pack is declared by hand, never fingerprinted or seeded (`detect`/`marker` stay null), as its
   namespaced token `local/<name>` in `.claudinite-settings.json`; its id
   must be unique and may not shadow a canon pack.
 - **`RULES.md`** — the always-loaded judgment core and the project's concrete values (real
   setup/run/verify commands, real paths, inputs, metrics, invariants). Keep it terse; anything a check
   or skill can carry doesn't belong here, and anything inferable from the code is omitted.
-- **Checks** (`rules`) — the project-specific deterministic rules as `.mjs` modules listed on
-  `pack.mjs`, each with a red-first fixture (`test/pack.test.mjs`) runnable by the project's own test suite.
+- **Checks** - the project-specific deterministic rules as `.mjs` modules under
+  `worldRules/` or `workRules/`, each with a red-first fixture (`test/pack.test.mjs`) runnable by the project's own test suite.
   Local check modules stay dependency-free (they must load without the gitignored mount): return plain
   finding objects rather than importing the engine's helpers.
 - **Skills** (`skills/<name>/SKILL.md`) — the project's activity-scoped procedures, bundled in the pack;

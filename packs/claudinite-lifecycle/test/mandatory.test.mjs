@@ -10,7 +10,8 @@ import { resolveDeclaredPacks, packEntryId } from '../../../engine/pack_loader/p
 // and the two lanes deliver on separate cadences.
 import * as registry from '../../../engine/pack_loader/pack-registry.mjs';
 import { loadDeclaredChecks } from '../../../engine/checks/helpers/pattern-rules.mjs';
-import corePack from '../pack.mjs';
+
+const corePack = (await registry.loadPacks()).find((p) => p.id === 'claudinite-lifecycle'); // @real-entity the pack under test
 
 const coreDeclared = loadDeclaredChecks(
   fileURLToPath(new URL('../../../packs/claudinite-lifecycle', import.meta.url)),

@@ -1,0 +1,19 @@
+{
+  "version": "60928.1",
+  "minEngineVersion": "60928.1",
+  "ruleRoutingGuidance": {
+    "belongs": "fleet-enforcer duties for the repo watching every other repo — coverage, freshness, standardized packs",
+    "excludes": "anything a member does to itself — its comments are basics, lessons are claudinite-growth; the fleet brief is claudinite-dashboard"
+  },
+  "pitch": "Turns one repository into the caretaker of every repo under an owner. Scheduled tasks check daily which repos have adopted the system and whether that adoption still means anything, suggest packs each repo's shape calls for, seed new members and push updates across the fleet, with the actual changes made and reviewed inside each member. A skill covers configuring the fleet, and about ten rules make sure an unreachable repo reads as unknown rather than as a clean result.",
+  "requires": [
+    "claudinite-tasks"
+  ],
+  "adoptionHandover": [
+    {
+      "step": "Create a fine-grained PAT on this account covering ALL repositories, granted Metadata read, Contents read and write, Issues read and write, Actions read and write, and add it to this repo as the Actions secret FLEET_GITHUB_TOKEN. Grant every permission listed, not the subset the first sweep you run needs.",
+      "breaks": "every claudinite-fleet-sheepdog sweep fails — and a token short one permission fails only on the sweep that needs it, which can be a week later, on the one sweep that writes or dispatches",
+      "done": "the secret exists and each claudinite-fleet-sheepdog task's next run is green"
+    }
+  ]
+}

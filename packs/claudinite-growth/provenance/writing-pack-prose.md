@@ -31,3 +31,8 @@
 - **Actor:** @missingbulb (owner).
 - **Mechanism:** a section of this skill, force-loaded on `pack.mjs` edits beside RULES.md and
   SKILL.md, since the pitch lives in the manifest.
+
+## 2026-09-28 · trigger-changed · forced on a pack.json edit too
+- **Reason:** a manifest may now be pack.json, and an edit to one is the same edit as to a pack.mjs.
+- **Actor:** @missingbulb (owner), asking for pack.json manifests.
+- **Mechanism:** force-load-on-file-edits-paths gains `**/packs/*/pack.json`.

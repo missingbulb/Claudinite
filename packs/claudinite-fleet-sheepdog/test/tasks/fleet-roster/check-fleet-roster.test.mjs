@@ -16,7 +16,7 @@ const CANON = 'o/Claudinite';
 
 const CANON_SOURCE = {
   'engine/version.mjs': 'export const ENGINE_VERSION = 4;\n',
-  'packs/acme-pack/pack.mjs': "export default {\n  id: 'acme-pack',\n  version: 7,\n};\n",
+  'packs/acme-pack/pack.json': '{\n  "version": 7\n}\n',
 };
 
 const repo = (name, over = {}) => ({ name, full_name: `o/${name}`, archived: false, fork: false, ...over });

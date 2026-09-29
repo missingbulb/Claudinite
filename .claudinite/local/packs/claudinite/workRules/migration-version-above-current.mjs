@@ -67,7 +67,11 @@ function standingVersion(work, of) {
     return { file: ENGINE_VERSION_FILE, held: engineVersionIn(work.read(ENGINE_VERSION_FILE)), whose: 'the engine' };
   }
   const pack = (work.packs ?? []).find((p) => p.dir && basename(p.dir) === of.pack);
-  return { file: `packs/${of.pack}/pack.mjs`, held: pack?.version ?? null, whose: `\`${of.pack}\`` };
+  // Either spelling of the manifest: the one this change touched, else the one there.
+  const manifests = ['pack.json', 'pack.mjs'].map((f) => `packs/${of.pack}/${f}`);
+  const file = manifests.find((f) => (work.changedFiles ?? []).includes(f))
+    ?? manifests.find((f) => work.read(f) !== null) ?? manifests[0];
+  return { file, held: pack?.version ?? null, whose: `\`${of.pack}\`` };
 }
 
 // The records this change gives a version that reaches nobody. Pure over the changed

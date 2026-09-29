@@ -4,10 +4,10 @@ import { matchingLines, ruleIdsIn } from '../../../engine/checks/helpers/line-sc
 
 // A pack's injected prose must not narrate its own enforcement: checks run on
 // their own at every Stop and in CI, and each failure message carries its
-// rule. Scans exactly the file each pack.mjs declares as `prose`, never the
+// rule. Scans exactly the file each manifest declares as `prose`, never the
 // pack README — the catalog convention *requires* the README to list the
 // pack's rules and how each is enforced. Canon-only by construction: it scans
-// `packs/<id>/pack.mjs`, the canon shelf, so a repo that keeps no shelf
+// `packs/<id>/`'s manifest, the canon shelf, so a repo that keeps no shelf
 // contributes no documents and the rule is silent there.
 const RUNNER = /checks\/run\.mjs/;
 const asWord = (id) => new RegExp(`(^|[^\\w-])${id}([^\\w-]|$)`); // never inside a longer kebab name
@@ -21,9 +21,9 @@ const rule = {
 
   run(ctx) {
     const docs = ctx.files
-      .filter((f) => /^packs\/[^/]+\/pack\.mjs$/.test(f))
+      .filter((f) => /^packs\/[^/]+\/pack\.(?:json|mjs)$/.test(f))
       .flatMap((f) => {
-        const m = /\bprose:\s*'([^']+)'/.exec(ctx.read(f) ?? '');
+        const m = /(?:^|[\s{,])"?prose"?:\s*['"]([^'"]+)['"]/.exec(ctx.read(f) ?? '');
         return m ? [join(dirname(f), m[1])] : [];
       });
     return [

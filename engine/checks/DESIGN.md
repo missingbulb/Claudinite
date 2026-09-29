@@ -66,7 +66,7 @@ Two classes deliberately **stay as instructions**:
 
 ```
 packs/                        # the mounted corpus: prose + checks, active by declaration
-  registry.mjs                #   structural discovery — any packs/<name>/pack.mjs is a pack
+  registry.mjs                #   structural discovery - any packs/<name>/ with a manifest is a pack
   generate-rules-index.mjs    #   renders the @-import index CLAUDE.md loads RULES.md through
   <baseline>/                 #   the baseline: RULES.md + the core checks (declared like any pack)
   <technology>/               #   coding gotchas (RULES.md, prose only)
@@ -164,7 +164,7 @@ the repo's own tree alongside the mounted canon; canonically declared by the nam
 `local/<id>`, with the bare id permanently accepted - see engine/checks/README.md). Both
 are the same closed-declared-set execution;
 `knownIds` spans both, so a local id is valid, not an unknown-pack error, while a broken or
-id-colliding local `pack.mjs` is surfaced as a blocking `config` finding rather than silently
+id-colliding local pack manifest is surfaced as a blocking `config` finding rather than silently
 dropping the pack's checks. A local pack's checks run when it is declared, exactly like a canon
 pack's; this is where a project's *own* deterministic rules live (the checks-over-prose economy,
 applied at the project's level) instead of always-loaded prose.

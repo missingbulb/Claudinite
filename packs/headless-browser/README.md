@@ -1,7 +1,8 @@
 # headless-browser pack
 
-Active when the repo references a browser-automation driver in JS/TS source — a `playwright` /
-`playwright-core` / `puppeteer` / `puppeteer-core` module specifier, or a `.launch(` call site.
+Suggested when a near-root `package.json`, `requirements*.txt` or `pyproject.toml` declares a
+browser-automation driver: `@playwright/test`, `playwright`, `playwright-core`, `puppeteer`,
+`puppeteer-core` or `pyppeteer`.
 
 Prose and three checks over the repo's JS/TS sources; declaring it is the project's call.
 

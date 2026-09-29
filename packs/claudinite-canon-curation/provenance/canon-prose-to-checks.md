@@ -10,3 +10,8 @@
   prose-to-checks skill, which states the method and names no corpus. The run titles itself
   `Claudinite canon: …` so the growth write-scope gate reads it as out of its scope.
 - **Landed:** #2047 (Closes #2044) · pack version 60915.3.
+
+## 2026-09-28 · reworded · names the manifest as pack.json, or by role
+- **Reason:** pack.json is the preferred manifest; where the text told a reader to list a module in
+  pack.mjs, rules are found in worldRules/ and workRules/ and nothing is listed.
+- **Actor:** @missingbulb (owner), asking for pack.json manifests.

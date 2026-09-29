@@ -59,3 +59,22 @@
   so it outlives the pack's growth.
 - **Actor:** @missingbulb (owner).
 - **Mechanism:** the manifest's `pitch` field, beside `ruleRoutingGuidance`.
+
+## 2026-09-28 · reworded · the manifest's comments leave it, their decisions recorded here
+- **Reason:** a manifest that is data carries no comments. What they decided: never fingerprinted:
+  nothing in a repo's shape implies wanting a dashboard, and a scan keyed on the scheduler would
+  suspect it in every member. It requires claudinite-tasks because the page reads the queue's
+  vocabulary out of that pack's public/, the one sanctioned cross-pack import. Mode is the one
+  question, since both answers are ordinary and a wrong guess publishes a plausible site covering
+  the wrong thing. Enabling Pages is a handover because configure-pages' enablement needs a PAT with
+  repo or an app with administration:write, far wider than one click; sign-in is one handover step
+  rather than a dozen, the mechanics living in the README.
+- **Actor:** @missingbulb (owner), asking for pack.json manifests, their comments deleted or moved
+  to a README or provenance.
+
+## 2026-09-28 · moved · the manifest becomes pack.json
+- **Reason:** a manifest that is data is read with no import and by any tool; the conversion wrote
+  the module's evaluated export, and the pack loads identically.
+- **Actor:** @missingbulb (owner), asking for pack.json manifests.
+- **Mechanism:** pack.json, which the loader prefers over pack.mjs; a canon pack now needs engine
+  60928.1, the first to read it.

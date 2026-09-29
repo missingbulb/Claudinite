@@ -10,7 +10,9 @@ import {
   PARK_MINUTES, APPROVAL_RATE, approvalMinutes, lastFoldedScheduler,
 } from '../src/derive/fleet.mjs';
 import { ENGINE_VERSION } from '../../../engine/version.mjs';
-import dashboardPack from '../pack.mjs';
+import { existsSync } from 'node:fs';
+import * as conventions from '../../../engine/pack_loader/pack-conventions.mjs';
+import * as manifests from '../../../engine/pack_loader/pack-manifest.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 import {
@@ -235,13 +237,20 @@ test('a stamp carrying no versions reads unversioned', () => {
 test('the version parsers read the canon\'s own real files', async () => {
   const engineText = await readFile(resolve(ROOT, 'engine/version.mjs'), 'utf8');
   assert.equal(parseEngineVersion(engineText), ENGINE_VERSION);
-  const packText = await readFile(resolve(ROOT, 'packs/claudinite-dashboard/pack.mjs'), 'utf8');
-  assert.equal(parsePackVersion(packText), dashboardPack.version);
+  const packDir = resolve(ROOT, 'packs/claudinite-dashboard');
+  const manifest = resolve(packDir, conventions.manifestFileIn((f) => existsSync(resolve(packDir, f))));
+  assert.equal(parsePackVersion(await readFile(manifest, 'utf8')), (await manifests.readManifest(manifest)).version);
+});
+
+test('the pack version parser reads either manifest spelling', () => {
+  assert.equal(parsePackVersion('{\n  "version": "60927.2",\n  "minEngineVersion": "60925.1"\n}\n'), '60927.2');
+  assert.equal(parsePackVersion('export default {\n  minEngineVersion: \'60925.1\',\n  version: \'60927.2\',\n};\n'), '60927.2');
 });
 
 test('the version parsers answer null — never a guess — on text without the field', () => {
   assert.equal(parseEngineVersion('// ENGINE_VERSION = 9 in prose only\nexport const x = 1;\n'), null);
   assert.equal(parsePackVersion('export default { id: "x", agentVersion: 3 };\n'), null);
+  assert.equal(parsePackVersion('{ "id": "x", "minEngineVersion": "60925.1" }\n'), null);
 });
 
 // The two absences, kept apart: a declaration this page could not read at all is

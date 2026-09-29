@@ -11,7 +11,7 @@
 // out of `engine/version.mjs` plus each pack's version out of the shelf's catalog, whose
 // Version column prices every offered pack in one read, lifted as text like every
 // declaration field, sha-cached like every content read. A pack the catalog does not
-// offer is read off its own `pack.mjs`, and only when some member actually stamps it.
+// offer is read off its own manifest, and only when some member actually stamps it.
 
 import * as gh from './github.mjs';
 import { installedVersions } from '../../../../engine/installed-versions.mjs';
@@ -40,7 +40,8 @@ export async function readCanon(config, token) {
         pending.set(id, (async () => {
           // A pack the catalog does not offer is priced off its own manifest.
           const listed = (await catalog)?.[id];
-          const v = listed ?? parsePackVersion(await at(`packs/${id}/pack.mjs`).catch(() => null));
+          const manifest = async () => (await at(`packs/${id}/pack.json`).catch(() => null)) ?? at(`packs/${id}/pack.mjs`).catch(() => null);
+          const v = listed ?? parsePackVersion(await manifest());
           if (v != null) packVersions[id] = v;
           return v;
         })());

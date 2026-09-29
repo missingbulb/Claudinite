@@ -78,18 +78,23 @@ test('the whole pack is copied, not only its prose', () => {
     assert.match(copied(root, 'provenance/ending-turn.md'), /ending-turn/);
     // A person with rules to state should not have to write a manifest to state them, and the
     // manifest written for them must claim neither the id nor a version.
-    assert.match(copied(root, 'pack.mjs'), /ruleRoutingGuidance/);
-    assert.doesNotMatch(copied(root, 'pack.mjs'), /\bid:|\bversion:/);
+    assert.deepEqual(Object.keys(JSON.parse(copied(root, 'pack.json'))), ['ruleRoutingGuidance']);
   } finally { removeTree(root); }
 });
 
-test('a pack that carries its own manifest keeps it', () => {
-  const root = project();
-  try {
-    storeHere(root, { 'RULES.md': 'x\n', 'pack.mjs': 'export default { ruleRoutingGuidance: { belongs: "MINE" } };\n' });
-    run(PREPARE, root, { config: STORE });
-    assert.match(copied(root, 'pack.mjs'), /MINE/);
-  } finally { removeTree(root); }
+test('a pack that carries its own manifest keeps it, in either spelling, and gets none beside it', () => {
+  for (const [file, content] of [
+    ['pack.mjs', 'export default { ruleRoutingGuidance: { belongs: "MINE" } };\n'],
+    ['pack.json', '{ "ruleRoutingGuidance": { "belongs": "MINE" } }\n'],
+  ]) {
+    const root = project();
+    try {
+      storeHere(root, { 'RULES.md': 'x\n', [file]: content });
+      run(PREPARE, root, { config: STORE });
+      assert.match(copied(root, file), /MINE/);
+      assert.equal(existsSync(join(root, COPIED, file === 'pack.mjs' ? 'pack.json' : 'pack.mjs')), false, file);
+    } finally { removeTree(root); }
+  }
 });
 
 test('the pack is found by the lower-cased login, and the note names both', () => {

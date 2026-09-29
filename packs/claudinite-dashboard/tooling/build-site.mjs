@@ -41,7 +41,7 @@ const TASKS = 'packs/claudinite-tasks';
 // all, being this build's own source and a file server's, sitting where they read as part
 // of the page. Everything the browser loads is under `src/`, so what publishes is decided
 // by a directory the tree already names rather than by a list of filenames to keep in step.
-const NOT_PUBLISHED = ['tooling', 'pack.mjs', 'dashboard.config.example.json',
+const NOT_PUBLISHED = ['tooling', 'pack.json', 'pack.mjs', 'dashboard.config.example.json',
   'README.md', 'badge.svg', 'stubs', 'tasks'];
 
 const exists = async (p) => { try { await access(p); return true; } catch { return false; } };

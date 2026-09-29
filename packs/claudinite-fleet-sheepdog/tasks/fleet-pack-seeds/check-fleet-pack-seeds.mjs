@@ -66,8 +66,8 @@ import { missingFleetTokenError } from '../../fleet-token.mjs';
 
 // Where a pack's code sits in a member's tree. Checked rather than assumed: the mount
 // is what makes a declaration legal.
-const inMount = (id) => `.claudinite/shared/packs/${id}/pack.mjs`;
-const inCanon = (id) => `packs/${id}/pack.mjs`;
+const MANIFESTS = ['pack.json', 'pack.mjs'];
+const packPlaces = (id) => MANIFESTS.flatMap((f) => [`.claudinite/shared/packs/${id}/${f}`, `packs/${id}/${f}`]);
 
 // --- classification (pure) ----------------------------------------------------
 
@@ -185,8 +185,8 @@ export async function main() {
         // Is the pack's code on that member's disk? The vendored mount first, then the
         // repo root — which is how the canon repo (it runs its own live tree, mounting
         // nothing) is swept by the same code path instead of a special case.
-        const vendored = await fileExists(gh, r.full_name, inMount(seed.id))
-          || await fileExists(gh, r.full_name, inCanon(seed.id));
+        let vendored = false;
+        for (const path of packPlaces(seed.id)) if (!vendored) vendored = await fileExists(gh, r.full_name, path);
         const verdict = classifySeed({ config: read.config, seed, vendored });
         if (verdict.state === SET) setHere.push(seed.id);
         else if (verdict.state === 'not-vendored') waitingHere.push(seed.id);

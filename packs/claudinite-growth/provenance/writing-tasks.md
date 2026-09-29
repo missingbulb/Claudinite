@@ -133,3 +133,8 @@
   it.
 - **Mechanism:** the description, as before.
 - **Actor:** @missingbulb (owner).
+
+## 2026-09-28 · reworded · names the manifest as pack.json, or by role
+- **Reason:** pack.json is the preferred manifest; where the text told a reader to list a module in
+  pack.mjs, rules are found in worldRules/ and workRules/ and nothing is listed.
+- **Actor:** @missingbulb (owner), asking for pack.json manifests.

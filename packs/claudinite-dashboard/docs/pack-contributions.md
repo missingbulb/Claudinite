@@ -13,7 +13,7 @@ This is the posture the `contributes` manifest key already establishes — a pac
 another pack's rules as data (`contributes: { barriers: [...] }`), composed by
 declaration rather than a code import. The dashboard's descriptor is the same idea for a
 reader that cannot import anything: `contributes` is read in-process by the engine, in
-the member's own checkout, where importing `pack.mjs` is ordinary; the dashboard is a
+the member's own checkout, where reading a pack's manifest is ordinary; the dashboard is a
 browser reading *another repo* over the API, where it is not possible at all.
 
 A pack that wants figures on the dashboard carries one file, `packs/<id>/dashboard.json`
@@ -228,12 +228,12 @@ The mechanism lands inside the dashboard pack, and the blast radius is worth sta
 because it is the first thing anyone will ask.
 
 **Nothing in `engine/`.** A descriptor is found by path — `packs/<id>/dashboard.json`, a
-convention — and not by registration: no manifest key, no field on `pack.mjs`, no list of
+convention - and not by registration: no manifest key, no field on the manifest, no list of
 which packs contribute. A pack that adds one is discovered by the file being there, and a
 pack that drops one disappears the same way.
 
 **Nothing in vendoring.** `computeVendorSet` walks a declared pack's directory whole and
-drops only `*.test.mjs`, so a new `.json` beside `pack.mjs` reaches every member that
+drops only `*.test.mjs`, so a new `.json` beside the manifest reaches every member that
 declares the pack with no change and no whitelist entry.
 
 **Nothing in the scheduler's signal collection.** No signal feeds this and no task
@@ -299,7 +299,7 @@ measures it already does.
 
 ## Alternatives
 
-- **The descriptor on `pack.mjs` under `contributes`** — the canon's own composition key,
+- **The descriptor on the manifest under `contributes`** - the canon's own composition key,
   and one authored home for everything a pack addresses to another. It cannot serve this
   reader: the page reads other repos over the API, so the descriptor would have to be
   text-lifted out of a JavaScript module by a browser. The dashboard already does that

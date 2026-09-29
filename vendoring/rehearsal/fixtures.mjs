@@ -454,6 +454,16 @@ const PACK_BY_CONVENTION = `export default {
 };
 `;
 
+// A CONSUMER-AUTHORED manifest written as data: the loader must read it with no
+// import, compile its fingerprint's patterns, and still mount the skill beside it.
+const PACK_JSON = `${JSON.stringify({
+  ruleRoutingGuidance: {
+    belongs: 'the fixture project\'s own invariants, for rehearsal purposes only',
+    excludes: 'anything portable - that belongs in a canon pack',
+  },
+  relevanceDetector: { about: 'a fixture marker file', paths: '^fixture\\.marker$', text: { source: '^FIXTURE', flags: 'm' }, search: ['FIXTURE'] },
+}, null, 2)}\n`;
+
 const PACK_LEGACY_TASK = `export default {
   id: 'fixture-legacy',
   ruleRoutingGuidance: {
@@ -1036,7 +1046,7 @@ export const FIXTURES = [
   },
   {
     name: 'prose-only',
-    why: 'a local pack carrying no rules — zero rules must not look like a failed load',
+    why: 'a local pack carrying no rules, its pack.mjs still spelling the retired detect and marker - zero rules must not look like a failed load, and the pack.json the update converts it to, those fields dropped, must load the same',
     files: {
       'README.md': '# fixture-prose-only\n\nA rehearsal fixture.\n',
       '.claudinite-settings.json': checks(['basics', 'local/fixture-prose']),
@@ -1122,6 +1132,18 @@ export const FIXTURES = [
       '.claudinite/local/packs/fixture-convention/RULES.md': '# fixture-convention\n\nNo standing rules.\n',
       '.claudinite/local/packs/fixture-convention/skills/fixture-convention-skill/SKILL.md':
         '---\nname: fixture-convention-skill\ndescription: A rehearsal fixture skill. Never invoked.\n---\n\nNothing to do.\n',
+    },
+  },
+  {
+    name: 'json-manifest-local',
+    why: 'a local pack whose manifest is pack.json rather than pack.mjs, fingerprint patterns spelled as strings - it must load, inject its prose and mount its skill exactly as a module manifest does',
+    files: {
+      'README.md': '# fixture-json\n\nA rehearsal fixture.\n',
+      '.claudinite-settings.json': checks(['basics', 'local/fixture-json']),
+      '.claudinite/local/packs/fixture-json/pack.json': PACK_JSON,
+      '.claudinite/local/packs/fixture-json/RULES.md': '# fixture-json\n\nNo standing rules.\n',
+      '.claudinite/local/packs/fixture-json/skills/fixture-json-skill/SKILL.md':
+        '---\nname: fixture-json-skill\ndescription: A rehearsal fixture skill. Never invoked.\n---\n\nNothing to do.\n',
     },
   },
   {

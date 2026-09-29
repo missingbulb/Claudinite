@@ -58,3 +58,23 @@
 - **Mechanism:** the manifest's `relevanceDetector` (engine/pack_loader/relevance-detector.mjs): `paths`, optional `text`,
   `search` terms; it answers exactly what the retired `detect` answered, proven over 4,000 composed
   repos before the change.
+
+## 2026-09-28 · reworded · the fingerprint's patterns are written as source strings
+- **Reason:** a manifest that is data cannot hold a RegExp; each pattern is its source string, or {
+  source, flags } where it carries a flag, and loads to the same RegExp.
+- **Actor:** @missingbulb (owner), asking for pack.json manifests.
+
+## 2026-09-28 · reworded · the manifest's comments leave it, their decisions recorded here
+- **Reason:** a manifest that is data carries no comments. What they decided: the fingerprint's text
+  spells leaflet in either case letter by letter because its L.map( half must not ignore case, and a
+  page calling only L.map( loads Leaflet from a file that names it, so the search terms still reach
+  the repo.
+- **Actor:** @missingbulb (owner), asking for pack.json manifests, their comments deleted or moved
+  to a README or provenance.
+
+## 2026-09-28 · moved · the manifest becomes pack.json
+- **Reason:** a manifest that is data is read with no import and by any tool; the conversion wrote
+  the module's evaluated export, and the pack loads identically.
+- **Actor:** @missingbulb (owner), asking for pack.json manifests.
+- **Mechanism:** pack.json, which the loader prefers over pack.mjs; a canon pack now needs engine
+  60928.1, the first to read it.

@@ -4,7 +4,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { makeRepo, cleanup } from '../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
-import pack from '../pack.mjs';
+import { loadPacks } from '../../../engine/pack_loader/pack-registry.mjs';
 import { CONFIG_PATH, DEPLOY_WORKFLOW_PATH, parseConfig, publishSet } from '../lib.mjs';
 import { assemble, main as buildSite, resolveBuildVars } from '../build-site.mjs';
 import siteConfig from '../worldRules/site-config.mjs';
@@ -34,6 +34,16 @@ function without(path, overrides = {}) {
   delete files[path];
   return makeRepo({ base: files });
 }
+
+const pack = (await loadPacks()).find((p) => p.id === 'github-pages'); // @real-entity the pack under test
+
+// The manifest spells out both paths the lib names; each one alone is a fingerprint.
+test('the fingerprint names and finds the lib\'s config and deploy-workflow paths', () => {
+  for (const path of [CONFIG_PATH, DEPLOY_WORKFLOW_PATH]) {
+    assert.ok(pack.relevanceDetector.about.includes(path), path);
+    assert.ok(detectorSpec.detectsRelevance(pack.relevanceDetector, { tracked: [path], read: () => null }), path);
+  }
+});
 
 test('the pack fingerprints a repo carrying the site config, and is inert without either signal', () => {
   const root = pagesRepo();

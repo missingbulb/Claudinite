@@ -61,3 +61,9 @@
   touching packs); it now lists the base once and batch-reads only the changed packs, with findings
   hashed identical on the real tree.
 - **Actor:** @missingbulb (owner).
+
+## 2026-09-28 · scope-changed · reads a pack.json manifest as well as a pack.mjs
+- **Reason:** a manifest may now be data, pack.json preferred, and this element selected manifests
+  by the pack.mjs name alone.
+- **Actor:** @missingbulb (owner), asking for pack.json manifests.
+- **Mechanism:** unchanged carrier; its path and field patterns name both spellings.

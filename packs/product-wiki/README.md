@@ -5,8 +5,7 @@ market/user/competitor research as agent-maintained wikis under `product-wiki/` 
 compile findings once, refine in place, cite everything - walled off from the code
 so nothing can silently depend on unreviewed research, with one human-reviewed
 crossing point. Declared by the
-project (fingerprint: `product-wiki/product-requirements/README.md` — the sink is
-the standard's one structural constant). Takes **no config**: the layout is the
+project, never suggested from its shape. Takes **no config**: the layout is the
 standard.
 
 ## The standard

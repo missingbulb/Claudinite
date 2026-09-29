@@ -6,9 +6,11 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import {
-  FLEET_TOKEN_PERMISSIONS, fleetTokenGrant, fleetTokenGrantFor, missingFleetTokenError, forbiddenHint,
+  FLEET_TOKEN_PERMISSIONS, fleetTokenGrant, fleetTokenGrantFor, missingFleetTokenError, forbiddenHint, fleetTokenHandoverStep,
 } from '../fleet-token.mjs';
-import pack from '../pack.mjs';
+import { loadPacks } from '../../../engine/pack_loader/pack-registry.mjs';
+
+const pack = (await loadPacks()).find((p) => p.id === 'claudinite-fleet-sheepdog'); // @real-entity the pack under test
 import { classifyDispatch } from '../fleet-api.mjs';
 import { main as roster } from '../tasks/fleet-roster/check-fleet-roster.mjs';
 import { main as seeds } from '../tasks/fleet-pack-seeds/check-fleet-pack-seeds.mjs';
@@ -70,11 +72,12 @@ test('a sweep also names its own subset, which is never what to grant', () => {
   for (const [id] of SWEEPS) assert.notEqual(fleetTokenGrantFor(id), '');
 });
 
+// The manifest spells the step out as data; the function renders it from the grant
+// table, so the two must agree.
 test('adoption hands a human the complete grant, not a sweep-shaped subset', () => {
-  const [step] = pack.adoptionHandover;
-  assert.match(step.step, new RegExp(fleetTokenGrant().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
-  assert.match(step.step, /FLEET_GITHUB_TOKEN/);
-  assert.ok(step.breaks && step.done);
+  assert.deepEqual(pack.adoptionHandover, [fleetTokenHandoverStep()]);
+  assert.match(fleetTokenHandoverStep().step, new RegExp(fleetTokenGrant().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  assert.match(fleetTokenHandoverStep().step, /FLEET_GITHUB_TOKEN/);
 });
 
 test('a 403 is attributed to the permission that would fix it', () => {
@@ -92,10 +95,13 @@ test('a 403 is attributed to the permission that would fix it', () => {
 // and a list belongs in exactly one file.
 test('no file in the pack spells a permission list but fleet-token.mjs', () => {
   // The pack's own tests are out of scope: a test that asserts on the grant has to
-  // name the permissions it is asserting about, and no test text reaches a member.
+  // name the permissions it is asserting about, and no test text reaches a member. The
+  // manifest spells the handover step out as data, held equal to fleet-token.mjs's
+  // rendering by the adoption case above.
   const files = execFileSync('git', ['ls-files', 'packs/claudinite-fleet-sheepdog'], { encoding: 'utf8' })
     .split('\n').filter(Boolean)
-    .filter((f) => f !== 'packs/claudinite-fleet-sheepdog/fleet-token.mjs' && !f.endsWith('.test.mjs'));
+    .filter((f) => f !== 'packs/claudinite-fleet-sheepdog/fleet-token.mjs' && !f.endsWith('.test.mjs'))
+    .filter((f) => !/^packs\/claudinite-fleet-sheepdog\/pack\.(?:json|mjs)$/.test(f));
   const names = FLEET_TOKEN_PERMISSIONS.map((p) => p.permission).join('|');
   const pair = new RegExp(`(${names})\\b[^.\\n]{0,12}?\\b(read and write|read/write|read \\+ write|read|write)\\b`, 'gi');
   const offenders = [];

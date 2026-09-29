@@ -80,7 +80,7 @@ carrying that pack's own settings — its parameters, and the overrides/exemptio
   id still activates while the fleet migrates (the update flows rewrite it; the `local-pack-namespace`
   migration record tracks convergence). An
   **unknown** pack name — one that matches neither a canon nor a local pack — is a settings error,
-  caught at load (see below); a broken or id-colliding local pack.mjs is likewise surfaced as a
+  caught at load (see below); a broken or id-colliding local pack manifest is likewise surfaced as a
   blocking `config` finding, never a silent drop. A pack's fingerprint only *suspects* it is wanted
   and never forces or forbids its declaration (a local pack is never fingerprinted or seeded — it is
   always declared by hand). An entry object carries:
@@ -91,7 +91,7 @@ carrying that pack's own settings — its parameters, and the overrides/exemptio
     ([engine/migrations/](../migrations/README.md)) folded it, and the key stopped being a valid
     setting on #1640 - a repo still carrying one now collects the unknown-setting error.
   - **answers** — the pack's adoption-interview answers, **verbatim**, keyed by question id
-    (`{ "<question-id>": "<answer>" }`). A pack declares its questions on its `pack.mjs`; the
+    (`{ "<question-id>": "<answer>" }`). A pack declares its questions on its `pack.json`; the
     unanswered gap surfaces only as a mild SessionStart note (strict solely inside the bootstrap
     adoption flow), never a conformance finding —
     [packs/README.md](../../packs/README.md#adoption-interview-questions). A stored answer whose
@@ -195,7 +195,7 @@ would be a suppression wearing a creation date. A project that sets the rule to 
 its own settings overrides the grace and gets enforcement from day one. The window is measured from the
 declared date, not from the day a consumer received the rule — so a canon rule's grace is spent by the time
 a member converges onto it, and a rule going out to the fleet still has to be one the fleet can satisfy. A whole
-new pack is just a `../packs/<name>/` directory with a `pack.mjs` (its fingerprint `relevanceDetector` and its
+new pack is just a `../packs/<name>/` directory with a `pack.json` (its fingerprint `relevanceDetector` and its
 rules; the id, prose, badge and bundled skills come from the directory itself) —
 [engine/pack_loader/pack-registry.mjs](../pack_loader/pack-registry.mjs) discovers it structurally,
 no list to edit.
