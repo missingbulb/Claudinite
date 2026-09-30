@@ -443,6 +443,32 @@ test('dedup-prune-integrity: passes a real strip (shrinks, delegates without res
   } finally { cleanup(root); }
 });
 
+test('dedup-prune-integrity: a remove prune may grow the retired element\'s provenance file', () => {
+  const provenance = '.claudinite/local/packs/gcec/provenance/host-suffix.md';
+  const born = '## 2026-07-01 · born · add the hostSuffix gotcha\n- **Reason:** a lookalike host matched.\n';
+  const retired = `${born}\n## 2026-09-27 · retired · superseded by the canon's own rule (#1)\n- **Reason:** the canon carries it verbatim.\n`;
+  const root = makeRepo({
+    base: { [PROSE]: ORIGINAL, [provenance]: born },
+    changed: { [PROSE]: '## Codebase gotchas\n', [provenance]: retired },
+    commitMsg: 'gcec: dedup the hostSuffix gotcha the canon now covers Refs #1',
+  });
+  try {
+    assert.deepEqual(runWork(root), []);
+  } finally { cleanup(root); }
+
+  const restating = `${born}\n## 2026-09-27 · retired · the chrome-extension pack owns it now (#1)\n`;
+  const contrast = makeRepo({
+    base: { [PROSE]: ORIGINAL, [provenance]: born },
+    changed: { [PROSE]: '## Codebase gotchas\n', [provenance]: restating },
+    commitMsg: 'gcec: dedup the hostSuffix gotcha the canon now covers Refs #1',
+  });
+  try {
+    const findings = runWork(contrast);
+    assert.ok(findings.some((f) => f.file === provenance && /re-imports a canon rule/.test(f.what)), 'restatement still flagged in provenance');
+    assert.ok(!findings.some((f) => /grew/.test(f.what)), 'provenance growth is not flagged');
+  } finally { cleanup(contrast); }
+});
+
 test('dedup-prune-integrity: a reflowed "strip" that ends up longer is growth too', () => {
   // Fewer lines, more text: re-wrapping is how a corrupt strip hides from a
   // line count, and since growth-dedup's auto-merge policy stopped measuring
