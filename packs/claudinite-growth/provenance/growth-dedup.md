@@ -48,3 +48,6 @@
 - **Reason:** pack.json is the preferred manifest; where the text told a reader to list a module in
   pack.mjs, rules are found in worldRules/ and workRules/ and nothing is listed.
 - **Actor:** @missingbulb (owner), asking for pack.json manifests.
+
+## 2026-09-30 · reworded · the backstop's description excludes provenance logs from the shrink measure (missingbulb/NoRFinder#211)
+- **Reason:** tracks dedup-prune-integrity's scope change.
