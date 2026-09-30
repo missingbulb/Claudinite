@@ -1,11 +1,35 @@
 {
   "usage-findings": {
-    "value": 73,
+    "value": 76,
     "previous": 73,
-    "note": "2026-09-01 to 2026-09-28"
+    "note": "2026-09-02 to 2026-09-29"
   },
   "usage-newest": {
     "rows": [
+      {
+        "subject": "adopt-claudinite",
+        "rule": "skill-adoption-not-reached",
+        "cause": "unknown",
+        "since": "2026-09-30"
+      },
+      {
+        "subject": "ask-user-question-already-decided",
+        "rule": "guard-overruled",
+        "cause": "probable",
+        "since": "2026-09-30"
+      },
+      {
+        "subject": "extract-from-instructions",
+        "rule": "skill-adoption-not-reached",
+        "cause": "unknown",
+        "since": "2026-09-30"
+      },
+      {
+        "subject": "issue-labels-overwrite",
+        "rule": "guard-overruled",
+        "cause": "probable",
+        "since": "2026-09-30"
+      },
       {
         "subject": "call-hook-latency-measured",
         "rule": "check-never-fires",
@@ -41,30 +65,6 @@
         "rule": "check-never-fires",
         "cause": "unknown",
         "since": "2026-09-25"
-      },
-      {
-        "subject": "preferences-store-codeowners",
-        "rule": "check-never-fires",
-        "cause": "unknown",
-        "since": "2026-09-25"
-      },
-      {
-        "subject": "skill-no-enforcement-narration",
-        "rule": "check-never-fires",
-        "cause": "unknown",
-        "since": "2026-09-25"
-      },
-      {
-        "subject": "changing-pack-elements",
-        "rule": "skill-triggered-missing-moments",
-        "cause": "known",
-        "since": "2026-09-23"
-      },
-      {
-        "subject": "checkout-restores-index",
-        "rule": "guard-overruled",
-        "cause": "probable",
-        "since": "2026-09-23"
       }
     ]
   }
