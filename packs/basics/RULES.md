@@ -237,6 +237,13 @@
   its PR, or its issue when it has one; the next session opens from that number.
   (ending-session-change)
 
+- **Working from a Claude project (its shared folder, threads and project memory)** — the repo is
+  where the work lives; the project is only a tool that helps the repo grow. Commit every piece of
+  processing code, instruction, skill, label set, ledger and the current state to the repo, in a
+  PR, as part of the change that produced it; the shared folder may hold only temporary processing
+  artifacts that can be regenerated from the repo. Before replying that work is done, check that
+  nothing the next session would need exists only in the project. (working-claude-project)
+
 - **Spotting a change that should wait until the work in flight lands** — file it as work that
   comes back on its own rather than doing it now or trusting anyone to remember it: the
   [do-later](skills/do-later/SKILL.md) skill, which queues it behind what it waits on.
