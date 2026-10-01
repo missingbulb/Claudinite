@@ -76,6 +76,18 @@
 - **Mechanism:** the description, as before.
 - **Actor:** @missingbulb (owner).
 
+## 2026-09-27 · strengthened · anchor a guardToolCalls Bash match to a command-start boundary
+- **Source:** a member's own local pack, read by the `growth-promote` task's 2026-09-27 window: an
+  unanchored `guardToolCalls` match there also fired on the pattern merely quoted inside an
+  argument.
+- **Reason:** a class-D conversion's authoring discipline was silent on anchoring, so an
+  unanchored match reads as working in a fixture that happens to place the pattern at the start of
+  every test string, and only false-positives once a real call carries it elsewhere.
+- **Mechanism:** a step of the prose-to-checks skill, a workflow.
+- **Actor:** claudinite-canon-curation growth-promote run.
+- **Model:** claude-sonnet-5
+- **Landed:** https://github.com/missingbulb/Claudinite/pull/2283
+
 ## 2026-09-28 · reworded · names the manifest as pack.json, or by role
 - **Reason:** pack.json is the preferred manifest; where the text told a reader to list a module in
   pack.mjs, rules are found in worldRules/ and workRules/ and nothing is listed.

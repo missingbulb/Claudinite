@@ -19,3 +19,7 @@
   or a record the previous host left on a claimed hostname; `decision` is a surface the release
   depends on changing underneath it; `failure` means read the trace. The
   `releasing-a-cloudflare-site` skill says what each one wants. (release-parked)
+
+- **Curling the live domain to check a release actually landed** — its response is CDN-cached, so
+  a probe made right after a deploy can still show the old page; re-check after a delay before
+  reading that stale response as a failed release. (checking-deployed-site)

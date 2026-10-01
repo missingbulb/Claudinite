@@ -150,6 +150,12 @@ is a schema check in disguise, and a coded rule mirroring a schema's shape by ha
 4. **Delete the prose the check now covers** — whole, never trimmed. The deletion test below is
    how you decide which paragraphs those are.
 
+**Anchor a `guardToolCalls` Bash match to a command-start boundary** (e.g. `(?:^|[;&|\n])\s*`),
+or it also fires when the pattern is merely *quoted* somewhere in an argument — a `--summary`
+string, a heredoc body — and not only when the command itself invokes it. An unanchored match
+reads as working in a fixture that happens to place the pattern at the start of every test string,
+and only false-positives once a real call carries it elsewhere.
+
 **Before writing a rule off as un-checkable, try parsing the file's structure instead of grepping
 its text.** Grep finds the pattern anywhere; parsing finds it in the one spot the rule means —
 which kills the false alarm. (Example: `Authorization` is only wrong inside a CloudFront policy's

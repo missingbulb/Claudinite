@@ -30,6 +30,19 @@
   itself, with its own token and its own delivery policy. Propose a settings change as a conclusion,
   never as the diagnosis. (answering-fleet-did)
 
+## Reading fleet activity
+
+- **Reading a fleet's activity to rank or report it** — filter Claudinite's own artifacts out of
+  **every** stream you collect, not just the first one you thought of. The machine is the busiest
+  actor in a fleet it dispatches work across, and its own bookkeeping does not merely appear in a
+  size-or-discussion ranking, it wins it: a dispatch issue collects a comment per executor stage,
+  so it outweighs the work it dispatched, and a guard written for pull requests while issues go
+  through unfiltered leaves the whole hole open. Recognize a machine artifact with the engine's
+  own `isDispatchTitle` rather than a private regex, since the dispatch-title format is the
+  scheduler's to change. Count a maintenance total where it is **tallied**, never by dropping
+  items in the fetch: an issue the machinery filed and closed is still a true account of how much
+  of the day the fleet spent servicing itself. (reading-fleets-activity)
+
 ## Running the manual levers
 
 - **Pushing canon to the whole fleet now** — create the work item, from a checkout of this repo:
