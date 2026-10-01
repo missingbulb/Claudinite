@@ -58,5 +58,5 @@ still publishing is a check's finding.
   `src/content/docs/workers/configuration/routing/custom-domains.mdx`) — reconciled through
   2026-10-01.
 - Wrangler releases — https://github.com/cloudflare/workers-sdk/releases (the same notes are the
-  `packages/wrangler/CHANGELOG.md` of that repository) — reconciled through `wrangler@4.145.0`.
+  `packages/wrangler/CHANGELOG.md` of that repository) - reconciled through `wrangler@4.145.0`.
   The release pins `wrangler@4.128.0`; the pin moves in a commit that says so.
