@@ -141,7 +141,12 @@
     },
     "disabledTasks": [
       "claudinite-lifecycle/update",
-      "claudinite-growth/logs-prune"
+      "claudinite-growth/logs-prune",
+      "claudinite-canon-curation/growth-promote",
+      "claudinite-canon-curation/growth-discover-packs",
+      "claudinite-canon-curation/canon-prose-to-checks",
+      "claudinite-canon-curation/canon-rule-revalidation",
+      "claudinite-canon-curation/revalidate-from-source"
     ]
   }
 }
