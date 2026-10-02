@@ -1,11 +1,17 @@
 {
   "usage-findings": {
-    "value": 75,
-    "previous": 76,
-    "note": "2026-09-03 to 2026-09-30"
+    "value": 76,
+    "previous": 75,
+    "note": "2026-09-04 to 2026-10-01"
   },
   "usage-newest": {
     "rows": [
+      {
+        "subject": "legacy-tolerance-scheduled",
+        "rule": "check-never-fires",
+        "cause": "unknown",
+        "since": "2026-10-02"
+      },
       {
         "subject": "task-code-work-env",
         "rule": "check-never-fires",
@@ -56,12 +62,6 @@
       },
       {
         "subject": "migration-version-above-current",
-        "rule": "check-never-fires",
-        "cause": "unknown",
-        "since": "2026-09-25"
-      },
-      {
-        "subject": "preferences-store-codeowners",
         "rule": "check-never-fires",
         "cause": "unknown",
         "since": "2026-09-25"
