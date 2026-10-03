@@ -1,11 +1,17 @@
 {
   "usage-findings": {
     "value": 76,
-    "previous": 75,
-    "note": "2026-09-04 to 2026-10-01"
+    "previous": 76,
+    "note": "2026-09-05 to 2026-10-02"
   },
   "usage-newest": {
     "rows": [
+      {
+        "subject": "searching-for-a-tool",
+        "rule": "skill-always-loaded",
+        "cause": "known",
+        "since": "2026-10-03"
+      },
       {
         "subject": "legacy-tolerance-scheduled",
         "rule": "check-never-fires",
@@ -59,12 +65,6 @@
         "rule": "check-unsatisfiable",
         "cause": "probable",
         "since": "2026-09-26"
-      },
-      {
-        "subject": "migration-version-above-current",
-        "rule": "check-never-fires",
-        "cause": "unknown",
-        "since": "2026-09-25"
       }
     ]
   }
