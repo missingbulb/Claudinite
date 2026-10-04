@@ -13,7 +13,7 @@
 // system from inside one of its members. The spec is upstream of every pack, so
 // there is nothing to declare and nothing to parse.
 //
-// No filesystem, and its one import is the engine's own pure version module: the
+// No filesystem, and its imports are the engine's own pure modules: the
 // caller supplies the facts from disk (the `skills/` directory listing), so this
 // module is pure and testable standalone. Its other half is
 // `pack-conventions.mjs`, which reads the pack directory and fills in what the
@@ -72,6 +72,11 @@ const isAdoptionHandover = (v) => Array.isArray(v) && v.every((o) => o !== null
   && typeof o === 'object'
   && ['step', 'breaks', 'done'].every((k) => typeof o[k] === 'string' && o[k].trim() !== ''));
 
+// The fingerprint fields `relevanceDetector` replaced: accepted on a manifest, carried by
+// no conversion.
+// @legacy-tolerance advisory:legacy-shape-in-use retire:#2374
+export const RETIRED_FINGERPRINT_FIELDS = ['detect', 'marker'];
+
 // Every field a manifest may carry. `required` fields must be present; the rest
 // are validated only when declared. An UNDECLARED field is an error: the spec is
 // the closed vocabulary of a pack, so a typo (`rule:`, `skill:`) fails loudly
@@ -84,11 +89,6 @@ const isAdoptionHandover = (v) => Array.isArray(v) && v.every((o) => o !== null
 // Every CANON pack does declare both — asserted by engine-tests/pack-versions.test.mjs,
 // which is a canon-side test rather than a conformance rule precisely because it is
 // true of this tree only.
-// The fingerprint fields `relevanceDetector` replaced: accepted on a manifest, carried by
-// no conversion.
-// @legacy-tolerance advisory:legacy-shape-in-use retire:#2374
-export const RETIRED_FINGERPRINT_FIELDS = ['detect', 'marker'];
-
 export const PACK_FIELDS = {
   id: { required: true, describe: 'the pack id — the directory name by convention, and declared only to override that', valid: (v) => typeof v === 'string' && v.length > 0 },
   version: { describe: 'the pack version — date-anchored <day>.<n>, advanced by a pack release', valid: isDeclaredVersion },
@@ -189,7 +189,7 @@ export function validateManifest(mod, { label, skillDirs = [] } = {}) {
 
   // A declared skill name with no directory behind it is a manifest that lies —
   // the mount would announce a skill no session can load. The other direction is
-  // not a fault any more: the convention lists every `skills/<name>/` carrying a
+  // not a fault: the convention lists every `skills/<name>/` carrying a
   // SKILL.md, so a name missing from the list is there because the manifest
   // deliberately overrode it, which is what withholding a skill looks like.
   if (isStringArray(mod.skills)) {

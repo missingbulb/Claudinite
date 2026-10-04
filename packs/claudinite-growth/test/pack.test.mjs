@@ -471,8 +471,8 @@ test('dedup-prune-integrity: a remove prune may grow the retired element\'s prov
 
 test('dedup-prune-integrity: a reflowed "strip" that ends up longer is growth too', () => {
   // Fewer lines, more text: re-wrapping is how a corrupt strip hides from a
-  // line count, and since growth-dedup's auto-merge policy stopped measuring
-  // shrink per line, this check is the only thing measuring it at all.
+  // line count, and growth-dedup's auto-merge policy judges nothing about a
+  // prune's shape, so this check is the only thing measuring it at all.
   const reflowed = `## Codebase gotchas
 
 - **A bare \`hostSuffix\` matcher also matches \`evilexample.com\`, which is the whole trap** — pair \`hostEquals\` with \`hostSuffix: ".example.com"\`, since the real match runs in Chrome and is verified only by the CI-only real-Chrome test, the sole verifier of the URL-to-icon match.
