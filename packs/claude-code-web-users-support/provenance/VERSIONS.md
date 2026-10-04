@@ -1,12 +1,14 @@
 # Version history
 
-Records for `packs/claude-code-web-users-support/pack.mjs`'s `version` field, one row per version, newest first.
+Records for the `version` field of `packs/claude-code-web-users-support/`'s manifest, one row per version, newest first.
 A version is cut on `main` after its changes land, so a row names the pull requests that
 landed between the previous version and this one; the weekly history task writes the rows
 a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60928.1 | 2026-09-28 | Pack manifests become pack.json (#2382) |
+| 60927.1 | 2026-09-27 | Give every offered pack a pitch (#2369) |
 | 60925.2 | 2026-09-25 | Rename a check's severity to on_fail: block \| advise; retire the baseline/converge vocabulary (#2318) |
 | 60925.1 | 2026-09-25 | claude-code-web-users-support: address personal packs by GitHub login, and generate the store's CODEOWNERS (#2321) |
 | 60924.1 | 2026-09-24 | claude-code-web-users-support: the session root ignores itself (#2301) |

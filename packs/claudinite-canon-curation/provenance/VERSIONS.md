@@ -1,12 +1,15 @@
 # Version history
 
-Records for `packs/claudinite-canon-curation/pack.mjs`'s `version` field, one row per version, newest first.
+Records for the `version` field of `packs/claudinite-canon-curation/`'s manifest, one row per version, newest first.
 A version is cut on `main` after its changes land, so a row names the pull requests that
 landed between the previous version and this one; the weekly history task writes the rows
 a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60928.1 | 2026-09-28 | Pack manifests become pack.json (#2382) |
+| 60927.2 | 2026-09-27 | A pack's fingerprint as data: relevanceDetector replaces detect and marker (#2375) |
+| 60927.1 | 2026-09-27 | Price canon's pack versions off the catalog; cut Stop sweep cost; retire squash-merge-history (#2371) |
 | 60925.3 | 2026-09-25 | Flatten pack declarations into .claudinite/flat/, move rolling usage files into .claudinite/usage/ (#2322) |
 | 60925.2 | 2026-09-25 | Cut skill descriptions out of session-start context (#2325) |
 | 60925.1 | 2026-09-25 | Rename a check's severity to on_fail: block \| advise; retire the baseline/converge vocabulary (#2318) |

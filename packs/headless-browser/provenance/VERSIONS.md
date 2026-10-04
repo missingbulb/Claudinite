@@ -1,12 +1,17 @@
 # Version history
 
-Records for `packs/headless-browser/pack.mjs`'s `version` field, one row per version, newest first.
+Records for the `version` field of `packs/headless-browser/`'s manifest, one row per version, newest first.
 A version is cut on `main` after its changes land, so a row names the pull requests that
 landed between the previous version and this one; the weekly history task writes the rows
 a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60928.1 | 2026-09-28 | Pack manifests become pack.json (#2382) |
+| 60927.4 | 2026-09-27 | A pack's fingerprint as data: relevanceDetector replaces detect and marker (#2375) |
+| 60927.3 | 2026-09-27 | Give every offered pack a pitch (#2369) |
+| 60927.2 | 2026-09-27 | Keep the headless-browser checks off their own fixture files (#2368) |
+| 60927.1 | 2026-09-27 | Convert two headless-browser wait rules into declared checks (#2364) |
 | 60925.1 | 2026-09-25 | Rename a check's severity to on_fail: block \| advise; retire the baseline/converge vocabulary (#2318) |
 | 60922.2 | 2026-09-22 | Promote 6 portable lessons from CrosswordChat, GCEC, LaughCounter, MissingBulbWebsite, Shepherd (#1886) |
 | 60922.1 | 2026-09-22 | Provenance: backfill the five platform packs (#2226) |
