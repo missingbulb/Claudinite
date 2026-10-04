@@ -22,12 +22,13 @@ metadata:
 - **`git add` a new test file before certifying a run green** — `git ls-files` excludes an unstaged
   file, so the run never executed it; the `untracked-test-file` finding at Stop says which.
   (git-add-new)
-- **Running the whole suite in a fresh checkout** - deepen it first, since two test files refuse
-  to run on the shallow clone a session starts from and their failure looks like a regression until
-  you open the message: (unshallow-before-suite)
+- **Running the whole suite in a fresh checkout** - deepen it first when it is shallower than
+  `origin/main~50`, since two test files refuse a clone that shallow and their failure looks like a
+  regression until you open the message; a session's clone is not always that shallow, so test
+  before fetching: (unshallow-before-suite)
 
   ```
-  git fetch --unshallow origin main
+  git rev-parse -q --verify origin/main~50 || git fetch --unshallow origin main
   ```
 - **Iterating on a sweep across many files** — run only the test files the edit touches, plus
   `check_the_work`; spend the whole suite and `check_the_world` once, at the end. Both are
