@@ -221,3 +221,34 @@
   Write's content and decide that it both rewrites a module and re-imports it in the same process -
   not a signature that can be made confident. Prose stands.
 - **Actor:** the claudinite-growth/growth-extract run on #2398.
+
+## 2026-10-04 · declined · `wanting-boundary-enforced`, as a check over barrier declarations
+- **Source:** the prose-to-checks sweep over `.claudinite/local/packs/`, reading the rule's
+  provenance (#1890).
+- **Reason:** class G, the violation leaves no mark. #1890's barrier named ordinary directories
+  (`contract`, `items`) and *meant* their tests to be inside it; the reference scanner's
+  scanner-wide test-file filter is what made it read green. Whether a barrier over a directory was
+  meant to cover that directory's tests is intent, not a static signature. The one form a check
+  could see - a barrier `from`/`path` naming a `*.test.mjs` literally - is a form nobody writes, so
+  the check would guard against nothing real. The real fix is a reference-scanner opt-in for test
+  files, the rule's own retire condition, which is engine work outside this corpus.
+- **Actor:** the claudinite-growth/prose-to-checks-sweep run, work item #2437.
+
+## 2026-10-04 · declined · `calling-enterworktree-unattended`, as an action guard on EnterWorktree
+- **Source:** the prose-to-checks sweep over `.claudinite/local/packs/`.
+- **Reason:** class D, waiting on a vocabulary key. The violation is an `EnterWorktree` call *in an
+  unattended session*; an attended one is fine. Action guards are declared only (`guardToolCalls`),
+  and none of its keys can read whether the session is attended, so an unconditional guard would
+  fire on every correct attended call. Convertible once the guard vocabulary gains a
+  session-attendance condition; until then the prose stands.
+- **Actor:** the claudinite-growth/prose-to-checks-sweep run, work item #2437.
+
+## 2026-10-04 · declined · `bundling-write-guarded`, as an action guard on a bundled Bash command
+- **Source:** the prose-to-checks sweep over `.claudinite/local/packs/`, and this run, whose own
+  heredoc write was blocked whole because its data named the test runner.
+- **Reason:** not a confident signature. A Bash command that writes a file and runs a guarded call
+  (the test runner, a commit, a fetch) is harmless unless some *other* guard blocks it, so a guard
+  of its own would have to restate every blocking guard's pattern to know when the bundle loses the
+  write - a copy that drifts - or fire on correct bundles nothing blocks. When the bundle is
+  blocked, the blocking guard's own message already stops the session at that call. Prose stands.
+- **Actor:** the claudinite-growth/prose-to-checks-sweep run, work item #2437.
