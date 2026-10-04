@@ -542,9 +542,8 @@ Below are rules on how to work on this repo.
 
 
 - **Restoring source after a deliberate see-it-fail mutation** - stage your own edits to that file
-  first, since the restore comes from the index and takes unstaged work with the mutation, then
-  `git checkout -- <file>` at the moment of mutating, never a `.bak` taken earlier, which predates
-  whatever else you edited in between. (restoring-source-deliberate)
+  first, since the restore comes from the index and takes unstaged work with the mutation.
+  (restoring-source-deliberate)
 
 
 - **Surveying whether something exists in the tree** — a code-search hit is evidence; a miss is

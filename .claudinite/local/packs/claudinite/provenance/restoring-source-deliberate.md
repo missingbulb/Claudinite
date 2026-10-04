@@ -34,3 +34,10 @@
 - **Actor:** the claudinite-growth/growth-extract run on #2398.
 - **Model:** claude-opus-5
 - **Retire when:** see-it-fail restores stop going through git checkout.
+
+## 2026-10-04 · weakened · the timing and .bak half is canon's
+- **Reason:** basics' writing-tests skill now carries "Restore with `git checkout -- <file>` (or
+  `git stash`) taken at the moment of mutating - never a `.bak` copy saved earlier"; the staging
+  precondition stays.
+- **Actor:** the claudinite-growth/growth-dedup run on #2436.
+- **Model:** claude-opus-5-5
