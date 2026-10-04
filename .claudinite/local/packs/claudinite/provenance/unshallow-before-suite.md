@@ -16,3 +16,15 @@
 - **Model:** claude-opus-5
 - **Retire when:** neither test needs `origin/main`'s full history, or the checkouts sessions get
   here are no longer shallow.
+
+## 2026-10-04 · reworded · the clone depth varies, so test for `origin/main~50` before deepening (#2438)
+- **Source:** revalidation probe: this session's clone was shallow (`.git/shallow` present) but 78
+  commits deep, `origin/main~50` resolved, and the whole suite ran 4111/4111 green with no
+  deepening. Both tests guard on `rev-parse ${TRUNK}~50`, so they refuse only a clone shallower than
+  that.
+- **Reason:** the rule said every session's clone fails both tests; it only does when shallower than
+  50 commits.
+- **Actor:** the rule-revalidation run, work item #2438.
+- **Model:** claude-opus-5-5
+- **Retire when:** neither test needs `origin/main~50`, or sessions' clones reliably carry that
+  depth.

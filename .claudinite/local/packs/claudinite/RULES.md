@@ -617,9 +617,10 @@ Below are rules on how to work on this repo.
   of each moved file as added, so the fix rewrites files the change never touched.
   (scoping-fix-added-lines)
 
-- **Rebasing a branch that moved files onto a `main` that edited them** — git raises the
-  conflict at the old path only, so resolving it in favour of the move drops `main`'s hunks
-  silently; audit every line `main` added under the moved tree for survival before pushing.
+- **Rebasing a branch that moved files and left a shim at the old path onto a `main` that
+  edited them** - with the old path still occupied git pairs no rename, so it raises the conflict
+  there and resolving it in favour of the shim drops `main`'s hunks silently; audit every line
+  `main` added under the moved tree for survival before pushing.
   (rebasing-branch-moved)
 
 - **After a PR lands by squash-merge** — `git remote prune origin` before touching that branch
