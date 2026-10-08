@@ -1,7 +1,8 @@
 // What the repo's own wrangler config says about the deployment: which tree is
-// published, and which hostnames the Worker claims. Every other file in this pack
-// asks these two questions, and none of them asks the repo to repeat the answers
-// as config — the config file wrangler already reads is the one source.
+// published, which hostnames the Worker claims, and how it canonicalizes a page's
+// URL. Every other file in this pack asks these questions, and none of them asks the
+// repo to repeat the answers as config - the config file wrangler already reads is
+// the one source.
 //
 // JSON only (`wrangler.json`/`wrangler.jsonc`). A TOML config is a legitimate
 // wrangler setup and simply not one this pack reads: parsing a second
@@ -66,6 +67,17 @@ export function publishedDir(config, configPath = 'wrangler.json') {
   const base = configPath.includes('/') ? `${configPath.slice(0, configPath.lastIndexOf('/'))}/` : '';
   const normalized = dir.replace(/^\.\//, '').replace(/\/+$/, '');
   return `${base}${normalized}`;
+}
+
+// Which spelling of an HTML page's URL the deploy treats as canonical, and so which
+// spellings it 307s there: `assets.html_handling`, wrangler's own default where the
+// config leaves it unset. `none` is the mode that redirects nothing, and there the
+// `.html` spelling is the only one that resolves to the page at all.
+// https://developers.cloudflare.com/workers/static-assets/routing/advanced/html-handling/
+export const DEFAULT_HTML_HANDLING = 'auto-trailing-slash';
+export function htmlHandling(config) {
+  const mode = config?.assets?.html_handling;
+  return typeof mode === 'string' && mode.trim() ? mode.trim() : DEFAULT_HTML_HANDLING;
 }
 
 // The hostnames the deploy attaches as custom domains — the ones a visitor types,

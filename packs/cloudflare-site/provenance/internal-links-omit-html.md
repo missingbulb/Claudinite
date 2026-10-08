@@ -7,3 +7,11 @@
 - **Actor:** @missingbulb (owner), on the growth-promote run's pull request.
 - **Model:** Opus 5
 - **Landed:** #2206
+
+## 2026-09-23 · reworded · Author cloudflare-site/internal-links-omit-html-extension as a check (#2129)
+- **Reason:** "extensionless" is only the canonical spelling under the default `html_handling`;
+  `force-trailing-slash` canonicalizes to `about/` and `none` turns the redirects off entirely,
+  where following the rule as written would break the link. The rule now names the config field that
+  decides, and its check beside it holds the pages already committed.
+- **Actor:** the `engine/implement-request` run on #2129, an owner-marked request.
+- **Model:** claude-opus-5
