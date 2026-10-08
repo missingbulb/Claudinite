@@ -16,3 +16,15 @@
   session.
 - **Model:** claude-opus-5
 - **Landed:** #2032
+
+## 2026-09-26 · reworded · the CI clause was false; CI runs both sweeps (#2341)
+- **Source:** #2326 read the rule, concluded a `scope: 'work'` gate does not run in CI, and landed a
+  provenance entry the gate forbids; CI then blocked on `improve-comments-scope` and the recovery
+  cost the owner 685s answering a question the rule had created.
+- **Reason:** this repo's `ci.yml` runs the work-scope sweep beside the world sweep, and this pack's
+  own `conformance-work-scope` advises every member to; the clause claimed the opposite. Dropped
+  rather than replaced with a corrected version - the rule's subject is predicting Stop, and which
+  trigger runs which sweep is the repo's own wiring, which its `ci.yml` answers.
+- **Actor:** claudinite-tasks implement-request run on marked issue #2341.
+- **Model:** claude-opus-5
+- **Landed:** #2341

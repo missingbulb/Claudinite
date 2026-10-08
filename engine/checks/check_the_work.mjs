@@ -4,7 +4,8 @@
 // session transcript — each declaring `scope: 'work'` and receiving the fluent
 // work view (helpers/work.mjs). Repo-state rules and settings diagnostics run in
 // check_the_world.mjs, which this file shares no code with (only the scope-blind
-// mechanism helpers). The Stop hook runs this; CI runs the world runner.
+// mechanism helpers). The Stop hook runs this, and so does the CI of a repo that
+// wires ci-work-scope.mjs beside this file.
 //   --transcript PATH   the session transcript — conversation rules self-skip without it
 //   --changed / --base REF / --root DIR   as in check_the_world.mjs
 import { buildContext } from './helpers/repo-context.mjs';
