@@ -12,5 +12,21 @@
         "fix": "encode as UTF-8 bytes first — Buffer.from(str, 'utf8').toString('base64') / Buffer.from(str, 'base64').toString('utf8'), or a TextEncoder/TextDecoder bridge where Buffer is absent"
       }
     ]
+  },
+  {
+    "id": "node/test-directory-arg",
+    "severity": "blocking",
+    "since": "2026-09-26",
+    "scope": "action",
+    "failureMessage": "`node --test <directory>` reports one misleading failing \"test\" (a MODULE_NOT_FOUND under the hood) instead of discovering the suite inside it, reading as a real regression",
+    "guardToolCalls": [
+      {
+        "tool": "Bash",
+        "inputField": "command",
+        "match": "/(?:^|[;&|\\n])\\s*node\\s+--test\\s+\\S*\\/(?:\\s|$)/",
+        "what": "a `node --test` call given a bare directory (\"{match}\")",
+        "fix": "pass an explicit glob instead, e.g. node --test '<dir>/**/*.test.mjs'"
+      }
+    ]
   }
 ]

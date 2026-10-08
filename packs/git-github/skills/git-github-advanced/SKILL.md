@@ -18,7 +18,7 @@ To post a **status update** on an issue (the lifecycle's "update the issue's sta
 
 ## Don't cite an issue or PR number before that object exists
 
-Issue and PR numbers share one counter per repo, so a comment or PR body written before its companion object is filed ("filed as a dedicated issue: #222") can end up citing the wrong number once that object actually lands and consumes a different one. Comments generally have no reliable edit path to fix a wrong citation afterward. File or create the referenced object first, read back the real number it returns, then write anything that cites it - or leave an explicit placeholder and patch it once the number is known.
+Issue and PR numbers share one counter per repo, so a comment or PR body written before its companion object is filed ("filed as a dedicated issue: #222") can end up citing the wrong number once that object actually lands and consumes a different one. File or create the referenced object first, read back the real number it returns, then write anything that cites it - or leave an explicit placeholder and patch it once the number is known. A comment you already posted with a wrong citation is still fixable, though: edit it in place with `update_issue_comment` (it works on a PR's conversation comments too, since a PR is an issue for this purpose) rather than posting a follow-up correction that leaves the wrong number standing above it.
 
 ## An auto-merge refusal is not a verdict — read the PR's state, then act
 
@@ -92,6 +92,8 @@ Once an API call reports the merge done (`merged: true`), syncing your local che
 ## The sandbox checkout can be shallow, and a shallow history breaks `git merge-base`
 
 A shallow clone (or a shallow default checkout in a sandboxed session) carries a truncated history graph with synthetic grafts, so `git merge-base <default> <branch>` fails for branches that predate the shallow point — even ordinary, cleanly-merged ones — and any check that reads that failure as "orphaned" or "unrelated" produces false positives at scale. Before trusting a merge-base result (or any cross-branch history comparison), run `git rev-parse --is-shallow-repository`; if it reads `true`, unshallow first: `git fetch origin '+refs/heads/*:refs/remotes/origin/*' --prune && git fetch --unshallow`.
+
+That unshallow is for missing *history*, not a stale *ref* — a plain `git fetch origin main` brings a stale-looking `origin/main` fully current even in a shallow checkout (verified live: a ref six days stale updated correctly with no `--unshallow`). Reach for `--unshallow` only once you've confirmed history itself, not just the ref, still comes up short.
 
 ## Prefer `git commit && git push` over the MCP file-write tools for a file already correct on disk
 
@@ -186,6 +188,10 @@ Its `merged`/`merged_at` fields can read `false`/empty for a PR that has genuine
 ## `list_pull_requests`'s `head` filter silently returns the wrong PR on a bare branch name
 
 Passing a bare branch name in `head` (no `owner:` prefix) does not filter - it can hand back an unrelated PR as if it matched, for every branch queried, with no error to flag the miss. Qualify it as `owner:branch-name`, or skip the lookup and confirm status with a git-based check (`merge-base`/`diff --stat` against the branch) instead.
+
+## Requesting review from a PR's own author always fails
+
+When a repo's PRs are all opened under one account — a bot, a fleet's automation identity, a project's single maintainer — naming that account in `reviewers` on `create_pull_request`/`update_pull_request` is a guaranteed, zero-value call: GitHub rejects it outright with "Review cannot be requested from pull request author," on create and on update alike. Check who actually opened the PR before naming reviewers, or drop that account from the list — assigning them, or leaving `reviewers` empty, is usually what the call was reaching for.
 
 ## `issue_read`'s `get_*` methods are split on a PR number, so one that answers proves nothing about the next
 

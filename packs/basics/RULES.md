@@ -43,6 +43,11 @@
 - **Building a mechanism for a behavior** — verify against a real run that it isn't already
   provided. (building-mechanism-behavior)
 
+- **About to report a sandbox capability (network access, a tool, an install) as unavailable** —
+  probe it again in this session first, whatever a doc or an earlier run says; an egress or
+  environment policy drifts day to day, so a stale note about what's blocked is exactly as
+  unreliable as one about what's open. (reporting-a-capabilitys)
+
 - **Building release, deploy, versioning or CI plumbing** — look for the shared pack that owns it
   first; copying a mechanic from a sibling repo is the tell that it belongs centrally. If no pack
   owns it, report the gap rather than author a third copy. (building-release-deploy)
@@ -121,6 +126,19 @@
 - **Writing anything** — size it to its idea: "open one issue" takes a sentence, not three
   paragraphs. (writing-anything)
 
+- **Applying a bulk terminology rename the owner approved in free text** — check each occurrence's
+  actual referent before renaming it; a free-text approval read as covering everything can still
+  leave some occurrences carrying the term's other, valid sense. (applying-bulk-terminology)
+
+- **Asking how to fix a structural or architectural complaint via `AskUserQuestion`** — offer
+  restructuring itself as one option, not only mechanism-level tweaks to the existing shape; an
+  owner's free-text answer naming the restructure nobody offered is the tell it was missing.
+  (asking-how-fix)
+
+- **Writing a duration or before/after number into a commit or PR body** — compute it from real
+  timestamps, never a felt sense of elapsed time around an unconsumed background wait.
+  (writing-duration-beforeafter)
+
 - **The primary source for a fact about a named, real person is blocked** (a profile behind a
   `403` or a paywall) — never substitute a data-broker or aggregator listing, and never publish
   the substitute under a caveat. Ask whoever is present instead: one question costs less than
@@ -149,10 +167,27 @@
   arrival, a run's status); one already true on its first check is a blind sleep wearing a loop.
   (polling-until-loop)
 
+- **Writing a poll or wait loop's condition** — never suppress its stderr (a trailing
+  `2>/dev/null`); it is exactly the diagnostic that would explain why the condition never became
+  true, and suppressing it turns a debuggable failure into a silent one. (suppressing-a-polls)
+
 - **Handing the owner a command block to paste into their terminal** — carry no trailing
   `# comment` on any line: interactive zsh treats `#` as a comment only under
   `interactive_comments`, off by default, so the pasted line fails. Put the explanation in the
   prose around the block. (handing-owner-command)
+
+- **A Bash command naming `git` (or a computed argument) refused as "too complex to verify"
+  inside a worktree-isolated agent** — drop straight to the plain, literal, unsubstituted single
+  command. The guard reads syntax, not intent, so a loop, a heredoc, or the same call chained with
+  `&&` or piped keeps failing exactly the same way; split it apart before running rather than
+  retrying a differently-phrased compound form. (worktree-isolated-git-refused)
+
+- **Getting a 403, or a failed tunnel, from a fetch that goes through the sandbox's own egress
+  proxy** — `curl -v` tells you whose denial it is: `CONNECT tunnel failed, response 403` is the
+  proxy's own policy refusing the host before any connection reaches it, while the same status
+  after a negotiated tunnel is the origin refusing you. Where the harness exposes one, query its
+  own status endpoint (`$HTTPS_PROXY/__agentproxy/status`) for recent policy rejections rather
+  than guessing from the code alone. (reading-403-proxy)
 
 
 ## Warnings and findings
@@ -201,6 +236,13 @@
 - **Ending a session with the change unfinished** — write the state where the change is tracked:
   its PR, or its issue when it has one; the next session opens from that number.
   (ending-session-change)
+
+- **Working from a Claude project (its shared folder, threads and project memory)** — the repo is
+  where the work lives; the project is only a tool that helps the repo grow. Commit every piece of
+  processing code, instruction, skill, label set, ledger and the current state to the repo, in a
+  PR, as part of the change that produced it; the shared folder may hold only temporary processing
+  artifacts that can be regenerated from the repo. Before replying that work is done, check that
+  nothing the next session would need exists only in the project. (working-claude-project)
 
 - **Spotting a change that should wait until the work in flight lands** — file it as work that
   comes back on its own rather than doing it now or trusting anyone to remember it: the
