@@ -26,17 +26,6 @@
 import * as gh from './github.mjs';
 
 export const USAGE_PATH = '.claudinite/usage/sessions-and-elements.json';
-// Where the fold wrote it before `.claudinite/usage/`, read until the fold has moved it.
-// @legacy-tolerance advisory:legacy-shape-in-use retire:#2323
-export const LEGACY_USAGE_PATH = '.claudinite/local/usage.GENERATED.json';
-
-// A rolling file's text at a sha, at its path or, where the member's fold has not moved
-// it yet, the old one. The second read is spent only on a member that has not moved,
-// and like the first it is cached under the sha.
-export const readRollingText = async (getText, path, legacy) => (await getText(path)) ?? getText(legacy);
-const textAtEither = (repo, sha, token, path, legacy) => readRollingText(
-  (at) => gh.getTextAtSha(repo, sha, at, token), path, legacy,
-);
 
 const ms = (t) => (t == null ? null : new Date(t).getTime());
 
@@ -112,8 +101,6 @@ export function decodeUsage(doc) {
 // correctly here with no change and no coordinated release. Rendering is not this
 // module's business and is not here yet.
 export const TASKS_USAGE_PATH = '.claudinite/usage/task-runs-and-costs.json';
-// @legacy-tolerance advisory:legacy-shape-in-use retire:#2323
-export const LEGACY_TASKS_USAGE_PATH = '.claudinite/local/tasks-usage.GENERATED.json';
 
 export function decodeTasksUsage(doc) {
   if (!doc || typeof doc !== 'object') return null;
@@ -139,7 +126,7 @@ export function decodeTasksUsage(doc) {
 // does not fold this file — and it is cached as one.
 export async function readTasksUsage(repo, sha, token) {
   try {
-    const text = await textAtEither(repo, sha, token, TASKS_USAGE_PATH, LEGACY_TASKS_USAGE_PATH);
+    const text = await gh.getTextAtSha(repo, sha, TASKS_USAGE_PATH, token);
     if (!text) return null;
     return decodeTasksUsage(JSON.parse(text));
   } catch {
@@ -151,7 +138,7 @@ export async function readTasksUsage(repo, sha, token) {
 // and it is cached as one, so a fleet sweep does not re-ask every member every load.
 export async function readUsage(repo, sha, token) {
   try {
-    const text = await textAtEither(repo, sha, token, USAGE_PATH, LEGACY_USAGE_PATH);
+    const text = await gh.getTextAtSha(repo, sha, USAGE_PATH, token);
     if (!text) return null;
     return decodeUsage(JSON.parse(text));
   } catch {

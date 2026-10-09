@@ -36,10 +36,6 @@ export const TASKS_USAGE_VERSION = 1;
 // rolling records. Rolling, not regenerated - each fold starts from the last - so its
 // name carries no GENERATED and no merge attribute resolves a conflict by dropping a side.
 export const TASKS_USAGE_PATH = '.claudinite/usage/task-runs-and-costs.json';
-// Where it lived before. Read as the prior state until the file has moved, and moved by
-// the delivery rather than dropped.
-// @legacy-tolerance advisory:legacy-shape-in-use retire:#2323
-export const LEGACY_TASKS_USAGE_PATH = '.claudinite/local/tasks-usage.GENERATED.json';
 
 // The queue's own outcome words, spelled here for the same reason the session file
 // spells them: this pack and the engine land on separate cycles, so a NEW engine

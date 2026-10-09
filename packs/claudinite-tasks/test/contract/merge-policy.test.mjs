@@ -329,14 +329,14 @@ test('declaredMergeRules reads only active packs and reports collisions loudly',
   }
 });
 
-// Both folds deliver a ROLLING file under .claudinite/usage/ and, once, the move off
-// its old path; the rules they name are this pack's own merge-rules.json.
+// Both folds deliver a ROLLING file under .claudinite/usage/; the rules they name are
+// this pack's own merge-rules.json.
 const tasksPackRules = () => declaredMergeRules(
   [{ id: 'claudinite-tasks', dir: path.join(path.dirname(new URL(import.meta.url).pathname), '..', '..') }],
   { packs: ['claudinite-tasks'] },
 );
 
-test('the usage folds\' delivery shape — their rolling file, and its one move — lands, and nothing else does', async () => {
+test('the usage folds\' delivery shape — their rolling file — lands, and nothing else does', async () => {
   const { rules, errors } = tasksPackRules();
   assert.deepEqual(errors, []);
   for (const [task, file, legacy] of [
@@ -346,26 +346,23 @@ test('the usage folds\' delivery shape — their rolling file, and its one move 
     const { default: json } = await import(`../../tasks/${task}/task.json`, { with: { type: 'json' } });
     const verdict = (entries) => policyVerdict({ policy: json.automerge, entries, declaredRules: rules });
     assert.equal(verdict([edited(file, '{}', '{"a":1}')]).mergeable, true, task);
-    assert.equal(verdict([added(file, '{}'), deleted(legacy)]).mergeable, true, `${task}: the move`);
+    assert.equal(verdict([added(file, '{}')]).mergeable, true, `${task}: a first fold`);
+    assert.equal(verdict([added(file, '{}'), deleted(legacy)]).mergeable, false, `${task}: the old path is never deleted unreviewed`);
     assert.equal(verdict([edited(file, '{}', '{"a":1}'), added('.gitattributes', 'x\n')]).mergeable, false, `${task}: a second file`);
     for (const other of ['packs/directory.GENERATED.md', '.claudinite/local/other.GENERATED.json', '.claudinite/usage/nested/x.json']) {
       assert.equal(verdict([edited(other, 'a\n', 'b\n')]).mergeable, false, `${task}: ${other}`);
     }
-    assert.equal(verdict([edited(legacy, '{}', '{"a":1}')]).mergeable, false, `${task}: the old path is only ever moved off`);
+    assert.equal(verdict([edited(legacy, '{}', '{"a":1}')]).mergeable, false, `${task}: the old path is never written`);
   }
 });
 
-test('one usage-fold delivery carrying both rolling files, and both moves, lands', async () => {
+test('one usage-fold delivery carrying both rolling files lands', async () => {
   const { rules } = tasksPackRules();
   const { default: json } = await import('../../tasks/usage-fold/task.json', { with: { type: 'json' } });
   const verdict = (entries) => policyVerdict({ policy: json.automerge, entries, declaredRules: rules });
   assert.equal(verdict([
     edited('.claudinite/usage/sessions-and-elements.json', '{}', '{"a":1}'),
     edited('.claudinite/usage/task-runs-and-costs.json', '{}', '{"a":1}'),
-  ]).mergeable, true);
-  assert.equal(verdict([
-    added('.claudinite/usage/sessions-and-elements.json', '{}'), deleted('.claudinite/local/usage.GENERATED.json'),
-    added('.claudinite/usage/task-runs-and-costs.json', '{}'), deleted('.claudinite/local/tasks-usage.GENERATED.json'),
   ]).mergeable, true);
 });
 

@@ -117,22 +117,21 @@ test('a deepen that could not run says so, rather than passing for one that did'
 
 // --- one delivery for both halves ------------------------------------------------
 
-const half = (path, text, moves = {}) => async () => ({ files: { [path]: text }, moves, summary: `${path} folded` });
-const unchanged = (summary) => async () => ({ files: {}, moves: {}, summary });
+const half = (path, text) => async () => ({ files: { [path]: text }, summary: `${path} folded` });
+const unchanged = (summary) => async () => ({ files: {}, summary });
 const recorder = () => {
   const calls = [];
   return { calls, deliver: async (args) => { calls.push(args); return { number: 7, reused: false, merged: true, branch: 'b' }; } };
 };
 
-test('deliverFolds puts both halves\' files, and both moves, on ONE pull request', async () => {
+test('deliverFolds puts both halves\' files on ONE pull request', async () => {
   const { calls, deliver } = recorder();
   await deliverFolds({
-    halves: { sessions: half('a.json', 'A', { 'old-a': 'a.json' }), machinery: half('b.json', 'B', { 'old-b': 'b.json' }) },
+    halves: { sessions: half('a.json', 'A'), machinery: half('b.json', 'B') },
     deliver, automerge: 'x', log: () => {},
   });
   assert.equal(calls.length, 1);
   assert.deepEqual(calls[0].files, { 'a.json': 'A', 'b.json': 'B' });
-  assert.deepEqual(calls[0].moves, { 'old-a': 'a.json', 'old-b': 'b.json' });
 });
 
 test('deliverFolds opens nothing when neither half changed a byte', async () => {

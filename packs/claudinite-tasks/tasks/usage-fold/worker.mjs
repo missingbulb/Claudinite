@@ -40,7 +40,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { baseTip, readAt, readRollingAt, remoteUrl } from '../../public/delivery.mjs';
+import { baseTip, readAt, remoteUrl } from '../../public/delivery.mjs';
 import { AUTOMERGE_TRAILER } from '../../src/contract/merge-policy.mjs';
 
 import {
@@ -58,10 +58,6 @@ const BRANCH = 'conversation-logs';
 // A rolling file, not a regenerated one: every fold starts from the last, so it carries
 // no GENERATED in its name.
 export const USAGE_PATH = '.claudinite/usage/sessions-and-elements.json';
-// Where it lived before `.claudinite/usage/`. Read as the prior state until the file has
-// moved, and moved by the delivery rather than dropped.
-// @legacy-tolerance advisory:legacy-shape-in-use retire:#2323
-export const LEGACY_USAGE_PATH = '.claudinite/local/usage.GENERATED.json';
 
 // The run's own logger, under the task's name and its item. Module-level because the
 // helpers below log too; `worker` takes the one the runner built.
@@ -268,9 +264,9 @@ async function foldSessions({ root, repo, token, base, remote, baseSha, now, log
   // place, so nothing is ever counted twice.
   // Decoded on the way in: the prior file may have been written by any version of this
   // format, and the fold works in named counters throughout.
-  const rolling = readRollingAt(root, baseSha, USAGE_PATH, LEGACY_USAGE_PATH);
+  const landed = readAt(root, baseSha, USAGE_PATH);
   let prior = {};
-  try { prior = decodeUsage(JSON.parse(rolling.text ?? '{}')); } catch { /* unparsable → refold */ }
+  try { prior = decodeUsage(JSON.parse(landed ?? '{}')); } catch { /* unparsable → refold */ }
 
   const reader = makeReader({ token });
 
@@ -321,11 +317,10 @@ async function foldSessions({ root, repo, token, base, remote, baseSha, now, log
   // Compared WITHOUT the freshness stamp, which moves every run by construction: a
   // repo where nothing happened must still open nothing, and the stamp is the one line
   // that would otherwise make every fold a PR.
-  const landed = readAt(root, baseSha, USAGE_PATH);
   if (landed !== null && withoutStamp(landed) === withoutStamp(text)) {
-    return { files: {}, moves: {}, summary: `${summary} - byte-identical` };
+    return { files: {}, summary: `${summary} - byte-identical` };
   }
-  return { files: { [USAGE_PATH]: text }, moves: rolling.moves, summary };
+  return { files: { [USAGE_PATH]: text }, summary };
 }
 
 // Runs every half, then lands whatever changed on ONE pull request. A half that
@@ -333,14 +328,12 @@ async function foldSessions({ root, repo, token, base, remote, baseSha, now, log
 // with every half's error, so a broken half is never mistaken for a quiet one.
 export async function deliverFolds({ halves, deliver, automerge, log }) {
   const files = {};
-  const moves = {};
   const failures = [];
   const summaries = [];
   for (const [name, fold] of Object.entries(halves)) {
     try {
       const out = await fold();
       Object.assign(files, out.files);
-      Object.assign(moves, out.moves);
       summaries.push(`${name}: ${out.summary}`);
     } catch (err) {
       log(`the ${name} half failed - its file is unchanged this run: ${err?.stack ?? err}`);
@@ -352,7 +345,6 @@ export async function deliverFolds({ halves, deliver, automerge, log }) {
   if (Object.keys(files).length) {
     const pr = await deliver({
       files,
-      moves,
       // The arming trailer carries the task's own automerge, so the
       // automerge-policy-scope check re-measures this delivery's diff wherever the
       // PR's CI runs check_the_work - the code lane's equivalent of the agent

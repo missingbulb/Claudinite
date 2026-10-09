@@ -11,13 +11,6 @@ export const LASTING_DAYS = 14;
 // from the last, so neither is named GENERATED.
 export const REVIEW_PATH = '.claudinite/usage/element-review-findings.json';
 export const DASHBOARD_PATH = '.claudinite/usage/claudinite-growth-dashboard-values.json';
-// Where the two lived before `.claudinite/usage/`: read as the prior review until the
-// files have moved, and moved by the delivery rather than dropped.
-// @legacy-tolerance advisory:legacy-shape-in-use retire:#2323
-export const LEGACY_PATHS = Object.freeze({
-  [REVIEW_PATH]: '.claudinite/local/usage-review.GENERATED.json',
-  [DASHBOARD_PATH]: '.claudinite/local/dashboard/claudinite-growth.GENERATED.json',
-});
 
 // A finding's identity is the pair it is about, and nothing else - not the figures,
 // which move every day, and not the sentence, which an author may reword. That is

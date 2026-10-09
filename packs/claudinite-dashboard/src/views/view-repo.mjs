@@ -15,7 +15,7 @@
 
 import * as gh from '../read/github.mjs';
 import {
-  buildRoster, describeItem, isWorkItem, parseDeclaration, taskDeclarationPaths, declaredPackDirs,
+  buildRoster, describeItem, isWorkItem, parseDeclaration, declaredPackDirs,
   PARKED,
 } from '../derive/model.mjs';
 import {
@@ -677,16 +677,7 @@ export async function loadRepo({ repo, token, config = null, onError }) {
     : null;
   const tasks = flatTasks
     ? flatTaskRows(flatTasks, declaredPackDirs(declaration)).map(({ text, ...t }) => ({ ...t, declaration: parseDeclaration(text) }))
-    : await readEachDeclaration();
-  // A member whose converge predates the flat directory: every task.json, one read each.
-  // @legacy-tolerance advisory:legacy-shape-in-use retire:#2323
-  async function readEachDeclaration() {
-    const declPaths = declaration ? taskDeclarationPaths(paths, declaration) : [];
-    return Promise.all(declPaths.map(async (t) => ({
-      ...t,
-      declaration: parseDeclaration(await gh.getTextAtSha(repo, sha, t.path, token)),
-    })));
-  }
+    : [];
 
   const items = issuePage.issues.filter(isWorkItem);
   // Whether a Blocked-by issue is still open, from the page already fetched. A

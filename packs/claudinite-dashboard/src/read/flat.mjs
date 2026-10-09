@@ -3,10 +3,8 @@
 // read per task and a read per contributing pack, and like every content read it is
 // cached under the sha, so a warm load spends nothing on it.
 //
-// A member whose converge predates the flat directory has neither file; each reader
-// here answers null for it and the caller falls back to reading the sources one by
-// one. Whether the file is there comes from the tree listing the caller already holds,
-// so that answer costs no request.
+// Whether the file is there comes from the tree listing the caller already holds, so
+// a member without one costs no request and reads as having no tasks or descriptors.
 //
 // Spelled here, not imported: the page renders other repos in the viewer's browser and
 // imports nothing from the engine. `flat-paths-drift.test.mjs` holds the copies to it.

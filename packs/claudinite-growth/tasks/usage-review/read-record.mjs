@@ -14,9 +14,6 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 export const USAGE_PATH = '.claudinite/usage/sessions-and-elements.json';
-// Where the fold wrote it before `.claudinite/usage/`, read until the fold has moved it.
-// @legacy-tolerance advisory:legacy-shape-in-use retire:#2323
-export const LEGACY_USAGE_PATH = '.claudinite/local/usage.GENERATED.json';
 export const WINDOW_DAYS = 28;
 
 // One tuple → named counters, against the vocabulary the FILE declared.
@@ -45,10 +42,7 @@ export function decodeRow(row, totalsFields, fields = {}) {
 }
 
 export function readUsageFile(root) {
-  for (const path of [USAGE_PATH, LEGACY_USAGE_PATH]) {
-    try { return JSON.parse(readFileSync(join(root, path), 'utf8')); } catch { /* not at this path */ }
-  }
-  return null;
+  try { return JSON.parse(readFileSync(join(root, USAGE_PATH), 'utf8')); } catch { return null; }
 }
 
 const iso = (d) => d.toISOString().slice(0, 10);

@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   parseDescriptor, parseValues, valueOf, fleetPhrase, phraseText, listItems, windowDelta,
-  descriptorPathIn, declaredPackIds, readContributions, liveSourcesNeeded,
-  valuesPath, legacyValuesPath, MAX_LIST_ITEMS, MAX_REPO_WIDGETS, FLEET_KINDS,
+  declaredPackIds, readContributions, liveSourcesNeeded,
+  valuesPath, MAX_LIST_ITEMS, MAX_REPO_WIDGETS, FLEET_KINDS,
 } from '../src/read/contributions.mjs';
 import { FLAT_DASHBOARD_PATH } from '../src/read/flat.mjs';
 
@@ -23,20 +23,6 @@ const descriptor = (over = {}) => JSON.stringify({
 });
 
 // --- discovery ---------------------------------------------------------------------
-
-// THE TWO-ROOT FORM. The canon runs this from its own root and every member from a
-// vendored mount, so a pattern anchored to either alone works everywhere except the
-// tree it was written in.
-test('a descriptor is found under both the canon root and a vendored mount', () => {
-  assert.equal(descriptorPathIn(['packs/acme-pack-d/dashboard.json'], 'acme-pack-d'), 'packs/acme-pack-d/dashboard.json');
-  assert.equal(
-    descriptorPathIn(['.claudinite/shared/packs/acme-pack-d/dashboard.json'], 'acme-pack-d'),
-    '.claudinite/shared/packs/acme-pack-d/dashboard.json',
-  );
-  assert.equal(descriptorPathIn(['packs/acme-pack-d/pack.mjs'], 'acme-pack-d'), null);
-  // Not a prefix match: a pack whose id is a prefix of another's must not claim it.
-  assert.equal(descriptorPathIn(['packs/git-github-extra/dashboard.json'], 'acme-pack-d'), null);
-});
 
 test('declared pack ids read both entry shapes', () => {
   assert.deepEqual(
@@ -208,45 +194,43 @@ test('a list item link is dropped unless it is https', () => {
 
 // --- reading ------------------------------------------------------------------------
 
-const fakeGh = (files) => ({
-  getTextAtSha: async (_repo, _sha, path) => (path in files ? files[path] : null),
-});
-
-test('only declared packs with a descriptor in the tree are read', async () => {
-  const asked = [];
-  const gh = {
-    getTextAtSha: async (_r, _s, path) => { asked.push(path); return path.endsWith('dashboard.json') ? descriptor() : null; },
-  };
-  const out = await readContributions({
-    repo: 'o/r', sha: 'sha1', token: 't', gh,
-    declaration: { packs: ['acme-tools', 'acme-pack'] },
-    // `acme-pack` is declared but ships no descriptor; nothing is asked about it.
-    paths: ['packs/acme-tools/dashboard.json', 'packs/acme-pack/pack.mjs'],
-  });
-  assert.deepEqual(out.map((c) => c.pack), ['acme-tools']);
-  assert.ok(!asked.some((p) => p.includes('acme-pack')), asked.join(','));
-});
+// A member's flat descriptor file carrying `descriptors` ({ pack: text }), plus any
+// other files, behind a reader that records what it was asked.
+const flatGh = (descriptors, files = {}, asked = []) => {
+  const flat = JSON.stringify({ version: 1, dashboards: Object.fromEntries(Object.entries(descriptors)
+    .map(([pack, text]) => [pack, { path: `packs/${pack}/dashboard.json`, declaration: JSON.parse(text) }])) });
+  const all = { [FLAT_DASHBOARD_PATH]: flat, ...files };
+  return { asked, paths: Object.keys(all), gh: { getTextAtSha: async (_r, _s, path) => { asked.push(path); return all[path] ?? null; } } };
+};
 
 test('a values file is read only when some widget actually asks for one', async () => {
   const liveOnly = JSON.stringify({ widgets: [{ id: 's', kind: 'stat', label: 's', noun: 's', source: 'repo-stars' }], repo: ['s'] });
-  const asked = [];
-  const gh = { getTextAtSha: async (_r, _s, path) => { asked.push(path); return path.endsWith('dashboard.json') ? liveOnly : null; } };
-  await readContributions({
-    repo: 'o/r', sha: 's', token: 't', gh,
-    declaration: { packs: ['acme-pack-d'] }, paths: ['packs/acme-pack-d/dashboard.json'],
-  });
-  assert.ok(!asked.some((p) => p.includes(valuesPath('acme-pack-d'))), asked.join(','));
+  const { asked, paths, gh } = flatGh({ 'acme-pack-d': liveOnly });
+  const [c] = await readContributions({ repo: 'o/r', sha: 's', token: 't', gh, declaration: { packs: ['acme-pack-d'] }, paths });
+  assert.equal(c.pack, 'acme-pack-d');
+  assert.deepEqual(asked, [FLAT_DASHBOARD_PATH]);
 });
 
 // A read the budget declined is not a pack with nothing to say.
-test('a withheld descriptor read reports itself as withheld', async () => {
+test('a withheld flat read reports itself as withheld', async () => {
   const gh = { getTextAtSha: async () => { throw new Error('budget'); } };
-  const [c] = await readContributions({
+  const out = await readContributions({
     repo: 'o/r', sha: 's', token: 't', gh,
-    declaration: { packs: ['acme-pack-d'] }, paths: ['packs/acme-pack-d/dashboard.json'],
+    declaration: { packs: ['acme-pack-d'] }, paths: [FLAT_DASHBOARD_PATH],
   });
-  assert.equal(c.withheld, true);
-  assert.equal(c.descriptor, undefined);
+  assert.equal(out.length, 1);
+  assert.equal(out[0].withheld, true);
+});
+
+test('a member with no flat descriptor file contributes nothing, and spends no read', async () => {
+  const asked = [];
+  const gh = { getTextAtSha: async (_r, _s, path) => { asked.push(path); return descriptor(); } };
+  const out = await readContributions({
+    repo: 'o/r', sha: 's', token: 't', gh,
+    declaration: { packs: ['acme-pack-d'] }, paths: ['.claudinite/shared/packs/acme-pack-d/dashboard.json'],
+  });
+  assert.deepEqual(out, []);
+  assert.deepEqual(asked, []);
 });
 
 test('live sources are collected only from packs that name them', () => {
@@ -257,14 +241,10 @@ test('live sources are collected only from packs that name them', () => {
 });
 
 test('a pack that reads a values file gets it parsed', async () => {
-  const gh = fakeGh({
-    'packs/demo/dashboard.json': descriptor({ fleet: { member: 'landed' } }),
+  const { paths, gh } = flatGh({ demo: descriptor({ fleet: { member: 'landed' } }) }, {
     [valuesPath('demo')]: JSON.stringify({ generatedAt: '2026-08-22T00:00:00Z', values: { landed: { value: 5, previous: 8, window: '2w' } } }),
   });
-  const [c] = await readContributions({
-    repo: 'o/r', sha: 's', token: 't', gh,
-    declaration: { packs: ['demo'] }, paths: ['packs/demo/dashboard.json'],
-  });
+  const [c] = await readContributions({ repo: 'o/r', sha: 's', token: 't', gh, declaration: { packs: ['demo'] }, paths });
   assert.equal(c.values.values.landed.value, 5);
   assert.equal(valueOf(c.descriptor.widgets.get('landed'), { values: c.values }).state, 'ok');
 });
@@ -286,23 +266,6 @@ test('a member\'s flat descriptor file answers every pack in one read', async ()
   assert.deepEqual(out.map((c) => c.pack), ['acme-tools']);
   assert.ok(!out[0].descriptor.fault, out[0].descriptor.fault);
   assert.ok(!asked.some((p) => p.endsWith('/dashboard.json')), asked.join(','));
-});
-
-// A pack whose writer has not yet moved its values off the old path still shows them.
-test('values still at their old path are read there, and only there', async () => {
-  const asked = [];
-  const values = JSON.stringify({ generatedAt: '2026-08-22T00:00:00Z', values: { landed: { value: 5, previous: 8, window: '2w' } } });
-  const gh = { getTextAtSha: async (_r, _s, path) => {
-    asked.push(path);
-    if (path === 'packs/demo/dashboard.json') return descriptor({ fleet: { member: 'landed' } });
-    return path === legacyValuesPath('demo') ? values : null;
-  } };
-  const [c] = await readContributions({
-    repo: 'o/r', sha: 's', token: 't', gh,
-    declaration: { packs: ['demo'] }, paths: ['packs/demo/dashboard.json', legacyValuesPath('demo')],
-  });
-  assert.equal(c.values.values.landed.value, 5);
-  assert.ok(!asked.includes(valuesPath('demo')), 'a member that has not moved spends no read on the new path');
 });
 
 // --- the shipped descriptor ----------------------------------------------------------

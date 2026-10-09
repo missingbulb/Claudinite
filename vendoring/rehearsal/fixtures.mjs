@@ -154,6 +154,13 @@
 //                 shape is the honest alternative to one here. It keeps its own
 //                 CLAUDE.md content so the converge is also shown NOT to clobber a
 //                 repo's instructions on its way in.
+//   pre-flat-stragglers
+//                 a member still holding the files the layout left behind (#2322)
+//                 after the tolerances for them came out (#2323): the indexes
+//                 outside `.claudinite/flat/`, its CLAUDE.md importing the old one,
+//                 and rolling usage files under `.claudinite/local/`. Nothing reads
+//                 or moves them any more, so what this shape says is that such a
+//                 member still converges green.
 //
 // A fixture's INSTALLED VERSIONS are set per MODE by the runner, never here — they
 // are what selects migration records, and what the #328 anti-rewind guard compares
@@ -1156,6 +1163,20 @@ export const FIXTURES = [
       // its one import line — a member's CLAUDE.md is the member's.
       'CLAUDE.md': '# fixture-pre-rules-index\n\nBuild with `make`. Run `make test` before committing.\n',
       '.gitattributes': 'usage.GENERATED.json merge=ours\n',
+    },
+  },
+  {
+    name: 'pre-flat-stragglers',
+    why: 'a member still holding the pre-flat indexes, the CLAUDE.md import naming the old one, and rolling usage files at their pre-usage-directory paths, after the tolerances for them came out - proving it still converges green',
+    files: {
+      'README.md': '# fixture-pre-flat-stragglers\n\nA rehearsal fixture.\n',
+      '.claudinite-settings.json': checks(['basics', 'claudinite-tasks']),
+      'CLAUDE.md': '# fixture-pre-flat-stragglers\n\n@.claudinite/claudinite-rules.GENERATED.md\n',
+      '.claudinite/claudinite-rules.GENERATED.md': '@shared/packs/basics/RULES.md\n', // @real-entity the mandatory pack every member's old index imported
+      '.claudinite/claudinite-skills.GENERATED.md': '# Skills\n',
+      '.claudinite/local/usage.GENERATED.json': '{}\n',
+      '.claudinite/local/tasks-usage.GENERATED.json': '{}\n',
+      '.claudinite/local/usage-review.GENERATED.json': '{}\n',
     },
   },
   {
