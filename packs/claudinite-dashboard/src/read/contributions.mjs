@@ -42,31 +42,14 @@ export const MAX_LABEL = 34;
 export const MAX_TEXT = 46;
 export const MAX_NOUN = 16;
 
-export const DESCRIPTOR_FILE = 'dashboard.json';
 // The values roll forward from one run to the next, so they sit with the member's other
 // rolling records and carry no GENERATED.
 export const VALUES_DIR = '.claudinite/usage';
 export const valuesPath = (pack) => `${VALUES_DIR}/${pack}-dashboard-values.json`;
-// Where a pack wrote them before `.claudinite/usage/`, read until its writer has moved them.
-// @legacy-tolerance advisory:legacy-shape-in-use retire:#2323
-export const legacyValuesPath = (pack) => `.claudinite/local/dashboard/${pack}.GENERATED.json`;
-
-const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-// THE TWO-ROOT FORM. The canon runs this from its own root (`packs/<id>/`); every
-// member runs it out of a vendored mount (`.claudinite/shared/packs/<id>/`). A
-// pattern anchored to either alone works everywhere except the tree it was written
-// in. Matched against the tree listing the view already holds, so discovery costs no
-// request at all — a pack contributes exactly when its file is in a listing already
-// in hand.
-export function descriptorPathIn(paths, pack) {
-  const re = new RegExp(`^(\\.claudinite/shared/)?packs/${escapeRe(pack)}/${escapeRe(DESCRIPTOR_FILE)}$`);
-  return (paths ?? []).find((p) => re.test(p)) ?? null;
-}
 
 // The declared pack ids, in declaration order. An entry is a bare id or an object
 // carrying one; a local pack (`local/<name>`) ships no canon descriptor and is left
-// to fall out of the path match rather than being special-cased here.
+// to fall out of the flat file's match rather than being special-cased here.
 export const declaredPackIds = (declaration) =>
   (declaration?.packs ?? []).map((p) => (typeof p === 'string' ? p : p?.id)).filter(Boolean);
 
@@ -264,37 +247,29 @@ export function windowDelta(value) {
 
 // --- reading a repo's contributions ------------------------------------------------
 
-// Every declared pack that carries a descriptor in this tree, with its values.
+// Every declared pack the member's flat descriptor file names, with its values.
 //
-// COSTS NOTHING TO DISCOVER: the caller already holds the declaration and the tree
-// listing at this sha, so which packs contribute is a match against a listing in
-// hand. What it spends is at most two CONTENT reads per contributing pack — both at
-// a sha, therefore cached forever and free while the branch has not moved — plus, if
-// any widget asks for one, the live sources the caller passes in.
+// What it spends is one CONTENT read for every descriptor, plus one values read per
+// contributing pack, all at a sha and therefore cached forever and free while the branch
+// has not moved, plus, if any widget asks for one, the live sources the caller passes in.
 //
 // A read the budget declined is not a pack with nothing to say: it answers
 // `values: undefined` and the card says the page declined to spend.
 export async function readContributions({ repo, sha, token, declaration, paths, gh }) {
   if (!paths || !declaration) return [];
 
-  // The member's flat descriptor file where its converge writes one: every pack's
-  // descriptor in a single read, and the packs it names are exactly the ones that
-  // contribute.
-  let flat = null;
-  try { flat = await readFlat({ repo, sha, token, paths, gh }, FLAT_DASHBOARD_PATH, 'dashboards'); } catch { flat = null; }
+  // The packs the flat file names are exactly the ones that contribute, so a declined
+  // read of it leaves which packs those are unknown: one withheld card says so.
+  let flat;
+  try { flat = await readFlat({ repo, sha, token, paths, gh }, FLAT_DASHBOARD_PATH, 'dashboards'); } catch {
+    return [{ pack: FLAT_DASHBOARD_PATH, withheld: true }];
+  }
 
   const found = declaredPackIds(declaration)
-    .map((pack) => ({ pack, path: flat ? (flat[pack] ? FLAT_DASHBOARD_PATH : null) : descriptorPathIn(paths, pack) }))
-    .filter((f) => f.path);
+    .filter((pack) => flat?.[pack]);
 
-  return (await Promise.all(found.map(async ({ pack, path }) => {
-    let text;
-    if (flat) text = entryText(flat[pack]);
-    else {
-      // A member whose converge predates the flat directory: one read per descriptor.
-      // @legacy-tolerance advisory:legacy-shape-in-use retire:#2323
-      try { text = await gh.getTextAtSha(repo, sha, path, token); } catch { return { pack, withheld: true }; }
-    }
+  return (await Promise.all(found.map(async (pack) => {
+    const text = entryText(flat[pack]);
     // The listing said it was there, so a null here means the tree and the contents
     // API disagree — which is a fault about this pack, not about the page.
     if (text === null) return { pack, fault: 'its dashboard.json is in the tree but could not be fetched' };
@@ -304,17 +279,14 @@ export async function readContributions({ repo, sha, token, declaration, paths, 
 
     let values;
     if (descriptor.needsGenerated) {
-      try { values = parseValues(await readValuesText({ repo, sha, token, paths, gh }, pack)); } catch { values = undefined; }
+      try { values = parseValues(await readValuesText({ repo, sha, token, gh }, pack)); } catch { values = undefined; }
     }
     return { pack, descriptor, values };
   }))).filter(Boolean);
 }
 
-// A pack's values text, at its path or, until its writer has moved it, the old one.
-// The listing says which is there, so a member that has moved spends no second read.
-async function readValuesText({ repo, sha, token, paths, gh }, pack) {
-  const at = paths.includes(valuesPath(pack)) || !paths.includes(legacyValuesPath(pack)) ? valuesPath(pack) : legacyValuesPath(pack);
-  return gh.getTextAtSha(repo, sha, at, token);
+async function readValuesText({ repo, sha, token, gh }, pack) {
+  return gh.getTextAtSha(repo, sha, valuesPath(pack), token);
 }
 
 // Which live sources a repo's contributions need at all, so a view reads none it has

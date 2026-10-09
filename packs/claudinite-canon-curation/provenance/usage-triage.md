@@ -13,3 +13,9 @@
 - **Reason:** it follows the review file, falling back to the old path until that file has moved.
 - **Mechanism:** unchanged, a task-local precondition term.
 - **Landed:** #2322
+
+## 2026-10-09 · policy-changed · the precondition reads the review only at the usage directory (#2323)
+- **Reason:** the convergence window for the old path closed, so its fallback read came out.
+- **Actor:** queued by @missingbulb (owner), run as work item #2323.
+- **Model:** Opus 5.5
+- **Mechanism:** `lasting-usage-finding` reads one path.

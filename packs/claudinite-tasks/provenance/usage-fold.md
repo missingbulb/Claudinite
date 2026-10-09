@@ -160,3 +160,11 @@
   then fails the run. The gate is the union, `any-commit || session-captured || runs-since-fold`.
 - **Rejected:** folding the two files into one - their sources differ in read cost, and one outage
   would cost the other's rows.
+
+## 2026-10-09 · policy-changed · reads and writes only the usage directory; rolling-usage-file-moves retired (#2323)
+- **Reason:** the window for members to move off `.claudinite/local/` closed, so the fold no longer
+  reads its prior state from the old path or moves it.
+- **Actor:** queued by @missingbulb (owner), run as work item #2323.
+- **Model:** Opus 5.5
+- **Mechanism:** `automerge` names `rolling-usage-files` alone, so a delivery deleting an old-path
+  file now parks for review rather than landing.

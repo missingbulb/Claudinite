@@ -15,9 +15,6 @@ import {
   seedRepoLocalPack, packIdForRepo,
 } from '../engine/converge-wiring.mjs';
 import { RULES_INDEX_FILE, RULES_INDEX_IMPORT } from '../engine/pack_loader/generate-rules-index.mjs';
-import { RETIRED_INDEX_FILES, RETIRED_RULES_INDEX_IMPORT } from '../engine/pack_loader/flat-dir.mjs';
-
-const [OLD_RULES_INDEX, OLD_SKILLS_INDEX] = RETIRED_INDEX_FILES;
 
 const mkRepo = () => mkdtempSync(join(tmpdir(), 'claudinite-wiring-'));
 const CANON_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -424,7 +421,7 @@ test('ensureHooks: the mount wins over a root engine/ that happens to sit beside
 });
 
 
-test('convergeWiring: a member on the pre-flat layout moves onto the flat directory in one pass', async () => {
+test('convergeWiring: writes the rules index, its import and the flat declarations in one pass', async () => {
   const root = mkRepo();
   // @real-entity the registry discovers canon packs from the canon tree, so the id must be one it holds
   const mount = join(root, '.claudinite', 'shared', 'packs', 'basics');
@@ -433,16 +430,13 @@ test('convergeWiring: a member on the pre-flat layout moves onto the flat direct
   writeFileSync(join(mount, 'tasks', 'acme-task', 'task.json'), '{ "trigger": "schedule" }\n');
   writeFileSync(join(mount, 'dashboard.json'), '{ "widgets": [] }\n');
   writeFileSync(join(root, '.claudinite-settings.json'), '{ "packs": ["basics"] }\n'); // @real-entity as above
-  writeFileSync(join(root, OLD_RULES_INDEX), '@shared/packs/basics/RULES.md\n'); // @real-entity as above
-  writeFileSync(join(root, OLD_SKILLS_INDEX), 'old skills\n');
-  writeFileSync(join(root, 'CLAUDE.md'), `# the repo\n\n${RETIRED_RULES_INDEX_IMPORT}\n\nOur own notes.\n`);
+  writeFileSync(join(root, 'CLAUDE.md'), '# the repo\n\nOur own notes.\n');
 
   await convergeWiring(root, REPO);
 
   assert.equal(readFileSync(join(root, 'CLAUDE.md'), 'utf8'), `# the repo\n\n${RULES_INDEX_IMPORT}\n\nOur own notes.\n`,
-    'the import is rewritten where it stood, and nothing else in the file moves');
+    'the import goes under the title, and nothing else in the file moves');
   assert.match(readFileSync(join(root, RULES_INDEX_FILE), 'utf8'), /@\.\.\/shared\/packs\/basics\/RULES\.md/);
-  assert.equal(existsSync(join(root, OLD_RULES_INDEX)), false, 'the old rules index is gone');
   const tasks = JSON.parse(readFileSync(join(root, '.claudinite', 'flat', 'tasks.GENERATED.json'), 'utf8'));
   assert.deepEqual(tasks.tasks['basics/acme-task'], { // @real-entity as above
     path: '.claudinite/shared/packs/basics/tasks/acme-task/task.json', declaration: { trigger: 'schedule' }, // @real-entity as above
@@ -451,13 +445,21 @@ test('convergeWiring: a member on the pre-flat layout moves onto the flat direct
   assert.deepEqual(dashboards.dashboards.basics.declaration, { widgets: [] }); // @real-entity as above
 });
 
-test('removeRetiredIndexFiles: an old index stays until its flat replacement exists', async () => {
-  const { removeRetiredIndexFiles } = await import('../engine/converge-wiring.mjs');
+// A member still holding files the layout left behind keeps them as they are.
+test('convergeWiring: leaves a member\'s files at the paths the layout left untouched', async () => {
   const root = mkRepo();
-  mkdirSync(join(root, '.claudinite', 'flat'), { recursive: true });
-  writeFileSync(join(root, OLD_RULES_INDEX), 'old\n');
-  writeFileSync(join(root, OLD_SKILLS_INDEX), 'old\n');
-  writeFileSync(join(root, '.claudinite', 'flat', 'claudinite-rules.GENERATED.md'), 'new\n');
-  assert.deepEqual(removeRetiredIndexFiles(root), [`removed retired ${OLD_RULES_INDEX}`]);
-  assert.equal(existsSync(join(root, OLD_SKILLS_INDEX)), true, 'no replacement, so it stays');
+  // @real-entity the registry discovers canon packs from the canon tree, so the id must be one it holds
+  mkdirSync(join(root, '.claudinite', 'shared', 'packs', 'basics'), { recursive: true });
+  writeFileSync(join(root, '.claudinite', 'shared', 'packs', 'basics', 'RULES.md'), 'BASICS\n'); // @real-entity as above
+  writeFileSync(join(root, '.claudinite-settings.json'), '{ "packs": ["basics"] }\n'); // @real-entity as above
+  mkdirSync(join(root, '.claudinite', 'local'), { recursive: true });
+  const left = {
+    '.claudinite/claudinite-rules.GENERATED.md': 'old rules\n',
+    '.claudinite/local/usage.GENERATED.json': '{"history":[1]}\n',
+  };
+  for (const [path, text] of Object.entries(left)) writeFileSync(join(root, path), text);
+
+  await convergeWiring(root, REPO);
+
+  for (const [path, text] of Object.entries(left)) assert.equal(readFileSync(join(root, path), 'utf8'), text, path);
 });

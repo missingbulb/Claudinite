@@ -94,7 +94,7 @@ Week rows are frozen by that trade: a counting bug found later heals the day win
 
 ## The file is GENERATED
 
-`.claudinite/usage/sessions-and-elements.json` is machine-written and never hand-edited. It lives under `.claudinite/usage/`, beside the repo's other rolling records, where the vendoring refresh never reaches. It is rolling rather than regenerated: each fold starts from the last, so a lost copy is lost history. That is why its name carries no `GENERATED` and no `merge=ours` resolves a conflict by dropping one side; the fold rebuilds its branch from the base on every run instead. A member whose file still sits at `.claudinite/local/usage.GENERATED.json` has it moved by the next fold, in a rename commit that carries its bytes unchanged.
+`.claudinite/usage/sessions-and-elements.json` is machine-written and never hand-edited. It lives under `.claudinite/usage/`, beside the repo's other rolling records, where the vendoring refresh never reaches. It is rolling rather than regenerated: each fold starts from the last, so a lost copy is lost history. That is why its name carries no `GENERATED` and no `merge=ours` resolves a conflict by dropping one side; the fold rebuilds its branch from the base on every run instead.
 
 ## Failure is visible, never silent
 

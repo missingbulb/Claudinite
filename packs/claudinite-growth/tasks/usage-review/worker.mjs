@@ -15,7 +15,7 @@ import { figureReader } from './figures.mjs';
 import { readWindows } from './read-record.mjs';
 import { readSkills, readRules, acceptanceReader, acceptanceReasons, packDeclaredAt, adoptionWindow } from './read-live.mjs';
 import { captureFiles, sampleDigests } from './digests.mjs';
-import { reviewFile, dashboardValues, prBody, findingKey, REVIEW_PATH, DASHBOARD_PATH, LEGACY_PATHS } from './report.mjs';
+import { reviewFile, dashboardValues, prBody, findingKey, REVIEW_PATH, DASHBOARD_PATH } from './report.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 // The run's own coordinates. Module-level because the helpers below close over them,
@@ -84,12 +84,7 @@ export async function worker({ root: runRoot, repo: runRepo, defaultBranch, toke
   const remote = remoteUrl(repo, token);
   const baseSha = token && repo ? baseTip(root, remote, base) : null;
   const atBase = (path) => (baseSha ? readAt(root, baseSha, path) : null);
-  const priorText = atBase(REVIEW_PATH) ?? atBase(LEGACY_PATHS[REVIEW_PATH]);
-  // Each file still at its old path moves to its new one in its own commit, bytes
-  // unchanged, before this review writes on top of it.
-  const moves = Object.fromEntries(Object.entries(LEGACY_PATHS)
-    .filter(([path, legacy]) => atBase(path) === null && atBase(legacy) !== null)
-    .map(([path, legacy]) => [legacy, path]));
+  const priorText = atBase(REVIEW_PATH);
   const prior = priorText ? JSON.parse(priorText) : null;
   const priorSince = new Map((prior?.findings ?? []).map((f) => [findingKey(f), f.since]));
   for (const finding of findings) finding.since = priorSince.get(findingKey(finding)) ?? today;
@@ -122,7 +117,6 @@ export async function worker({ root: runRoot, repo: runRepo, defaultBranch, toke
   await deliver({
     branchPrefix: 'claudinite/usage-review',
     files: { [REVIEW_PATH]: `${JSON.stringify(file, null, 2)}\n`, [DASHBOARD_PATH]: dashboard },
-    moves,
     title: `Usage review: ${findings.length} findings in the 28 days to ${record.window.to}`,
     body: prBody(file),
     message: `Usage review for the 28 days to ${record.window.to}`,

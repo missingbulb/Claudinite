@@ -86,3 +86,10 @@
   has a barrier that enforces nothing and needs telling.
 - **Actor:** @missingbulb (owner), asking to drop pack contributions altogether.
 - **Mechanism:** unchanged carrier; one more pattern over local manifests.
+
+## 2026-10-09 · scope-changed · no longer names files at the pre-flat or pre-usage-directory paths (#2323)
+- **Reason:** the tolerances that read those paths came out once the convergence window passed, so
+  there is nothing left to move a member onto.
+- **Actor:** queued by @missingbulb (owner), run as work item #2323.
+- **Model:** Opus 5.5
+- **Mechanism:** unchanged carrier; the tracked-path loop is gone.

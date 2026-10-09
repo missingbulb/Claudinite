@@ -26,9 +26,9 @@
 // representative day makes.
 
 import { readFileSync } from 'node:fs';
-import { readAt, readRollingAt } from '../../public/delivery.mjs';
+import { readAt } from '../../public/delivery.mjs';
 import {
-  encodeTasksUsageFile, decodeTasksUsageFile, renderTasksUsageFile, withoutStamp, TASKS_USAGE_PATH, LEGACY_TASKS_USAGE_PATH,
+  encodeTasksUsageFile, decodeTasksUsageFile, renderTasksUsageFile, withoutStamp, TASKS_USAGE_PATH,
 } from '../../src/items/tasks-usage-format.mjs';
 import { foldTasksUsage } from './fold-tasks-usage.mjs';
 import { makeReader, readRunCosts } from './read-run-costs.mjs';
@@ -52,9 +52,9 @@ export async function foldMachinery({ root, repo, token, baseSha, now, log }) {
   const minuteRate = minuteRateFrom(config);
   if (minuteRate === null) log('no `actionsMinuteRate` in this pack\'s config — the file records minutes and no spend');
 
-  const rolling = readRollingAt(root, baseSha, TASKS_USAGE_PATH, LEGACY_TASKS_USAGE_PATH);
+  const landed = readAt(root, baseSha, TASKS_USAGE_PATH);
   let prior = {};
-  try { prior = decodeTasksUsageFile(JSON.parse(rolling.text ?? '{}')); } catch { /* unparsable → refold */ }
+  try { prior = decodeTasksUsageFile(JSON.parse(landed ?? '{}')); } catch { /* unparsable → refold */ }
 
   const reader = makeReader({ token });
 
@@ -86,9 +86,8 @@ export async function foldMachinery({ root, repo, token, baseSha, now, log }) {
   const summary = `${runs.runs.length} run(s) and ${items.records.length} closed item(s)`;
   // Compared WITHOUT the freshness stamp, which moves every run by construction: a
   // day on which nothing ran must still open nothing.
-  const landed = readAt(root, baseSha, TASKS_USAGE_PATH);
   if (landed !== null && withoutStamp(landed) === withoutStamp(text)) {
-    return { files: {}, moves: {}, summary: `${summary} — byte-identical` };
+    return { files: {}, summary: `${summary} - byte-identical` };
   }
-  return { files: { [TASKS_USAGE_PATH]: text }, moves: rolling.moves, summary };
+  return { files: { [TASKS_USAGE_PATH]: text }, summary };
 }

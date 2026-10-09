@@ -66,3 +66,10 @@
 - **Actor:** @missingbulb (owner).
 - **Mechanism:** the worker's delivery; automerge stays `nothing`.
 - **Landed:** #2322
+
+## 2026-10-09 · policy-changed · reads its prior review only at the usage directory (#2323)
+- **Reason:** the convergence window for the old paths closed; the fallback read and the move it
+  handed the delivery came out.
+- **Actor:** queued by @missingbulb (owner), run as work item #2323.
+- **Model:** Opus 5.5
+- **Mechanism:** the `fold-moved-since-review` precondition and the worker read one path each.
